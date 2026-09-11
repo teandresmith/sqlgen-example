@@ -1,0 +1,56 @@
+# Consumer-owned schema extension (issue 09 — Task content & time). The generated
+# createComment / createAttachment / createTimeEntry CRUD mutations remain as
+# low-level primitives on the Go client, but each raw GraphQL create exposes a
+# concern a client must never own — so they are masked off the API (sqlgen.yml
+# api.operations) and these blessed mutations are the write path instead:
+#
+#   * createComment trusts a client-supplied authorID — provenance the server
+#     must own. commentOnTask stamps the author to the authenticated caller and
+#     lets tenant scoping inject the Workspace.
+#   * createAttachment trusts a client-supplied uploadedBy (server-owned) AND an
+#     entityType/entityID pair that has NO foreign key (polymorphic, PRD §13.7),
+#     so a raw create could point an attachment at any UUID in any Workspace.
+#     attachToTask / attachToComment resolve the target tenant-scoped, then set
+#     the discriminator and entity id themselves — a Task/Comment in another
+#     Workspace is invisible.
+#   * createTimeEntry trusts a client-supplied userID — the server-owned actor.
+#     logTime stamps the caller and takes hours as a decimal quantity (story 34).
+#
+# This mirrors the blessed task mutations (issues 07/08) and the memberships /
+# invitations masks. Resolver bodies live in task_content.resolvers.go and are
+# preserved across `sqlgen generate` by gqlgen's copy-through semantics.
+
+extend type Mutation {
+  """
+  Comment on a Task within the Active Workspace (PRD story 29). The author is the
+  authenticated caller — never client-supplied — and the Task must be visible in
+  the Active Workspace, so a Task in another Workspace cannot be commented on.
+  """
+  commentOnTask(taskID: UUID!, body: String!): Comment!
+
+  """
+  Attach a file to a Task within the Active Workspace (PRD story 33). The uploader
+  is the authenticated caller; the polymorphic binding (entityType = task,
+  entityID = the Task) is set server-side after resolving the Task tenant-scoped,
+  so an attachment can never be pointed at a Task in another Workspace. The blob
+  itself lives in external storage; this records its metadata.
+  """
+  attachToTask(taskID: UUID!, fileName: String!, contentType: String!, sizeBytes: Int!, storageURL: String!): Attachment!
+
+  """
+  Attach a file to a Comment within the Active Workspace (PRD story 33). As with
+  attachToTask, the uploader is the caller and the polymorphic binding
+  (entityType = comment, entityID = the Comment) is set server-side after
+  resolving the Comment tenant-scoped, so a Comment in another Workspace is
+  invisible.
+  """
+  attachToComment(commentID: UUID!, fileName: String!, contentType: String!, sizeBytes: Int!, storageURL: String!): Attachment!
+
+  """
+  Log a Time Entry against a Task in decimal hours (PRD story 34). The logging
+  User is the authenticated caller — never client-supplied — and the Task must be
+  visible in the Active Workspace. billable defaults to true and notes is
+  optional.
+  """
+  logTime(taskID: UUID!, hours: Decimal!, spentOn: Time!, billable: Boolean, notes: String): TimeEntry!
+}

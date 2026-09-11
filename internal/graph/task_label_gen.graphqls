@@ -1,0 +1,54 @@
+"""
+Applies labels to tasks (M2M)
+"""
+type TaskLabel {
+  "Task side of the tagging"
+  taskID: UUID!
+  "Applied label"
+  labelID: UUID!
+}
+
+type TaskLabelConnection {
+  edges:      [TaskLabelEdge!]!
+  pageInfo:   PageInfo!
+  totalCount: Int!
+}
+
+type TaskLabelEdge {
+  node:   TaskLabel!
+  cursor: String!
+}
+
+type TaskLabelListResult {
+  items:      [TaskLabel!]!
+  totalCount: Int!
+  offset:     Int!
+  limit:      Int!
+  hasMore:    Boolean!
+}
+
+input TaskLabelFilter {
+  and: [TaskLabelFilter!]
+  or:  [TaskLabelFilter!]
+}
+
+enum TaskLabelSortField {
+  TASK_ID
+  LABEL_ID
+}
+
+input TaskLabelSort {
+  field:     TaskLabelSortField!
+  direction: SortDirection!
+}
+
+extend type Query {
+  taskLabel(taskID: UUID!, labelID: UUID!): TaskLabel
+  "Cursor-paginated; ordering is driven by cursor_keys to preserve keyset semantics — pass `sort` to taskLabelList instead."
+  taskLabels(filter: TaskLabelFilter, first: Int, after: String, last: Int, before: String): TaskLabelConnection!
+  taskLabelList(filter: TaskLabelFilter, sort: [TaskLabelSort!], limit: Int, offset: Int): TaskLabelListResult!
+}
+
+extend type Mutation {
+  deleteTaskLabel(taskID: UUID!, labelID: UUID!): Boolean!
+}

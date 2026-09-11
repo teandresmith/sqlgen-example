@@ -1,0 +1,45 @@
+# Local development stack for the task-tracker example (PRD story 52).
+# `docker compose up` brings up Postgres, Redis, NATS, and an OpenTelemetry
+# collector. The server itself is run separately (`make run` / `go run
+# ./cmd/server`) against these services via the *_URL environment variables.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: taskr
+      POSTGRES_PASSWORD: taskr
+      POSTGRES_DB: taskr
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U taskr -d taskr"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  nats:
+    image: nats:2-alpine
+    # -js enables JetStream; the event bus uses core NATS today but JetStream
+    # is on so later event work does not need a compose change.
+    command: ["-js"]
+    ports:
+      - "4222:4222"
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./deploy/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+    ports:
+      - "4317:4317" # OTLP gRPC
+      - "4318:4318" # OTLP HTTP

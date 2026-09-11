@@ -1,0 +1,63 @@
+"""
+Assigns users to tasks (M2M)
+"""
+type TaskAssignee {
+  "Task side of the assignment"
+  taskID: UUID!
+  "Assigned user"
+  userID: UUID!
+  "When the assignment was made"
+  assignedAt: Time!
+}
+
+type TaskAssigneeConnection {
+  edges:      [TaskAssigneeEdge!]!
+  pageInfo:   PageInfo!
+  totalCount: Int!
+}
+
+type TaskAssigneeEdge {
+  node:   TaskAssignee!
+  cursor: String!
+}
+
+type TaskAssigneeListResult {
+  items:      [TaskAssignee!]!
+  totalCount: Int!
+  offset:     Int!
+  limit:      Int!
+  hasMore:    Boolean!
+}
+
+input TaskAssigneeFilter {
+  assignedAt: TimeComparator
+  and: [TaskAssigneeFilter!]
+  or:  [TaskAssigneeFilter!]
+}
+
+enum TaskAssigneeSortField {
+  TASK_ID
+  USER_ID
+  ASSIGNED_AT
+}
+
+input TaskAssigneeSort {
+  field:     TaskAssigneeSortField!
+  direction: SortDirection!
+}
+input UpdateTaskAssigneeInput {
+  assignedAt: Time
+}
+
+extend type Query {
+  taskAssignee(taskID: UUID!, userID: UUID!): TaskAssignee
+  "Cursor-paginated; ordering is driven by cursor_keys to preserve keyset semantics — pass `sort` to taskAssigneeList instead."
+  taskAssignees(filter: TaskAssigneeFilter, first: Int, after: String, last: Int, before: String): TaskAssigneeConnection!
+  taskAssigneeList(filter: TaskAssigneeFilter, sort: [TaskAssigneeSort!], limit: Int, offset: Int): TaskAssigneeListResult!
+}
+
+extend type Mutation {
+  updateTaskAssignee(taskID: UUID!, userID: UUID!, input: UpdateTaskAssigneeInput!): TaskAssignee!
+  updateTaskAssignees(filter: TaskAssigneeFilter!, input: UpdateTaskAssigneeInput!): [TaskAssignee!]!
+  deleteTaskAssignee(taskID: UUID!, userID: UUID!): Boolean!
+}

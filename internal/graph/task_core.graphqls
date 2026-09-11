@@ -1,0 +1,63 @@
+# Consumer-owned schema extension (issue 07 — Projects & Tasks core). The
+# generated createTask / createTaskDependency CRUD mutations remain as low-level
+# primitives, but each exposes a server-owned concern a client must never set:
+#
+#   * createTask trusts a client-supplied reporterID — provenance the server
+#     must own (PRD story 30). createTaskInProject sets the Reporter to the
+#     authenticated caller and lets tenant scoping inject the Workspace, so a
+#     client controls only the work item's own fields.
+#   * createTaskDependency cannot set the two junction FKs at all — the generated
+#     GraphQL input omits the composite-PK task references, so the raw mutation
+#     can never link two Tasks. addTaskDependency is the blessed surface that
+#     names both Tasks and, because task_dependencies carries no workspace_id,
+#     guards tenant isolation itself by requiring both Tasks to be visible in the
+#     Active Workspace before writing.
+#
+# This mirrors how bootstrapWorkspace (issue 03) and inviteToWorkspace (issue 04)
+# are preferred over their raw generated counterparts. Resolver bodies live in
+# task_core.resolvers.go and are preserved across `sqlgen generate` by gqlgen's
+# copy-through semantics.
+
+"""
+Details for creating a Task in a Project. The Reporter is not part of the input:
+it is set server-side to the authenticated caller (PRD story 30), and the owning
+Workspace is injected from the Active Workspace by tenant scoping — a client
+controls only the work item's own fields.
+"""
+input CreateTaskInProjectInput {
+  "Project the Task belongs to; must live in the Active Workspace"
+  projectID: UUID!
+  "Parent Task for a Subtask; omit for a top-level Task (PRD story 22)"
+  parentTaskID: UUID
+  "Short task summary"
+  title: String!
+  "Optional long-form description"
+  description: String
+  "Initial lifecycle state; defaults to BACKLOG when omitted"
+  status: TaskStatus
+  "Relative urgency; defaults to MEDIUM when omitted"
+  priority: TaskPriority
+}
+
+extend type Mutation {
+  """
+  Create a Task in a Project within the Active Workspace, recording the
+  authenticated caller as its Reporter (PRD stories 21, 30; and 22 when a
+  parentTaskID nests it as a Subtask). Pass
+  parentTaskID to create a Subtask under an existing Task. Unlike the generated
+  createTask, the Reporter and owning Workspace are server-owned, never
+  client-supplied.
+  """
+  createTaskInProject(input: CreateTaskInProjectInput!): Task!
+
+  """
+  Declare that one Task depends on another within the Active Workspace (PRD
+  story 23). Both Tasks must be visible in the Active Workspace — the
+  task_dependencies junction carries no workspace_id, so this mutation enforces
+  tenant isolation by resolving both Tasks through tenant scoping first. Once
+  written, the link is readable from either side: Task.dependsOnTasks lists a
+  Task's dependencies and Task.tasks lists its dependents (story 24). type
+  defaults to BLOCKS when omitted.
+  """
+  addTaskDependency(taskID: UUID!, dependsOnTaskID: UUID!, type: DependencyType): TaskDependency!
+}

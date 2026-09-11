@@ -1,0 +1,129 @@
+"""
+A group of users within a workspace that owns projects
+"""
+type Team {
+  "Unique team identifier"
+  id: UUID!
+  "Owning workspace (tenant column)"
+  workspaceID: UUID!
+  "Team display name"
+  name: String!
+  "URL-safe short name (unique per workspace)"
+  slug: String!
+  "Optional description"
+  description: String
+  "Row creation timestamp"
+  createdAt: Time!
+  "Last modification timestamp"
+  updatedAt: Time!
+  "one-to-many relationship with the cycles table."
+  cycles: [Cycle!]!
+  "one-to-many relationship with the projects table."
+  projects: [Project!]!
+  "many-to-many relationship with the users table."
+  users: [User!]!
+}
+
+type TeamConnection {
+  edges:      [TeamEdge!]!
+  pageInfo:   PageInfo!
+  totalCount: Int!
+}
+
+type TeamEdge {
+  node:   Team!
+  cursor: String!
+}
+
+type TeamListResult {
+  items:      [Team!]!
+  totalCount: Int!
+  offset:     Int!
+  limit:      Int!
+  hasMore:    Boolean!
+}
+
+input TeamFilter {
+  workspaceID: IDComparator
+  name: StringComparator
+  slug: StringComparator
+  description: NullableStringComparator
+  createdAt: TimeComparator
+  updatedAt: TimeComparator
+  cycles: CycleFilter
+  projects: ProjectFilter
+  users: UserFilter
+  and: [TeamFilter!]
+  or:  [TeamFilter!]
+}
+
+enum TeamSortField {
+  ID
+  WORKSPACE_ID
+  NAME
+  SLUG
+  DESCRIPTION
+  CREATED_AT
+  UPDATED_AT
+}
+
+input TeamSort {
+  field:     TeamSortField!
+  direction: SortDirection!
+}
+input CreateTeamInput {
+  workspaceID: UUID!
+  name: String!
+  slug: String!
+  description: String
+  createdAt: Time!
+  updatedAt: Time!
+}
+input UpdateTeamInput {
+  name: String
+  slug: String
+  description: String
+  createdAt: Time
+  updatedAt: Time
+}
+
+extend type Query {
+  team(id: UUID!): Team
+  "Cursor-paginated; ordering is driven by cursor_keys to preserve keyset semantics — pass `sort` to teamList instead."
+  teams(filter: TeamFilter, first: Int, after: String, last: Int, before: String): TeamConnection!
+  teamList(filter: TeamFilter, sort: [TeamSort!], limit: Int, offset: Int): TeamListResult!
+}
+
+extend type Mutation {
+  createTeam(input: CreateTeamInput!): Team!
+  createTeams(inputs: [CreateTeamInput!]!): [Team!]!
+  updateTeam(id: UUID!, input: UpdateTeamInput!): Team!
+  updateTeams(filter: TeamFilter!, input: UpdateTeamInput!): [Team!]!
+  upsertTeam(input: CreateTeamInput!): Team!
+  deleteTeam(id: UUID!): Boolean!
+}
+
+input UpdateTeamWithRelatedInput {
+  team: UpdateTeamInput
+  projects: TeamProjectsUpdateNested
+}
+
+input TeamProjectsUpdateNested {
+  clear: Boolean
+  create: [TeamProjectsCreateInput!]
+  connect: [UUID!]
+  disconnect: [UUID!]
+}
+
+input TeamProjectsCreateInput {
+  workspaceID: UUID!
+  name: String!
+  description: String
+  createdAt: Time!
+  updatedAt: Time!
+  deletedAt: Time
+}
+
+extend type Mutation {
+  updateTeamWithRelated(id: UUID!, input: UpdateTeamWithRelatedInput!): Team!
+}

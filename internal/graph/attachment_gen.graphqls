@@ -1,0 +1,101 @@
+"""
+Files attached to a task or a comment (polymorphic)
+"""
+type Attachment {
+  "Unique identifier"
+  id: UUID!
+  "Owning workspace (tenant column)"
+  workspaceID: UUID!
+  "Which entity kind this attachment is bound to"
+  entityType: AttachmentEntityType!
+  "Primary key of the bound entity (task or comment)"
+  entityID: UUID!
+  "User who uploaded the file"
+  uploadedBy: UUID!
+  "Original file name"
+  fileName: String!
+  "MIME type"
+  contentType: String!
+  "File size in bytes"
+  sizeBytes: Int!
+  "Location of the stored blob"
+  storageURL: String!
+  "Row creation timestamp"
+  createdAt: Time!
+}
+
+type AttachmentConnection {
+  edges:      [AttachmentEdge!]!
+  pageInfo:   PageInfo!
+  totalCount: Int!
+}
+
+type AttachmentEdge {
+  node:   Attachment!
+  cursor: String!
+}
+
+type AttachmentListResult {
+  items:      [Attachment!]!
+  totalCount: Int!
+  offset:     Int!
+  limit:      Int!
+  hasMore:    Boolean!
+}
+
+input AttachmentFilter {
+  workspaceID: IDComparator
+  entityType: AttachmentEntityTypeComparator
+  entityID: IDComparator
+  uploadedBy: IDComparator
+  fileName: StringComparator
+  contentType: StringComparator
+  sizeBytes: NumericComparator
+  storageURL: StringComparator
+  createdAt: TimeComparator
+  and: [AttachmentFilter!]
+  or:  [AttachmentFilter!]
+}
+
+enum AttachmentSortField {
+  ID
+  WORKSPACE_ID
+  ENTITY_TYPE
+  ENTITY_ID
+  UPLOADED_BY
+  FILE_NAME
+  CONTENT_TYPE
+  SIZE_BYTES
+  STORAGE_URL
+  CREATED_AT
+}
+
+input AttachmentSort {
+  field:     AttachmentSortField!
+  direction: SortDirection!
+}
+input UpdateAttachmentInput {
+  entityType: AttachmentEntityType
+  entityID: UUID
+  uploadedBy: UUID
+  fileName: String
+  contentType: String
+  sizeBytes: Int
+  sizeBytes_inc: Int
+  sizeBytes_dec: Int
+  storageURL: String
+  createdAt: Time
+}
+
+extend type Query {
+  attachment(id: UUID!): Attachment
+  "Cursor-paginated; ordering is driven by cursor_keys to preserve keyset semantics — pass `sort` to attachmentList instead."
+  attachments(filter: AttachmentFilter, first: Int, after: String, last: Int, before: String): AttachmentConnection!
+  attachmentList(filter: AttachmentFilter, sort: [AttachmentSort!], limit: Int, offset: Int): AttachmentListResult!
+}
+
+extend type Mutation {
+  updateAttachment(id: UUID!, input: UpdateAttachmentInput!): Attachment!
+  updateAttachments(filter: AttachmentFilter!, input: UpdateAttachmentInput!): [Attachment!]!
+  deleteAttachment(id: UUID!): Boolean!
+}

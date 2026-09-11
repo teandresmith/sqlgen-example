@@ -1,0 +1,59 @@
+# gqlgen.yml — owned by the consumer.
+# sqlgen merges its required entries into a temp config at wrapper-invocation
+# time; the on-disk file is never modified by 'sqlgen graphql gen'.
+#
+# resolver wiring:
+#   sqlgen emits per-table query/mutation logic into a sub-package at
+#   <resolver_dir>/sqlgenresolver/. Seed files in <resolver_dir> delegate
+#   gqlgen's resolver methods into r.Q.<Field> / r.M.<Field>. gqlgen's own
+#   one-shot scaffold writes <resolver_dir>/resolver.go with the empty
+#   Resolver struct; AFTER the gqlgen subprocess returns, sqlgen AST-merges
+#   the Client / Q / M fields plus the sqlgenresolver import so the seeds
+#   compile against the consumer's package:
+#
+#     type Resolver struct {
+#         Client *<modelspkg>.Client
+#         Q      *sqlgenresolver.Q
+#         M      *sqlgenresolver.M
+#     }
+#
+#   Initialize all three at app boot before serving traffic. Add additional
+#   dependency fields (loggers, auth clients, etc.) below the Q/M lines as
+#   your code requires — sqlgen's merge step preserves consumer-added
+#   fields, methods, and imports verbatim across regenerations.
+#
+# go.sum requirement:
+#   The default 'gqlgen_bin: go run github.com/99designs/gqlgen' invocation
+#   pulls gqlgen's transitive build dependencies (golang.org/x/tools/go/packages,
+#   golang.org/x/text/cases, github.com/urfave/cli/v2, github.com/agnivade/levenshtein,
+#   …) which the consumer's runtime go.sum does not pin. sqlgen sets
+#   GOFLAGS=-mod=mod on the subprocess so 'go run' resolves them on demand;
+#   no consumer action is required for the default invocation.
+#
+#   If you prefer to pin the build deps in your go.sum (e.g. for hermetic builds
+#   in CI), add a 'tools.go' file under your module root with build tag 'tools':
+#
+#     //go:build tools
+#     package tools
+#
+#     import _ "github.com/99designs/gqlgen"
+#
+#   Then 'go mod tidy' will populate the go.sum entries gqlgen needs at build
+#   time, and you can drop the GOFLAGS override.
+
+schema:
+  - "internal/graph/*.graphqls"
+
+exec:
+  filename: internal/graph/generated_gen.go
+  package: graph
+
+model:
+  filename: internal/graph/model/models_gen.go
+  package: model
+
+resolver:
+  layout: follow-schema
+  dir: internal/graph
+  package: graph
+  filename_template: "{name}.resolvers.go"

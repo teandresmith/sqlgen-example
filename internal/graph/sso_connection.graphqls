@@ -1,0 +1,34 @@
+# Consumer-owned schema extension (issue 13 — SSO Connections, story 12). The raw
+# createSsoConnection / updateSsoConnection CRUD is subtracted in sqlgen.yml. A
+# Workspace has at most one connection per provider (UNIQUE (workspace_id,
+# provider)), so "configure" is upsert-shaped: this blessed mutation inserts or
+# updates that unique pair with the tenant auto-injected, and requires an
+# owner/admin Role via the authz guard on sso_connections. Only the provider
+# configuration is stored — the real SAML/OIDC handshake is out of scope (PRD).
+#
+# Resolver body lives in sso_connection.resolvers.go and is preserved across
+# `sqlgen generate` by gqlgen's copy-through semantics.
+
+"""
+Details for configuring a Workspace's single sign-on connection. The Workspace is
+the Active Workspace (auto-injected); a connection is identified by its provider,
+so re-configuring the same provider updates the existing connection.
+"""
+input ConfigureSSOConnectionInput {
+  "Identity provider protocol/vendor."
+  provider: SsoProvider!
+  "Provider-specific configuration (metadata URL, client IDs, etc.)."
+  config: JSON!
+  "Whether the connection is active. Omit to default to disabled."
+  enabled: Boolean
+}
+
+extend type Mutation {
+  """
+  Configure the Active Workspace's SSO Connection for a provider (PRD story 12):
+  insert it, or update it if one already exists for that provider. Requires an
+  owner/admin Role — enforced by the authz hook. Only the configuration is stored;
+  the SAML/OIDC handshake is out of scope. Returns the stored connection.
+  """
+  configureSSOConnection(input: ConfigureSSOConnectionInput!): SsoConnection!
+}

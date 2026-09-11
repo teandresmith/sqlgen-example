@@ -1,0 +1,63 @@
+"""
+Users subscribed to updates on a task (M2M)
+"""
+type TaskWatcher {
+  "Watched task"
+  taskID: UUID!
+  "Watching user"
+  userID: UUID!
+  "When the user started watching"
+  createdAt: Time!
+}
+
+type TaskWatcherConnection {
+  edges:      [TaskWatcherEdge!]!
+  pageInfo:   PageInfo!
+  totalCount: Int!
+}
+
+type TaskWatcherEdge {
+  node:   TaskWatcher!
+  cursor: String!
+}
+
+type TaskWatcherListResult {
+  items:      [TaskWatcher!]!
+  totalCount: Int!
+  offset:     Int!
+  limit:      Int!
+  hasMore:    Boolean!
+}
+
+input TaskWatcherFilter {
+  createdAt: TimeComparator
+  and: [TaskWatcherFilter!]
+  or:  [TaskWatcherFilter!]
+}
+
+enum TaskWatcherSortField {
+  TASK_ID
+  USER_ID
+  CREATED_AT
+}
+
+input TaskWatcherSort {
+  field:     TaskWatcherSortField!
+  direction: SortDirection!
+}
+input UpdateTaskWatcherInput {
+  createdAt: Time
+}
+
+extend type Query {
+  taskWatcher(taskID: UUID!, userID: UUID!): TaskWatcher
+  "Cursor-paginated; ordering is driven by cursor_keys to preserve keyset semantics — pass `sort` to taskWatcherList instead."
+  taskWatchers(filter: TaskWatcherFilter, first: Int, after: String, last: Int, before: String): TaskWatcherConnection!
+  taskWatcherList(filter: TaskWatcherFilter, sort: [TaskWatcherSort!], limit: Int, offset: Int): TaskWatcherListResult!
+}
+
+extend type Mutation {
+  updateTaskWatcher(taskID: UUID!, userID: UUID!, input: UpdateTaskWatcherInput!): TaskWatcher!
+  updateTaskWatchers(filter: TaskWatcherFilter!, input: UpdateTaskWatcherInput!): [TaskWatcher!]!
+  deleteTaskWatcher(taskID: UUID!, userID: UUID!): Boolean!
+}

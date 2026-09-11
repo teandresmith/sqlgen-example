@@ -1,0 +1,106 @@
+"""
+A container for tasks, owned by one workspace
+"""
+type Project {
+  "Unique project identifier"
+  id: UUID!
+  "Owning workspace (tenant column)"
+  workspaceID: UUID!
+  "Project display name"
+  name: String!
+  "Optional long-form description"
+  description: String
+  "Row creation timestamp"
+  createdAt: Time!
+  "Last modification timestamp"
+  updatedAt: Time!
+  "Soft-delete (archive) timestamp; NULL when active"
+  deletedAt: Time
+  "Optional owning team"
+  teamID: UUID
+  "one-to-many relationship with the tasks table."
+  tasks: [Task!]!
+}
+
+type ProjectConnection {
+  edges:      [ProjectEdge!]!
+  pageInfo:   PageInfo!
+  totalCount: Int!
+}
+
+type ProjectEdge {
+  node:   Project!
+  cursor: String!
+}
+
+type ProjectListResult {
+  items:      [Project!]!
+  totalCount: Int!
+  offset:     Int!
+  limit:      Int!
+  hasMore:    Boolean!
+}
+
+input ProjectFilter {
+  workspaceID: IDComparator
+  name: StringComparator
+  description: NullableStringComparator
+  createdAt: TimeComparator
+  updatedAt: TimeComparator
+  deletedAt: NullableTimeComparator
+  teamID: NullableIDComparator
+  tasks: TaskFilter
+  and: [ProjectFilter!]
+  or:  [ProjectFilter!]
+}
+
+enum ProjectSortField {
+  ID
+  WORKSPACE_ID
+  NAME
+  DESCRIPTION
+  CREATED_AT
+  UPDATED_AT
+  DELETED_AT
+  TEAM_ID
+}
+
+input ProjectSort {
+  field:     ProjectSortField!
+  direction: SortDirection!
+}
+input CreateProjectInput {
+  workspaceID: UUID!
+  name: String!
+  description: String
+  createdAt: Time!
+  updatedAt: Time!
+  deletedAt: Time
+  teamID: UUID
+}
+input UpdateProjectInput {
+  name: String
+  description: String
+  createdAt: Time
+  updatedAt: Time
+  deletedAt: Time
+  teamID: UUID
+}
+
+extend type Query {
+  project(id: UUID!): Project
+  "Cursor-paginated; ordering is driven by cursor_keys to preserve keyset semantics — pass `sort` to projectList instead."
+  projects(filter: ProjectFilter, first: Int, after: String, last: Int, before: String): ProjectConnection!
+  projectList(filter: ProjectFilter, sort: [ProjectSort!], limit: Int, offset: Int): ProjectListResult!
+}
+
+extend type Mutation {
+  createProject(input: CreateProjectInput!): Project!
+  createProjects(inputs: [CreateProjectInput!]!): [Project!]!
+  updateProject(id: UUID!, input: UpdateProjectInput!): Project!
+  updateProjects(filter: ProjectFilter!, input: UpdateProjectInput!): [Project!]!
+  upsertProject(input: CreateProjectInput!): Project!
+  hardDeleteProject(id: UUID!): Boolean!
+  softDeleteProject(id: UUID!): Project
+  restoreProject(id: UUID!): Project
+}

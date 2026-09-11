@@ -1,0 +1,75 @@
+"""
+Per-workspace single sign-on configuration
+"""
+type SsoConnection {
+  "Unique identifier"
+  id: UUID!
+  "Owning workspace (tenant column)"
+  workspaceID: UUID!
+  "Identity provider protocol/vendor"
+  provider: SsoProvider!
+  "Provider-specific configuration (metadata URL, client IDs, etc.)"
+  config: JSON!
+  "Whether this connection is active"
+  enabled: Boolean!
+  "Row creation timestamp"
+  createdAt: Time!
+  "Last modification timestamp"
+  updatedAt: Time!
+}
+
+type SsoConnectionConnection {
+  edges:      [SsoConnectionEdge!]!
+  pageInfo:   PageInfo!
+  totalCount: Int!
+}
+
+type SsoConnectionEdge {
+  node:   SsoConnection!
+  cursor: String!
+}
+
+type SsoConnectionListResult {
+  items:      [SsoConnection!]!
+  totalCount: Int!
+  offset:     Int!
+  limit:      Int!
+  hasMore:    Boolean!
+}
+
+input SsoConnectionFilter {
+  workspaceID: IDComparator
+  provider: SsoProviderComparator
+  config: JSONBComparator
+  enabled: BooleanComparator
+  createdAt: TimeComparator
+  updatedAt: TimeComparator
+  and: [SsoConnectionFilter!]
+  or:  [SsoConnectionFilter!]
+}
+
+enum SsoConnectionSortField {
+  ID
+  WORKSPACE_ID
+  PROVIDER
+  CONFIG
+  ENABLED
+  CREATED_AT
+  UPDATED_AT
+}
+
+input SsoConnectionSort {
+  field:     SsoConnectionSortField!
+  direction: SortDirection!
+}
+
+extend type Query {
+  ssoConnection(id: UUID!): SsoConnection
+  "Cursor-paginated; ordering is driven by cursor_keys to preserve keyset semantics — pass `sort` to ssoConnectionList instead."
+  ssoConnections(filter: SsoConnectionFilter, first: Int, after: String, last: Int, before: String): SsoConnectionConnection!
+  ssoConnectionList(filter: SsoConnectionFilter, sort: [SsoConnectionSort!], limit: Int, offset: Int): SsoConnectionListResult!
+}
+
+extend type Mutation {
+  deleteSsoConnection(id: UUID!): Boolean!
+}

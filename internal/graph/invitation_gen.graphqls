@@ -1,0 +1,87 @@
+"""
+Pending invitations for users to join a workspace
+"""
+type Invitation {
+  "Unique identifier"
+  id: UUID!
+  "Workspace the invitee is invited to (tenant column)"
+  workspaceID: UUID!
+  "Invitee email address"
+  email: String!
+  "Role the invitee will receive on acceptance"
+  role: MembershipRole!
+  "Opaque acceptance token"
+  token: String!
+  "Current invitation state"
+  status: InvitationStatus!
+  "User who issued the invitation"
+  invitedBy: UUID!
+  "When the invitation expires"
+  expiresAt: Time!
+  "Row creation timestamp"
+  createdAt: Time!
+  "Last modification timestamp"
+  updatedAt: Time!
+}
+
+type InvitationConnection {
+  edges:      [InvitationEdge!]!
+  pageInfo:   PageInfo!
+  totalCount: Int!
+}
+
+type InvitationEdge {
+  node:   Invitation!
+  cursor: String!
+}
+
+type InvitationListResult {
+  items:      [Invitation!]!
+  totalCount: Int!
+  offset:     Int!
+  limit:      Int!
+  hasMore:    Boolean!
+}
+
+input InvitationFilter {
+  workspaceID: IDComparator
+  email: StringComparator
+  role: MembershipRoleComparator
+  token: StringComparator
+  status: InvitationStatusComparator
+  invitedBy: IDComparator
+  expiresAt: TimeComparator
+  createdAt: TimeComparator
+  updatedAt: TimeComparator
+  and: [InvitationFilter!]
+  or:  [InvitationFilter!]
+}
+
+enum InvitationSortField {
+  ID
+  WORKSPACE_ID
+  EMAIL
+  ROLE
+  TOKEN
+  STATUS
+  INVITED_BY
+  EXPIRES_AT
+  CREATED_AT
+  UPDATED_AT
+}
+
+input InvitationSort {
+  field:     InvitationSortField!
+  direction: SortDirection!
+}
+
+extend type Query {
+  invitation(id: UUID!): Invitation
+  "Cursor-paginated; ordering is driven by cursor_keys to preserve keyset semantics — pass `sort` to invitationList instead."
+  invitations(filter: InvitationFilter, first: Int, after: String, last: Int, before: String): InvitationConnection!
+  invitationList(filter: InvitationFilter, sort: [InvitationSort!], limit: Int, offset: Int): InvitationListResult!
+}
+
+extend type Mutation {
+  deleteInvitation(id: UUID!): Boolean!
+}

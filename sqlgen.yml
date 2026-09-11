@@ -1,0 +1,371 @@
+version: v1
+
+# ---------------------------------------------------------------------------
+# Input: DDL-driven, Postgres. The ./migrations *.up.sql files are the single
+# source of truth (also applied to the DB by golang-migrate). The view
+# annotation lives under ./views (CREATE VIEW in ./migrations is skipped).
+# ---------------------------------------------------------------------------
+input:
+  dialect: postgres
+  source: files
+  schema: public
+  paths:
+    - ./migrations
+  views:
+    - ./views
+
+# ---------------------------------------------------------------------------
+# Output: pgx driver, generated code under internal/database, file-per-table.
+# ---------------------------------------------------------------------------
+output:
+  driver: pgx
+  dir: ./internal/database
+  package: database
+  layout: file_per_table
+
+# ---------------------------------------------------------------------------
+# Generation defaults.
+# ---------------------------------------------------------------------------
+generation:
+  # Explicit soft-delete mapping (deleted_at is also the default, but pinned).
+  soft_delete_columns:
+    - name: deleted_at
+      type: timestamp
+  # Nested mutations (PRD §9.9): write a parent and its direct relationships in
+  # one transaction. Only the update family is needed — every nested write this
+  # app exposes links existing rows to an existing parent — and the edges are
+  # allowlisted per table below (cycles.Tasks, teams.Projects, tasks.Labels).
+  # The `connect` verb resolves each target through its own tenant-scoped
+  # client before linking, which is the cross-tenant guard the hand-written
+  # scheduleTaskIntoCycle / assignProjectToTeam / applyLabelToTask resolvers
+  # used to supply, so those three are now the generated
+  # update<Parent>WithRelated mutations.
+  nested_mutations:
+    enabled: true
+    operations: [update]
+  # Opt-in AI-friendly manifest of the generated package.
+  manifest:
+    enabled: true
+    formats: [json, markdown]
+    # Launch the locally built ./bin/sqlgen (from `make sqlgen`) rather than a
+    # `sqlgen` on PATH, so the MCP server in .mcp.json starts from a fresh clone.
+    mcp:
+      command_template: "./bin/sqlgen mcp serve --manifest {{ manifest_path }}"
+
+# ---------------------------------------------------------------------------
+# Type overrides. `uuid` needs none: on Go 1.27+ sqlgen binds a PostgreSQL
+# `uuid` column to the standard library's `uuid.UUID` by default (nullable →
+# `*uuid.UUID`, no wrapper), so dropping the old google/uuid override is the
+# whole migration for the generated client.
+# ---------------------------------------------------------------------------
+overrides:
+  use_pointers: true
+  types:
+    # time_entries.hours is the only NUMERIC column; map it to shopspring/decimal
+    # instead of the lossy float64 default.
+    numeric:
+      type: decimal.Decimal
+      import: github.com/shopspring/decimal
+      nullable: decimal.NullDecimal
+
+# ---------------------------------------------------------------------------
+# Tenancy: workspace_id is the tenant column; fail-closed. Tables carrying
+# workspace_id are auto-detected as tenanted (projects, tasks, labels,
+# comments, memberships, workspace_settings, activity). workspaces and users
+# are shared. task_assignees / task_labels are reached via tenanted parents.
+# ---------------------------------------------------------------------------
+tenancy:
+  enabled: true
+  column: workspace_id
+  required: true
+  # No `type:` block — sqlgen resolves the tenant type from the workspace_id
+  # column itself, which now binds to the standard library's uuid.UUID.
+
+# ---------------------------------------------------------------------------
+# Cache: single-entity Get caching (Redis backend wired at runtime via
+# WithCache). JSON serializer.
+# ---------------------------------------------------------------------------
+cache:
+  enabled: true
+  ttl: "5m"
+  serializer: json
+  key_prefix: taskr
+
+# ---------------------------------------------------------------------------
+# Events: emitted on mutation (NATS publisher wired at runtime). Consumed by
+# the activity-feed subscriber. Disabled on the activity table itself.
+# ---------------------------------------------------------------------------
+events:
+  enabled: true
+
+# ---------------------------------------------------------------------------
+# API: GraphQL only (gqlgen). Chained inline by `sqlgen generate` (FIX-078).
+# ---------------------------------------------------------------------------
+api:
+  enabled: true
+  # Nested mutations are opt-in per table on the API: a tables.<t>.api.operations
+  # block replaces this mask wholesale, so a table with no block of its own gets
+  # no update<T>WithRelated, and the three tables that should carry one
+  # (cycles, teams, tasks) switch it back on. The Go client is unaffected.
+  operations: { update_with_related: false }
+  graphql:
+    enabled: true
+    schema_dir: ./internal/graph
+    resolver_dir: ./internal/graph
+    package: graph
+    field_casing: camel_case
+    max_depth: 6
+    max_complexity: 1000
+    gqlgen_config: ./gqlgen.yml
+    gqlgen_bin: go run github.com/99designs/gqlgen
+
+# ---------------------------------------------------------------------------
+# Per-table configuration. Most relationships are auto-detected from FKs:
+#   * memberships / task_assignees / task_labels → M2M (2-FK composite PKs)
+#   * tasks.parent_task_id → self-referential subtasks
+#   * tasks.reporter_id, comments.author_id, *_id → O2M
+#   * workspace_settings.workspace_id (UNIQUE FK) → O2O
+# Only cursor keys, composite-PK ordering, and event opt-out need declaring.
+# ---------------------------------------------------------------------------
+tables:
+  # Column access control (PRD §32): keep hashed credentials in the Go client
+  # (the server reads/writes them) but off every external surface — GraphQL
+  # output, filters, sort, and event payloads. `write_only` (not `internal`)
+  # because both columns are NOT NULL with no default and the create API is
+  # enabled: internal would drop them from the create input and no INSERT could
+  # ever satisfy them (§32.4). write_only keeps them settable-on-create but
+  # never readable back, which closes the read leak and redacts events.
+  users:
+    column_map:
+      password_hash:
+        access: write_only
+  api_tokens:
+    column_map:
+      token_hash:
+        access: write_only
+    # An API Token's secret is server-owned: the plaintext is minted server-side,
+    # returned to the creator once, and only its hash is stored (issue 13). The
+    # raw createAPIToken would let a client supply their own token_hash (and so a
+    # known plaintext), any user_id (impersonation), and arbitrary expiry/scopes;
+    # the raw update would let a client rewrite the hash or owner. Subtract the
+    # whole generated write surface — create family, update family, and the single
+    # delete — and route writes through the blessed createAPIToken /
+    # createServiceAPIToken / revokeAPIToken (internal/graph/api_token.*), which
+    # mint the secret, stamp the owner, and authorize revocation. Reads remain; the
+    # Go client's Create/Update/HardDelete (which the blessed resolvers and the
+    # auth middleware call) are untouched — the mask is API-only.
+    api:
+      operations: { create: false, create_many: false, upsert: false, update: false, update_where: false, hard_delete: false }
+  sso_connections:
+    # Configuring SSO is owner/admin-only and upsert-shaped: there is one
+    # connection per (workspace, provider), so "configure" means insert-or-update
+    # on that unique pair (issue 13, story 12). The raw createSsoConnection forces
+    # a client to supply workspace_id and the created_at/updated_at timestamps and
+    # offers no upsert semantics; the raw update lets a manager rewrite the
+    # provider out from under the unique pairing. Subtract the create and update
+    # families and route configuration through the blessed configureSSOConnection
+    # (internal/graph/sso_connection.*), which upserts on (workspace_id, provider)
+    # with the tenant auto-injected. Reads and the generated delete remain — delete
+    # writes sso_connections, so the authz guard makes it owner/admin-only too.
+    api:
+      operations: { create: false, create_many: false, upsert: false, update: false, update_where: false }
+  tasks:
+    # Re-enable the nested update the global api.operations mask turns off. Its
+    # only edge is Labels (below), so updateTaskWithRelated is the tag/untag path:
+    # `labels: { connect: [labelID] }` applies a Label (story 27) after reading it
+    # tenant-scoped, so a Label from another Workspace is NOT_FOUND.
+    api:
+      operations: { update_with_related: true }
+    nested_mutations:
+      relationships:
+        - name: Labels
+    # Stable keyset order for the cursor Connection (created_at is monotonic-ish;
+    # id breaks ties deterministically).
+    cursor_keys:
+      - created_at
+      - id
+    # Relationship naming. Everything here is auto-detected; we only override
+    # where a nicer name reads better than the auto one. Two examples of that:
+    #   * the two task<->user junctions auto-name as `TaskAssignees` /
+    #     `TaskWatchers` (from the junction table) — renamed to Assignees /
+    #     Watchers below;
+    #   * the parent self-ref O2M auto-names as `ParentTaskTasks` — renamed to
+    #     Subtasks below.
+    # The self-referential task_dependencies M2M is LEFT to auto-detection: it
+    # emits two distinct directional fields, `DependsOnTasks` and `Tasks`
+    # (derived from the depends_on_task_id / task_id reference FKs). No override
+    # needed — kept here to showcase self-ref auto-detection working.
+    # The polymorphic attachments relationship (no real FK) still needs an
+    # explicit discriminator filter (sub-categorized polymorphism, PRD §13.7).
+    # exclude_relationships matches the parser's snake_case relationship name
+    # (junction base name for M2M; "<fk-stem>_<table>" for a disambiguated
+    # self-ref O2M).
+    exclude_relationships:
+      - task_assignees
+      - task_watchers
+      - parent_task_tasks
+    relationships:
+      - name: Subtasks
+        type: o2m
+        table: tasks
+        fk: parent_task_id
+      - name: Assignees
+        type: m2m
+        table: users
+        junction: task_assignees
+        junction_local_fk: task_id
+        junction_reference_fk: user_id
+      - name: Watchers
+        type: m2m
+        table: users
+        junction: task_watchers
+        junction_local_fk: task_id
+        junction_reference_fk: user_id
+      - name: Attachments
+        type: o2m
+        table: attachments
+        fk: entity_id
+        filter: "entity_type = 'task'"
+  comments:
+    relationships:
+      - name: Attachments
+        type: o2m
+        table: attachments
+        fk: entity_id
+        filter: "entity_type = 'comment'"
+    # A Comment's author_id is server-owned provenance (the authenticated caller),
+    # but the raw createComment lets a client supply any authorID — so subtract the
+    # raw create family from the API and route commenting through the blessed
+    # commentOnTask, which stamps the author and resolves the Task tenant-scoped
+    # (issue 09). update/delete and reads remain; the Go client's Create (which the
+    # blessed resolver calls) is untouched.
+    api:
+      operations: { create: false, create_many: false, upsert: false }
+  attachments:
+    # attachments is doubly unsafe to create raw: uploaded_by is server-owned, and
+    # the polymorphic entity_type/entity_id pair has NO foreign key, so a raw
+    # createAttachment could point a file at any UUID in any Workspace. The blessed
+    # attachToTask / attachToComment resolve the target tenant-scoped and set the
+    # binding + uploader themselves (issue 09). Subtract the raw create family;
+    # update/delete and reads remain.
+    api:
+      operations: { create: false, create_many: false, upsert: false }
+  time_entries:
+    # A Time Entry's user_id is the server-owned actor, but the raw createTimeEntry
+    # lets a client supply any userID — so subtract the raw create family and route
+    # logging through the blessed logTime, which stamps the caller and resolves the
+    # Task tenant-scoped (issue 09). update/delete and reads remain.
+    api:
+      operations: { create: false, create_many: false, upsert: false }
+  memberships:
+    cursor_keys:
+      - workspace_id
+      - user_id
+    # Memberships are created only by founding a Workspace (bootstrapWorkspace)
+    # or accepting an invitation (acceptInvitation) — both blessed flows that
+    # call the Go client's Create directly. The raw create/upsert mutations
+    # would add a member bypassing the invitation-consent flow, so subtract them
+    # from the API. Unlike the junction tables this is not a tenant-isolation
+    # hole (memberships carries workspace_id and is role-guarded) — it aligns
+    # the write surface with the app's invitation model. update (role changes,
+    # story 11), delete, and reads remain.
+    api:
+      operations: { create: false, create_many: false, upsert: false }
+  invitations:
+    # The invitation lifecycle is owned entirely by the blessed mutations:
+    # inviteToWorkspace mints the acceptance token (a security credential) and
+    # sets the row; acceptInvitation and revokeInvitation drive the status
+    # transitions — all via the Go client directly. The raw create/upsert would
+    # let a client supply their own token, role, status, and expiry; the raw
+    # update would let a manager rewrite the token or reset the state machine.
+    # Subtract both write families from the API (delete + reads remain); the Go
+    # client methods the blessed flows call are unaffected.
+    api:
+      operations: { create: false, create_many: false, upsert: false, update: false, update_where: false }
+  activity:
+    # Don't emit events about the event log.
+    events:
+      enabled: false
+
+  # ---------------------------------------------------------------------------
+  # Junction (M2M link) tables. These carry no workspace_id, so the generated
+  # create/upsert mutations cannot enforce tenant isolation — a raw
+  # createTaskLabel(taskID, labelID) could link rows across Workspaces. The
+  # blessed mutations (assignUserToTask / watchTask / applyLabelToTask /
+  # addTaskDependency) are the tenant-guarded write path: they resolve each
+  # tenanted endpoint tenant-scoped before writing. So we subtract the raw
+  # link-create surface from the GraphQL API — create / create_many / upsert —
+  # while keeping the Go client's Create (which the blessed resolvers call),
+  # the object type (the blessed mutations return it), the read queries, and
+  # the delete mutations (the removal path). The api.operations mask is
+  # subtractive and API-only; it never touches the generated Go client.
+  task_assignees:
+    api:
+      operations: { create: false, create_many: false, upsert: false }
+  task_watchers:
+    api:
+      operations: { create: false, create_many: false, upsert: false }
+  task_labels:
+    api:
+      operations: { create: false, create_many: false, upsert: false }
+  task_dependencies:
+    api:
+      operations: { create: false, create_many: false, upsert: false }
+  team_members:
+    # team_members is a workspace_id-less M2M junction, so the generated write
+    # mutations can enforce neither tenant isolation nor the owner/admin guard
+    # story 17 requires. Unlike the task_* junctions above (whose removal stays an
+    # unguarded generated delete), Team membership management is owner/admin-only
+    # AND must be tenant-safe on removal too — the raw deleteTeamMember names a
+    # composite PK with no Workspace to scope, so an admin of one Workspace could
+    # unlink a Team in another. So the ENTIRE generated write surface is subtracted
+    # — create family (as before) plus update/update_where and hard_delete — and the
+    # only write path is the blessed addUserToTeam / removeUserFromTeam (issue 12),
+    # which resolve the Team tenant-scoped first and run behind the authz guard.
+    # The mask is API-only: the Go client Create/HardDelete the blessed resolvers
+    # call are untouched.
+    api:
+      operations: { create: false, create_many: false, upsert: false, update: false, update_where: false, hard_delete: false }
+
+  # ---------------------------------------------------------------------------
+  # Planning links. tasks.cycle_id and projects.team_id are nullable FKs whose
+  # referenced catalogs (Cycles, Teams) are owner/admin-administered, while
+  # *using* them — scheduling a Task, assigning a Project — is open to any member
+  # (stories 31, 18). Both are the generated nested `connect` on the catalog side:
+  #
+  #   updateCycleWithRelated(id: $cycleID, input: { tasks:    { connect: [$taskID] } })
+  #   updateTeamWithRelated (id: $teamID,  input: { projects: { connect: [$projectID] } })
+  #
+  # The parent is resolved tenant-scoped and each connected row is read through
+  # its own tenant-scoped client first, so a Cycle/Team/Task/Project in another
+  # Workspace is NOT_FOUND (migrations 0004/0005 backstop it at the DB). The
+  # nested-only call sets no Cycle/Team column, and the authz hook lets such an
+  # empty update through (internal/authz), so a member can schedule and assign;
+  # editing the Cycle or Team itself stays owner/admin-only.
+  #
+  # allow_reparent: a Task moves between Cycles and a Project between Teams by
+  # connecting it to the new parent, as the hand-written mutations allowed —
+  # without it, connect adopts only unparented rows (ErrAlreadyRelated).
+  # ---------------------------------------------------------------------------
+  cycles:
+    api:
+      operations: { update_with_related: true }
+    nested_mutations:
+      relationships:
+        - name: Tasks
+          allow_reparent: true
+  teams:
+    api:
+      operations: { update_with_related: true }
+    nested_mutations:
+      relationships:
+        - name: Projects
+          allow_reparent: true
+
+# ---------------------------------------------------------------------------
+# View config: project_stats is tenant-scoped (has workspace_id) and read-only.
+# ---------------------------------------------------------------------------
+views:
+  project_stats:
+    cursor_keys:
+      - project_id

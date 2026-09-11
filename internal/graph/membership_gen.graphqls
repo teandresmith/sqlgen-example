@@ -1,0 +1,73 @@
+"""
+Links a user to a workspace with a role (M2M)
+"""
+type Membership {
+  "Workspace side of the membership (tenant column)"
+  workspaceID: UUID!
+  "User side of the membership"
+  userID: UUID!
+  "The user's permission level in this workspace"
+  role: MembershipRole!
+  "When the user joined the workspace"
+  createdAt: Time!
+  "Last modification timestamp"
+  updatedAt: Time!
+}
+
+type MembershipConnection {
+  edges:      [MembershipEdge!]!
+  pageInfo:   PageInfo!
+  totalCount: Int!
+}
+
+type MembershipEdge {
+  node:   Membership!
+  cursor: String!
+}
+
+type MembershipListResult {
+  items:      [Membership!]!
+  totalCount: Int!
+  offset:     Int!
+  limit:      Int!
+  hasMore:    Boolean!
+}
+
+input MembershipFilter {
+  role: MembershipRoleComparator
+  createdAt: TimeComparator
+  updatedAt: TimeComparator
+  and: [MembershipFilter!]
+  or:  [MembershipFilter!]
+}
+
+enum MembershipSortField {
+  WORKSPACE_ID
+  USER_ID
+  ROLE
+  CREATED_AT
+  UPDATED_AT
+}
+
+input MembershipSort {
+  field:     MembershipSortField!
+  direction: SortDirection!
+}
+input UpdateMembershipInput {
+  role: MembershipRole
+  createdAt: Time
+  updatedAt: Time
+}
+
+extend type Query {
+  membership(workspaceID: UUID!, userID: UUID!): Membership
+  "Cursor-paginated; ordering is driven by cursor_keys to preserve keyset semantics — pass `sort` to membershipList instead."
+  memberships(filter: MembershipFilter, first: Int, after: String, last: Int, before: String): MembershipConnection!
+  membershipList(filter: MembershipFilter, sort: [MembershipSort!], limit: Int, offset: Int): MembershipListResult!
+}
+
+extend type Mutation {
+  updateMembership(workspaceID: UUID!, userID: UUID!, input: UpdateMembershipInput!): Membership!
+  updateMemberships(filter: MembershipFilter!, input: UpdateMembershipInput!): [Membership!]!
+  deleteMembership(workspaceID: UUID!, userID: UUID!): Boolean!
+}

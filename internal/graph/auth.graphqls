@@ -1,0 +1,45 @@
+# Consumer-owned schema extension (issue 02 — identity & authentication).
+# sqlgen generates only CRUD from the DDL; register/login are hand-written
+# operations layered on top via `extend type Mutation` (the gqlgen schema glob
+# in gqlgen.yml picks up every *.graphqls in this directory). The matching
+# resolver bodies live in auth.resolvers.go, and are preserved across
+# `sqlgen graphql gen` by gqlgen's copy-through semantics.
+
+"""
+Credentials and profile for registering a new global User.
+"""
+input RegisterInput {
+  email: String!
+  password: String!
+  displayName: String!
+}
+
+"""
+Credentials for an interactive login.
+"""
+input LoginInput {
+  email: String!
+  password: String!
+}
+
+"""
+The result of a successful register or login: a signed JWT bearer token and the
+authenticated User. The token carries the User identity only and binds the
+caller to no Workspace (ADR-0004).
+"""
+type AuthPayload {
+  token: String!
+  user: User!
+}
+
+extend type Mutation {
+  "Register a new global User with an email + password, returning a signed JWT."
+  register(input: RegisterInput!): AuthPayload!
+  "Verify an email + password and return a signed JWT for the User."
+  login(input: LoginInput!): AuthPayload!
+}
+
+extend type Query {
+  "The authenticated User for the request's bearer token (an authenticated operation)."
+  me: User!
+}

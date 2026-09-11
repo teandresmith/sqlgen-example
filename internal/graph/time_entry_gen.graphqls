@@ -1,0 +1,96 @@
+"""
+Logged time against a task
+"""
+type TimeEntry {
+  "Unique identifier"
+  id: UUID!
+  "Owning workspace (tenant column)"
+  workspaceID: UUID!
+  "Task the time was logged against"
+  taskID: UUID!
+  "User who logged the time"
+  userID: UUID!
+  "Hours worked (decimal)"
+  hours: Decimal!
+  "Whether the time is billable"
+  billable: Boolean!
+  "Optional note"
+  notes: String
+  "The day the work was performed"
+  spentOn: Time!
+  "Row creation timestamp"
+  createdAt: Time!
+}
+
+type TimeEntryConnection {
+  edges:      [TimeEntryEdge!]!
+  pageInfo:   PageInfo!
+  totalCount: Int!
+}
+
+type TimeEntryEdge {
+  node:   TimeEntry!
+  cursor: String!
+}
+
+type TimeEntryListResult {
+  items:      [TimeEntry!]!
+  totalCount: Int!
+  offset:     Int!
+  limit:      Int!
+  hasMore:    Boolean!
+}
+
+input TimeEntryFilter {
+  workspaceID: IDComparator
+  taskID: IDComparator
+  userID: IDComparator
+  hours: DecimalComparator
+  billable: BooleanComparator
+  notes: NullableStringComparator
+  spentOn: TimeComparator
+  createdAt: TimeComparator
+  and: [TimeEntryFilter!]
+  or:  [TimeEntryFilter!]
+}
+
+enum TimeEntrySortField {
+  ID
+  WORKSPACE_ID
+  TASK_ID
+  USER_ID
+  HOURS
+  BILLABLE
+  NOTES
+  SPENT_ON
+  CREATED_AT
+}
+
+input TimeEntrySort {
+  field:     TimeEntrySortField!
+  direction: SortDirection!
+}
+input UpdateTimeEntryInput {
+  taskID: UUID
+  userID: UUID
+  hours: Decimal
+  hours_inc: Int
+  hours_dec: Int
+  billable: Boolean
+  notes: String
+  spentOn: Time
+  createdAt: Time
+}
+
+extend type Query {
+  timeEntry(id: UUID!): TimeEntry
+  "Cursor-paginated; ordering is driven by cursor_keys to preserve keyset semantics — pass `sort` to timeEntryList instead."
+  timeEntries(filter: TimeEntryFilter, first: Int, after: String, last: Int, before: String): TimeEntryConnection!
+  timeEntryList(filter: TimeEntryFilter, sort: [TimeEntrySort!], limit: Int, offset: Int): TimeEntryListResult!
+}
+
+extend type Mutation {
+  updateTimeEntry(id: UUID!, input: UpdateTimeEntryInput!): TimeEntry!
+  updateTimeEntries(filter: TimeEntryFilter!, input: UpdateTimeEntryInput!): [TimeEntry!]!
+  deleteTimeEntry(id: UUID!): Boolean!
+}

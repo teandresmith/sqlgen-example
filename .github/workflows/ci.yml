@@ -1,0 +1,46 @@
+name: CI
+
+# The Task Tracker is a live consumer of sqlgen: go.mod pins the published
+# github.com/teandresmith/sqlgen runtime, and `make sqlgen` installs the CLI at
+# that same version to regenerate from ./migrations. CI enforces the two promises
+# the README makes — that the committed generated code is never stale, and that
+# the whole stack wires up end to end — so an adopter copying this repo inherits a
+# working guardrail.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - ".gitignore"
+      - "LICENSE"
+
+jobs:
+  verify:
+    name: verify (build · vet · drift · manifest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      # Installs the pinned sqlgen CLI, then: go build, go vet, `sqlgen diff`
+      # (fails if internal/database is stale vs ./migrations), and `sqlgen
+      # manifest validate`. No Docker needed.
+      - name: make verify
+        run: make verify
+
+  test:
+    name: test (integration · testcontainers)
+    runs-on: ubuntu-latest # Docker is preinstalled; testcontainers uses it directly.
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      # Boots Postgres, Redis, and NATS in testcontainers and drives the real wired
+      # GraphQL handler end to end (ADR-0005).
+      - name: make test
+        run: make test

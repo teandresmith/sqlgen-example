@@ -1,0 +1,188 @@
+"""
+The unit of work; belongs to a project, may have a parent task
+"""
+type Task {
+  "Unique task identifier"
+  id: UUID!
+  "Owning workspace (tenant column)"
+  workspaceID: UUID!
+  "Parent project"
+  projectID: UUID!
+  "Parent task for subtasks; NULL for top-level tasks"
+  parentTaskID: UUID
+  "User who created the task"
+  reporterID: UUID!
+  "Short task summary"
+  title: String!
+  "Optional long-form description"
+  description: String
+  "Current lifecycle state"
+  status: TaskStatus!
+  "Relative urgency"
+  priority: TaskPriority!
+  "Arbitrary user-defined fields"
+  customFields: JSON!
+  "Optional due date"
+  dueAt: Time
+  "Row creation timestamp"
+  createdAt: Time!
+  "Last modification timestamp"
+  updatedAt: Time!
+  "Soft-delete (archive) timestamp; NULL when active"
+  deletedAt: Time
+  "Optional planning cycle the task is scheduled in"
+  cycleID: UUID
+  "many-to-many relationship with the users table."
+  assignees: [User!]!
+  "one-to-many relationship with the attachments table."
+  attachments: [Attachment!]!
+  "one-to-many relationship with the tasks table."
+  subtasks: [Task!]!
+  "many-to-many relationship with the users table."
+  watchers: [User!]!
+  "one-to-many relationship with the comments table."
+  comments: [Comment!]!
+  "many-to-many relationship with the tasks table."
+  dependsOnTasks: [Task!]!
+  "many-to-many relationship with the labels table."
+  labels: [Label!]!
+  "many-to-many relationship with the tasks table."
+  tasks: [Task!]!
+  "one-to-many relationship with the time_entries table."
+  timeEntries: [TimeEntry!]!
+}
+
+type TaskConnection {
+  edges:      [TaskEdge!]!
+  pageInfo:   PageInfo!
+  totalCount: Int!
+}
+
+type TaskEdge {
+  node:   Task!
+  cursor: String!
+}
+
+type TaskListResult {
+  items:      [Task!]!
+  totalCount: Int!
+  offset:     Int!
+  limit:      Int!
+  hasMore:    Boolean!
+}
+
+input TaskFilter {
+  workspaceID: IDComparator
+  projectID: IDComparator
+  parentTaskID: NullableIDComparator
+  reporterID: IDComparator
+  title: StringComparator
+  description: NullableStringComparator
+  status: TaskStatusComparator
+  priority: TaskPriorityComparator
+  customFields: JSONBComparator
+  dueAt: NullableTimeComparator
+  createdAt: TimeComparator
+  updatedAt: TimeComparator
+  deletedAt: NullableTimeComparator
+  cycleID: NullableIDComparator
+  assignees: UserFilter
+  attachments: AttachmentFilter
+  comments: CommentFilter
+  dependsOnTasks: TaskFilter
+  labels: LabelFilter
+  subtasks: TaskFilter
+  tasks: TaskFilter
+  timeEntries: TimeEntryFilter
+  watchers: UserFilter
+  and: [TaskFilter!]
+  or:  [TaskFilter!]
+}
+
+enum TaskSortField {
+  ID
+  WORKSPACE_ID
+  PROJECT_ID
+  PARENT_TASK_ID
+  REPORTER_ID
+  TITLE
+  DESCRIPTION
+  STATUS
+  PRIORITY
+  CUSTOM_FIELDS
+  DUE_AT
+  CREATED_AT
+  UPDATED_AT
+  DELETED_AT
+  CYCLE_ID
+}
+
+input TaskSort {
+  field:     TaskSortField!
+  direction: SortDirection!
+}
+input CreateTaskInput {
+  workspaceID: UUID!
+  projectID: UUID!
+  parentTaskID: UUID
+  reporterID: UUID!
+  title: String!
+  description: String
+  status: TaskStatus!
+  priority: TaskPriority!
+  customFields: JSON!
+  dueAt: Time
+  createdAt: Time!
+  updatedAt: Time!
+  deletedAt: Time
+  cycleID: UUID
+}
+input UpdateTaskInput {
+  projectID: UUID
+  parentTaskID: UUID
+  reporterID: UUID
+  title: String
+  description: String
+  status: TaskStatus
+  priority: TaskPriority
+  customFields: JSON
+  dueAt: Time
+  createdAt: Time
+  updatedAt: Time
+  deletedAt: Time
+  cycleID: UUID
+}
+
+extend type Query {
+  task(id: UUID!): Task
+  "Cursor-paginated; ordering is driven by cursor_keys to preserve keyset semantics — pass `sort` to taskList instead."
+  tasks(filter: TaskFilter, first: Int, after: String, last: Int, before: String): TaskConnection!
+  taskList(filter: TaskFilter, sort: [TaskSort!], limit: Int, offset: Int): TaskListResult!
+}
+
+extend type Mutation {
+  createTask(input: CreateTaskInput!): Task!
+  createTasks(inputs: [CreateTaskInput!]!): [Task!]!
+  updateTask(id: UUID!, input: UpdateTaskInput!): Task!
+  updateTasks(filter: TaskFilter!, input: UpdateTaskInput!): [Task!]!
+  upsertTask(input: CreateTaskInput!): Task!
+  hardDeleteTask(id: UUID!): Boolean!
+  softDeleteTask(id: UUID!): Task
+  restoreTask(id: UUID!): Task
+}
+
+input UpdateTaskWithRelatedInput {
+  task: UpdateTaskInput
+  labels: TaskLabelsUpdateNested
+}
+
+input TaskLabelsUpdateNested {
+  clear: Boolean
+  create: [CreateLabelInput!]
+  connect: [UUID!]
+  disconnect: [UUID!]
+}
+
+extend type Mutation {
+  updateTaskWithRelated(id: UUID!, input: UpdateTaskWithRelatedInput!): Task!
+}

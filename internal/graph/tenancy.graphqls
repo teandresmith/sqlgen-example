@@ -1,0 +1,32 @@
+# Consumer-owned schema extension (issue 03 — workspaces, membership & tenant
+# scoping). sqlgen generates a plain `createWorkspace` that inserts only the
+# workspace row; it cannot also record the creator as owner. But a Workspace is
+# only reachable once the caller is a Member of it (the X-Workspace-Id
+# middleware rejects selecting a Workspace you do not belong to), so the very
+# first Membership must be minted server-side, atomically, as the Workspace is
+# created — a client can never do it in a second round-trip. `bootstrapWorkspace`
+# is that operation; the generated `createWorkspace` remains as the lower-level
+# primitive. The matching resolver body lives in tenancy.resolvers.go and is
+# preserved across `sqlgen generate` by gqlgen's copy-through semantics.
+
+"""
+Details for founding a new Workspace. The caller (from the request's bearer
+token) becomes the Workspace's `owner`; no Workspace is selected via
+X-Workspace-Id for this operation.
+"""
+input BootstrapWorkspaceInput {
+  "Human-readable workspace name"
+  name: String!
+  "URL-safe unique short name"
+  slug: String!
+}
+
+extend type Mutation {
+  """
+  Create a Workspace and record the authenticated caller as its `owner` via a
+  Membership, in one transaction. This is how a User founds a Workspace (PRD
+  story 4); unlike the generated `createWorkspace`, it also establishes the
+  ownership Membership without which the new Workspace would be unreachable.
+  """
+  bootstrapWorkspace(input: BootstrapWorkspaceInput!): Workspace!
+}

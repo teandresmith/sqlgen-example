@@ -1,0 +1,38 @@
+# Consumer-owned schema extension (issue 08 — Task assignment & labels). The
+# Assignees / Watchers junctions are M2M link tables whose GraphQL create
+# mutations are masked off (sqlgen.yml), so the raw generated mutations can never
+# name the two rows to link — exactly the gap addTaskDependency fills for
+# task_dependencies. Both junctions also carry a timestamp column beyond their two
+# FKs, which makes them ineligible for a nested Task.assignees / Task.watchers
+# `connect` (PRD §9.9 E5), so they stay hand-written.
+#
+# These blessed mutations name both sides and guard tenant isolation themselves:
+# the junctions carry no workspace_id, so each resolver resolves the Task through
+# the tenant-scoped client first, so a link that spans Workspaces is refused
+# before any row is written. Removing a link uses the generated
+# deleteTaskAssignee / deleteTaskWatcher, which already name the composite key as
+# arguments.
+#
+# Applying a Label (story 27) is the generated nested mutation
+# updateTaskWithRelated(id: $taskID, input: { labels: { connect: [$labelID] } }):
+# task_labels is a pure two-FK junction, so it is nestable, and `connect` reads
+# the Label tenant-scoped before linking. `labels: { disconnect: [...] }` (or the
+# generated deleteTaskLabel) removes one. Resolver bodies live in
+# task_relationships.resolvers.go and are preserved across `sqlgen generate` by
+# gqlgen's copy-through semantics.
+
+extend type Mutation {
+  """
+  Assign a User to a Task within the Active Workspace (PRD story 25). The Task
+  must be visible in the Active Workspace; the assignment is idempotent-friendly
+  via the deleteTaskAssignee counterpart. Returns the created assignment.
+  """
+  assignUserToTask(taskID: UUID!, userID: UUID!): TaskAssignee!
+
+  """
+  Watch a Task to follow its updates without being an Assignee (PRD story 26).
+  The watcher is the authenticated caller — never client-supplied — so a member
+  watches on their own behalf. The Task must be visible in the Active Workspace.
+  """
+  watchTask(taskID: UUID!): TaskWatcher!
+}

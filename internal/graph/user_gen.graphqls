@@ -1,0 +1,119 @@
+"""
+Global user identity, spanning workspaces
+"""
+type User {
+  "Unique user identifier"
+  id: UUID!
+  "Login email address (unique across the system)"
+  email: String!
+  "Name shown in the UI"
+  displayName: String!
+  "Row creation timestamp"
+  createdAt: Time!
+  "Last modification timestamp"
+  updatedAt: Time!
+  "one-to-many relationship with the activity table."
+  activities: [Activity!]!
+  "one-to-many relationship with the api_tokens table."
+  apiTokens: [APIToken!]!
+  "one-to-many relationship with the attachments table."
+  attachments: [Attachment!]!
+  "one-to-many relationship with the comments table."
+  comments: [Comment!]!
+  "one-to-many relationship with the invitations table."
+  invitations: [Invitation!]!
+  "one-to-many relationship with the tasks table."
+  reporterTasks: [Task!]!
+  "many-to-many relationship with the tasks table."
+  taskAssignees: [Task!]!
+  "many-to-many relationship with the tasks table."
+  taskWatchers: [Task!]!
+  "many-to-many relationship with the teams table."
+  teams: [Team!]!
+  "one-to-many relationship with the time_entries table."
+  timeEntries: [TimeEntry!]!
+  "many-to-many relationship with the workspaces table."
+  workspaces: [Workspace!]!
+}
+
+type UserConnection {
+  edges:      [UserEdge!]!
+  pageInfo:   PageInfo!
+  totalCount: Int!
+}
+
+type UserEdge {
+  node:   User!
+  cursor: String!
+}
+
+type UserListResult {
+  items:      [User!]!
+  totalCount: Int!
+  offset:     Int!
+  limit:      Int!
+  hasMore:    Boolean!
+}
+
+input UserFilter {
+  email: StringComparator
+  displayName: StringComparator
+  createdAt: TimeComparator
+  updatedAt: TimeComparator
+  apiTokens: APITokenFilter
+  activities: ActivityFilter
+  attachments: AttachmentFilter
+  comments: CommentFilter
+  invitations: InvitationFilter
+  reporterTasks: TaskFilter
+  taskAssignees: TaskFilter
+  taskWatchers: TaskFilter
+  teams: TeamFilter
+  timeEntries: TimeEntryFilter
+  workspaces: WorkspaceFilter
+  and: [UserFilter!]
+  or:  [UserFilter!]
+}
+
+enum UserSortField {
+  ID
+  EMAIL
+  DISPLAY_NAME
+  CREATED_AT
+  UPDATED_AT
+}
+
+input UserSort {
+  field:     UserSortField!
+  direction: SortDirection!
+}
+input CreateUserInput {
+  email: String!
+  displayName: String!
+  passwordHash: String!
+  createdAt: Time!
+  updatedAt: Time!
+}
+input UpdateUserInput {
+  email: String
+  displayName: String
+  passwordHash: String
+  createdAt: Time
+  updatedAt: Time
+}
+
+extend type Query {
+  user(id: UUID!): User
+  "Cursor-paginated; ordering is driven by cursor_keys to preserve keyset semantics — pass `sort` to userList instead."
+  users(filter: UserFilter, first: Int, after: String, last: Int, before: String): UserConnection!
+  userList(filter: UserFilter, sort: [UserSort!], limit: Int, offset: Int): UserListResult!
+}
+
+extend type Mutation {
+  createUser(input: CreateUserInput!): User!
+  createUsers(inputs: [CreateUserInput!]!): [User!]!
+  updateUser(id: UUID!, input: UpdateUserInput!): User!
+  updateUsers(filter: UserFilter!, input: UpdateUserInput!): [User!]!
+  upsertUser(input: CreateUserInput!): User!
+  deleteUser(id: UUID!): Boolean!
+}

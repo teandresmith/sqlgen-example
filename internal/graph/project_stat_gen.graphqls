@@ -1,0 +1,63 @@
+"""
+ProjectStat corresponds to the project_stats view.
+"""
+type ProjectStat {
+  "project_id"
+  projectID: UUID!
+  "workspace_id"
+  workspaceID: UUID!
+  "total_tasks"
+  totalTasks: Int!
+  "done_tasks"
+  doneTasks: Int!
+  "open_tasks"
+  openTasks: Int!
+}
+
+type ProjectStatConnection {
+  edges:      [ProjectStatEdge!]!
+  pageInfo:   PageInfo!
+  totalCount: Int!
+}
+
+type ProjectStatEdge {
+  node:   ProjectStat!
+  cursor: String!
+}
+
+type ProjectStatListResult {
+  items:      [ProjectStat!]!
+  totalCount: Int!
+  offset:     Int!
+  limit:      Int!
+  hasMore:    Boolean!
+}
+
+input ProjectStatFilter {
+  workspaceID: StringComparator
+  totalTasks: NumericComparator
+  doneTasks: NumericComparator
+  openTasks: NumericComparator
+  and: [ProjectStatFilter!]
+  or:  [ProjectStatFilter!]
+}
+
+enum ProjectStatSortField {
+  PROJECT_ID
+  WORKSPACE_ID
+  TOTAL_TASKS
+  DONE_TASKS
+  OPEN_TASKS
+}
+
+input ProjectStatSort {
+  field:     ProjectStatSortField!
+  direction: SortDirection!
+}
+
+extend type Query {
+  projectStat(projectID: UUID!): ProjectStat
+  "Cursor-paginated; ordering is driven by cursor_keys to preserve keyset semantics — pass `sort` to projectStatList instead."
+  projectStats(filter: ProjectStatFilter, first: Int, after: String, last: Int, before: String): ProjectStatConnection!
+  projectStatList(filter: ProjectStatFilter, sort: [ProjectStatSort!], limit: Int, offset: Int): ProjectStatListResult!
+}

@@ -1,0 +1,57 @@
+# Consumer-owned schema extension (issue 04 — authorization hooks & membership
+# administration). The generated createInvitation / updateInvitation / createMembership
+# CRUD mutations remain as low-level primitives, but they expose server-owned
+# concerns a client must never set — an Invitation's token, status, invited_by,
+# and expiry; a Membership's exact composite key. These three mutations are the
+# blessed, safe surface for the invitation and membership lifecycle, mirroring
+# how bootstrapWorkspace (issue 03) is preferred over the raw createWorkspace.
+#
+# Guarding: inviteToWorkspace and revokeInvitation run in the caller's Active
+# Workspace, so the authz mutation hook (internal/authz) sees the caller's Role
+# and rejects anyone below owner/admin (stories 5, 7). acceptInvitation is the
+# exception — the accepting person is not yet a Member, so it authorizes on the
+# invitation token instead and mints the Membership with SkipTenancy (story 6),
+# the same bootstrap pattern bootstrapWorkspace uses for the first Membership.
+#
+# Resolver bodies live in membership_admin.resolvers.go and are preserved across
+# `sqlgen generate` by gqlgen's copy-through semantics.
+
+"""
+Details for inviting a person to the caller's Active Workspace. The invitee is
+named only by email — they need not yet have a User account. Everything else
+about the Invitation (its token, pending status, issuer, and expiry) is set
+server-side.
+"""
+input InviteToWorkspaceInput {
+  "Email address to invite; the invitee accepts by matching it at login"
+  email: String!
+  "Role the invitee receives on acceptance"
+  role: MembershipRole!
+}
+
+extend type Mutation {
+  """
+  Invite a person by email to the Active Workspace with a Role, creating a
+  pending Invitation (PRD story 5). Requires an owner/admin Role in the Active
+  Workspace — enforced by the authz hook. Returns the created Invitation,
+  including the acceptance token.
+  """
+  inviteToWorkspace(input: InviteToWorkspaceInput!): Invitation!
+
+  """
+  Accept a pending Invitation by its token, creating the caller's Membership in
+  the invited Workspace and marking the Invitation `accepted` (PRD story 6).
+  The caller authenticates as themselves (bearer token) but selects no Active
+  Workspace — they are not a Member yet; the token is the authorization. The
+  caller's email must match the Invitation's. Returns the new Membership.
+  """
+  acceptInvitation(token: String!): Membership!
+
+  """
+  Revoke a pending Invitation in the Active Workspace so it can no longer be
+  accepted (PRD story 7). Requires an owner/admin Role — enforced by the authz
+  hook. Only a `pending` Invitation may be revoked. Returns the revoked
+  Invitation.
+  """
+  revokeInvitation(id: UUID!): Invitation!
+}

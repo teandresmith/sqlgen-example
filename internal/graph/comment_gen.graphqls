@@ -1,0 +1,87 @@
+"""
+A note left by a user on a task
+"""
+type Comment {
+  "Unique comment identifier"
+  id: UUID!
+  "Owning workspace (tenant column)"
+  workspaceID: UUID!
+  "Task the comment belongs to"
+  taskID: UUID!
+  "User who wrote the comment"
+  authorID: UUID!
+  "Comment text"
+  body: String!
+  "Row creation timestamp"
+  createdAt: Time!
+  "Last modification timestamp"
+  updatedAt: Time!
+  "one-to-many relationship with the attachments table."
+  attachments: [Attachment!]!
+}
+
+type CommentConnection {
+  edges:      [CommentEdge!]!
+  pageInfo:   PageInfo!
+  totalCount: Int!
+}
+
+type CommentEdge {
+  node:   Comment!
+  cursor: String!
+}
+
+type CommentListResult {
+  items:      [Comment!]!
+  totalCount: Int!
+  offset:     Int!
+  limit:      Int!
+  hasMore:    Boolean!
+}
+
+input CommentFilter {
+  workspaceID: IDComparator
+  taskID: IDComparator
+  authorID: IDComparator
+  body: StringComparator
+  createdAt: TimeComparator
+  updatedAt: TimeComparator
+  attachments: AttachmentFilter
+  and: [CommentFilter!]
+  or:  [CommentFilter!]
+}
+
+enum CommentSortField {
+  ID
+  WORKSPACE_ID
+  TASK_ID
+  AUTHOR_ID
+  BODY
+  CREATED_AT
+  UPDATED_AT
+}
+
+input CommentSort {
+  field:     CommentSortField!
+  direction: SortDirection!
+}
+input UpdateCommentInput {
+  taskID: UUID
+  authorID: UUID
+  body: String
+  createdAt: Time
+  updatedAt: Time
+}
+
+extend type Query {
+  comment(id: UUID!): Comment
+  "Cursor-paginated; ordering is driven by cursor_keys to preserve keyset semantics — pass `sort` to commentList instead."
+  comments(filter: CommentFilter, first: Int, after: String, last: Int, before: String): CommentConnection!
+  commentList(filter: CommentFilter, sort: [CommentSort!], limit: Int, offset: Int): CommentListResult!
+}
+
+extend type Mutation {
+  updateComment(id: UUID!, input: UpdateCommentInput!): Comment!
+  updateComments(filter: CommentFilter!, input: UpdateCommentInput!): [Comment!]!
+  deleteComment(id: UUID!): Boolean!
+}

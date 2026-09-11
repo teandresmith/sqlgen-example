@@ -1,0 +1,123 @@
+"""
+Tenant root; the unit of isolation
+"""
+type Workspace {
+  "Unique workspace identifier"
+  id: UUID!
+  "Human-readable workspace name"
+  name: String!
+  "URL-safe unique short name"
+  slug: String!
+  "Row creation timestamp"
+  createdAt: Time!
+  "Last modification timestamp"
+  updatedAt: Time!
+  "one-to-many relationship with the activity table."
+  activities: [Activity!]!
+  "one-to-many relationship with the api_tokens table."
+  apiTokens: [APIToken!]!
+  "one-to-many relationship with the attachments table."
+  attachments: [Attachment!]!
+  "one-to-many relationship with the comments table."
+  comments: [Comment!]!
+  "one-to-many relationship with the cycles table."
+  cycles: [Cycle!]!
+  "one-to-many relationship with the invitations table."
+  invitations: [Invitation!]!
+  "one-to-many relationship with the labels table."
+  labels: [Label!]!
+  "one-to-many relationship with the projects table."
+  projects: [Project!]!
+  "one-to-many relationship with the sso_connections table."
+  ssoConnections: [SsoConnection!]!
+  "one-to-many relationship with the tasks table."
+  tasks: [Task!]!
+  "one-to-many relationship with the teams table."
+  teams: [Team!]!
+  "one-to-many relationship with the time_entries table."
+  timeEntries: [TimeEntry!]!
+  "many-to-many relationship with the users table."
+  users: [User!]!
+}
+
+type WorkspaceConnection {
+  edges:      [WorkspaceEdge!]!
+  pageInfo:   PageInfo!
+  totalCount: Int!
+}
+
+type WorkspaceEdge {
+  node:   Workspace!
+  cursor: String!
+}
+
+type WorkspaceListResult {
+  items:      [Workspace!]!
+  totalCount: Int!
+  offset:     Int!
+  limit:      Int!
+  hasMore:    Boolean!
+}
+
+input WorkspaceFilter {
+  name: StringComparator
+  slug: StringComparator
+  createdAt: TimeComparator
+  updatedAt: TimeComparator
+  apiTokens: APITokenFilter
+  activities: ActivityFilter
+  attachments: AttachmentFilter
+  comments: CommentFilter
+  cycles: CycleFilter
+  invitations: InvitationFilter
+  labels: LabelFilter
+  projects: ProjectFilter
+  ssoConnections: SsoConnectionFilter
+  tasks: TaskFilter
+  teams: TeamFilter
+  timeEntries: TimeEntryFilter
+  users: UserFilter
+  and: [WorkspaceFilter!]
+  or:  [WorkspaceFilter!]
+}
+
+enum WorkspaceSortField {
+  ID
+  NAME
+  SLUG
+  CREATED_AT
+  UPDATED_AT
+}
+
+input WorkspaceSort {
+  field:     WorkspaceSortField!
+  direction: SortDirection!
+}
+input CreateWorkspaceInput {
+  name: String!
+  slug: String!
+  createdAt: Time!
+  updatedAt: Time!
+}
+input UpdateWorkspaceInput {
+  name: String
+  slug: String
+  createdAt: Time
+  updatedAt: Time
+}
+
+extend type Query {
+  workspace(id: UUID!): Workspace
+  "Cursor-paginated; ordering is driven by cursor_keys to preserve keyset semantics — pass `sort` to workspaceList instead."
+  workspaces(filter: WorkspaceFilter, first: Int, after: String, last: Int, before: String): WorkspaceConnection!
+  workspaceList(filter: WorkspaceFilter, sort: [WorkspaceSort!], limit: Int, offset: Int): WorkspaceListResult!
+}
+
+extend type Mutation {
+  createWorkspace(input: CreateWorkspaceInput!): Workspace!
+  createWorkspaces(inputs: [CreateWorkspaceInput!]!): [Workspace!]!
+  updateWorkspace(id: UUID!, input: UpdateWorkspaceInput!): Workspace!
+  updateWorkspaces(filter: WorkspaceFilter!, input: UpdateWorkspaceInput!): [Workspace!]!
+  upsertWorkspace(input: CreateWorkspaceInput!): Workspace!
+  deleteWorkspace(id: UUID!): Boolean!
+}

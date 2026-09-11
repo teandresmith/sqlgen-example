@@ -1,0 +1,68 @@
+"""
+Directed dependencies between tasks (self-referential M2M)
+"""
+type TaskDependency {
+  "The dependent task"
+  taskID: UUID!
+  "The task depended upon"
+  dependsOnTaskID: UUID!
+  "Nature of the dependency"
+  type: DependencyType!
+  "Row creation timestamp"
+  createdAt: Time!
+}
+
+type TaskDependencyConnection {
+  edges:      [TaskDependencyEdge!]!
+  pageInfo:   PageInfo!
+  totalCount: Int!
+}
+
+type TaskDependencyEdge {
+  node:   TaskDependency!
+  cursor: String!
+}
+
+type TaskDependencyListResult {
+  items:      [TaskDependency!]!
+  totalCount: Int!
+  offset:     Int!
+  limit:      Int!
+  hasMore:    Boolean!
+}
+
+input TaskDependencyFilter {
+  type: DependencyTypeComparator
+  createdAt: TimeComparator
+  and: [TaskDependencyFilter!]
+  or:  [TaskDependencyFilter!]
+}
+
+enum TaskDependencySortField {
+  TASK_ID
+  DEPENDS_ON_TASK_ID
+  TYPE
+  CREATED_AT
+}
+
+input TaskDependencySort {
+  field:     TaskDependencySortField!
+  direction: SortDirection!
+}
+input UpdateTaskDependencyInput {
+  type: DependencyType
+  createdAt: Time
+}
+
+extend type Query {
+  taskDependency(taskID: UUID!, dependsOnTaskID: UUID!): TaskDependency
+  "Cursor-paginated; ordering is driven by cursor_keys to preserve keyset semantics — pass `sort` to taskDependencyList instead."
+  taskDependencies(filter: TaskDependencyFilter, first: Int, after: String, last: Int, before: String): TaskDependencyConnection!
+  taskDependencyList(filter: TaskDependencyFilter, sort: [TaskDependencySort!], limit: Int, offset: Int): TaskDependencyListResult!
+}
+
+extend type Mutation {
+  updateTaskDependency(taskID: UUID!, dependsOnTaskID: UUID!, input: UpdateTaskDependencyInput!): TaskDependency!
+  updateTaskDependencies(filter: TaskDependencyFilter!, input: UpdateTaskDependencyInput!): [TaskDependency!]!
+  deleteTaskDependency(taskID: UUID!, dependsOnTaskID: UUID!): Boolean!
+}

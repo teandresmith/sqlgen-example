@@ -1,0 +1,54 @@
+"""
+Membership of users in teams (M2M)
+"""
+type TeamMember {
+  "Team side of the membership"
+  teamID: UUID!
+  "User side of the membership"
+  userID: UUID!
+  "When the user joined the team"
+  addedAt: Time!
+}
+
+type TeamMemberConnection {
+  edges:      [TeamMemberEdge!]!
+  pageInfo:   PageInfo!
+  totalCount: Int!
+}
+
+type TeamMemberEdge {
+  node:   TeamMember!
+  cursor: String!
+}
+
+type TeamMemberListResult {
+  items:      [TeamMember!]!
+  totalCount: Int!
+  offset:     Int!
+  limit:      Int!
+  hasMore:    Boolean!
+}
+
+input TeamMemberFilter {
+  addedAt: TimeComparator
+  and: [TeamMemberFilter!]
+  or:  [TeamMemberFilter!]
+}
+
+enum TeamMemberSortField {
+  TEAM_ID
+  USER_ID
+  ADDED_AT
+}
+
+input TeamMemberSort {
+  field:     TeamMemberSortField!
+  direction: SortDirection!
+}
+
+extend type Query {
+  teamMember(teamID: UUID!, userID: UUID!): TeamMember
+  "Cursor-paginated; ordering is driven by cursor_keys to preserve keyset semantics — pass `sort` to teamMemberList instead."
+  teamMembers(filter: TeamMemberFilter, first: Int, after: String, last: Int, before: String): TeamMemberConnection!
+  teamMemberList(filter: TeamMemberFilter, sort: [TeamMemberSort!], limit: Int, offset: Int): TeamMemberListResult!
+}

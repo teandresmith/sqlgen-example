@@ -1,0 +1,68 @@
+# Consumer-owned schema extension (issue 13 — API Tokens). The raw
+# createAPIToken / updateAPIToken / deleteAPIToken CRUD is subtracted in
+# sqlgen.yml: an API Token's secret is server-owned, so a client must never set
+# its token_hash, user_id, or expiry directly. These blessed mutations are the
+# safe surface — they mint the secret server-side, hash it, stamp the owner, and
+# return the plaintext exactly once (it is never stored and never readable again),
+# mirroring how inviteToWorkspace (issue 04) owns the invitation token.
+#
+# Not admin-guarded: creating a token is member self-service — a User mints one to
+# act on their own behalf (story 13) or to run automation (story 14), authorized
+# by identity + Active Workspace alone (api_tokens is absent from the authz
+# guarded tables). Revocation is authorized inside the resolver instead: the
+# owner of a personal token, or a Workspace owner/admin, may revoke it (story 15).
+#
+# Resolver bodies live in api_token.resolvers.go and are preserved across
+# `sqlgen generate` by gqlgen's copy-through semantics.
+
+"""
+The result of minting an API Token. The secret is returned exactly once, at
+creation — it is stored only as a hash and can never be retrieved again.
+"""
+type CreateAPITokenResult {
+  "The created API Token (metadata only — the secret it authenticates with is never stored in plaintext)."
+  apiToken: APIToken!
+  "The plaintext token secret, shown exactly once. Store it now; it cannot be recovered."
+  secret: String!
+}
+
+"""
+Details for minting an API Token in the caller's Active Workspace. Only the
+label, optional scopes, and optional expiry are client-controlled; the secret,
+its hash, the owning User (for a personal token), and the Workspace are all set
+server-side.
+"""
+input CreateAPITokenInput {
+  "Human-readable label for the token."
+  name: String!
+  "Granted permission scopes (recorded; enforcement is out of scope per the PRD). Omit for none."
+  scopes: [String!]
+  "Optional expiry; omit for a token that never expires."
+  expiresAt: Time
+}
+
+extend type Mutation {
+  """
+  Mint a personal API Token in the Active Workspace, owned by the caller, so a
+  service or script can call the API on their behalf (PRD story 13). Any member
+  may create one for themselves. Returns the token metadata and the plaintext
+  secret, shown exactly once.
+  """
+  createAPIToken(input: CreateAPITokenInput!): CreateAPITokenResult!
+
+  """
+  Mint a service (userless) API Token in the Active Workspace so automation can
+  authenticate without a personal account (PRD story 14). The token carries no
+  owning User; a request presenting it acts in the Workspace with baseline member
+  access. Returns the token metadata and the plaintext secret, shown exactly once.
+  """
+  createServiceAPIToken(input: CreateAPITokenInput!): CreateAPITokenResult!
+
+  """
+  Revoke an API Token in the Active Workspace so it can no longer authenticate
+  (PRD story 15). The caller must own the token (a personal token) or hold an
+  owner/admin Role in the Workspace. Idempotent in effect — the token row is
+  deleted. Returns true on success.
+  """
+  revokeAPIToken(id: UUID!): Boolean!
+}

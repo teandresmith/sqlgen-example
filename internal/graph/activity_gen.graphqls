@@ -1,0 +1,101 @@
+"""
+Append-only activity feed derived from mutation events
+"""
+type Activity {
+  "Unique activity entry identifier"
+  id: UUID!
+  "Owning workspace (tenant column)"
+  workspaceID: UUID!
+  "User who triggered the activity; NULL for system actions"
+  actorID: UUID
+  "Table name of the affected entity"
+  entityTable: String!
+  "Primary key of the affected entity"
+  entityID: UUID!
+  "Mutation action (create/update/delete/upsert)"
+  action: String!
+  "Snapshot of the change"
+  payload: JSON!
+  "When the activity occurred"
+  createdAt: Time!
+}
+
+type ActivityConnection {
+  edges:      [ActivityEdge!]!
+  pageInfo:   PageInfo!
+  totalCount: Int!
+}
+
+type ActivityEdge {
+  node:   Activity!
+  cursor: String!
+}
+
+type ActivityListResult {
+  items:      [Activity!]!
+  totalCount: Int!
+  offset:     Int!
+  limit:      Int!
+  hasMore:    Boolean!
+}
+
+input ActivityFilter {
+  workspaceID: IDComparator
+  actorID: NullableIDComparator
+  entityTable: StringComparator
+  entityID: IDComparator
+  action: StringComparator
+  payload: JSONBComparator
+  createdAt: TimeComparator
+  and: [ActivityFilter!]
+  or:  [ActivityFilter!]
+}
+
+enum ActivitySortField {
+  ID
+  WORKSPACE_ID
+  ACTOR_ID
+  ENTITY_TABLE
+  ENTITY_ID
+  ACTION
+  PAYLOAD
+  CREATED_AT
+}
+
+input ActivitySort {
+  field:     ActivitySortField!
+  direction: SortDirection!
+}
+input CreateActivityInput {
+  workspaceID: UUID!
+  actorID: UUID
+  entityTable: String!
+  entityID: UUID!
+  action: String!
+  payload: JSON!
+  createdAt: Time!
+}
+input UpdateActivityInput {
+  actorID: UUID
+  entityTable: String
+  entityID: UUID
+  action: String
+  payload: JSON
+  createdAt: Time
+}
+
+extend type Query {
+  activity(id: UUID!): Activity
+  "Cursor-paginated; ordering is driven by cursor_keys to preserve keyset semantics — pass `sort` to activityList instead."
+  activities(filter: ActivityFilter, first: Int, after: String, last: Int, before: String): ActivityConnection!
+  activityList(filter: ActivityFilter, sort: [ActivitySort!], limit: Int, offset: Int): ActivityListResult!
+}
+
+extend type Mutation {
+  createActivity(input: CreateActivityInput!): Activity!
+  createActivities(inputs: [CreateActivityInput!]!): [Activity!]!
+  updateActivity(id: UUID!, input: UpdateActivityInput!): Activity!
+  updateActivities(filter: ActivityFilter!, input: UpdateActivityInput!): [Activity!]!
+  upsertActivity(input: CreateActivityInput!): Activity!
+  deleteActivity(id: UUID!): Boolean!
+}

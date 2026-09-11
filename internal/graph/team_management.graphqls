@@ -1,0 +1,41 @@
+# Consumer-owned schema extension (issue 12 — Teams). Creating a Team uses the
+# generated createTeam mutation, guarded to owner/admin by the authz hook
+# (internal/authz, story 16) exactly as Cycle/Label management is — so no bespoke
+# create mutation is needed there.
+#
+# Managing a Team's membership (story 17) is the blessed half below. team_members
+# is a workspace_id-less junction with no generated create, so addUserToTeam /
+# removeUserFromTeam are the only membership write path (the generated
+# team_member writes are subtracted in sqlgen.yml). They resolve the Team
+# tenant-scoped first, so a Team from another Workspace is invisible, and they run
+# behind the authz guard (owner/admin only). team_members carries an added_at
+# column, so it is not eligible for a nested Team.members `connect` (PRD §9.9 E5)
+# and stays hand-written.
+#
+# Assigning a Project to a Team (story 18) is the generated nested mutation
+# updateTeamWithRelated(id: $teamID, input: { projects: { connect: [$projectID] } }),
+# configured in sqlgen.yml: it resolves the Team and the Project tenant-scoped
+# before linking, and any member may call it. Resolver bodies live in
+# team_management.resolvers.go and are preserved across `sqlgen generate` by
+# gqlgen's copy-through semantics.
+
+extend type Mutation {
+  """
+  Add a User to a Team within the Active Workspace (PRD story 17). Owner/admin
+  only — enforced by the authz hook on team_members. The Team must be visible in
+  the Active Workspace, so a Team from another Workspace cannot be written to,
+  and the User must hold a Membership in the Active Workspace (a Team groups
+  Users *within* a Workspace) — a User who belongs to no/another Workspace is
+  rejected. Returns the created membership.
+  """
+  addUserToTeam(teamID: UUID!, userID: UUID!): TeamMember!
+
+  """
+  Remove a User from a Team within the Active Workspace (PRD story 17).
+  Owner/admin only — enforced by the authz hook on team_members. The Team must
+  be visible in the Active Workspace, closing the cross-tenant hole a raw
+  team_members delete (a composite PK with no Workspace) would leave open.
+  Idempotent: removing a User who is not on the Team is not an error.
+  """
+  removeUserFromTeam(teamID: UUID!, userID: UUID!): Boolean!
+}

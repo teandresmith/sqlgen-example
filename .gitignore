@@ -1,0 +1,2 @@
+# Build artifacts. The local sqlgen CLI is reproducible via `make sqlgen`.
+/bin/

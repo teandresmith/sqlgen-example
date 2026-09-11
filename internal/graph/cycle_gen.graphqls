@@ -1,0 +1,142 @@
+"""
+A time-boxed planning iteration (sprint)
+"""
+type Cycle {
+  "Unique identifier"
+  id: UUID!
+  "Owning workspace (tenant column)"
+  workspaceID: UUID!
+  "Optional owning team"
+  teamID: UUID
+  "Cycle display name"
+  name: String!
+  "Current cycle state"
+  status: CycleStatus!
+  "First day of the cycle"
+  startsOn: Time!
+  "Last day of the cycle"
+  endsOn: Time!
+  "Row creation timestamp"
+  createdAt: Time!
+  "Last modification timestamp"
+  updatedAt: Time!
+  "one-to-many relationship with the tasks table."
+  tasks: [Task!]!
+}
+
+type CycleConnection {
+  edges:      [CycleEdge!]!
+  pageInfo:   PageInfo!
+  totalCount: Int!
+}
+
+type CycleEdge {
+  node:   Cycle!
+  cursor: String!
+}
+
+type CycleListResult {
+  items:      [Cycle!]!
+  totalCount: Int!
+  offset:     Int!
+  limit:      Int!
+  hasMore:    Boolean!
+}
+
+input CycleFilter {
+  workspaceID: IDComparator
+  teamID: NullableIDComparator
+  name: StringComparator
+  status: CycleStatusComparator
+  startsOn: TimeComparator
+  endsOn: TimeComparator
+  createdAt: TimeComparator
+  updatedAt: TimeComparator
+  tasks: TaskFilter
+  and: [CycleFilter!]
+  or:  [CycleFilter!]
+}
+
+enum CycleSortField {
+  ID
+  WORKSPACE_ID
+  TEAM_ID
+  NAME
+  STATUS
+  STARTS_ON
+  ENDS_ON
+  CREATED_AT
+  UPDATED_AT
+}
+
+input CycleSort {
+  field:     CycleSortField!
+  direction: SortDirection!
+}
+input CreateCycleInput {
+  workspaceID: UUID!
+  teamID: UUID
+  name: String!
+  status: CycleStatus!
+  startsOn: Time!
+  endsOn: Time!
+  createdAt: Time!
+  updatedAt: Time!
+}
+input UpdateCycleInput {
+  teamID: UUID
+  name: String
+  status: CycleStatus
+  startsOn: Time
+  endsOn: Time
+  createdAt: Time
+  updatedAt: Time
+}
+
+extend type Query {
+  cycle(id: UUID!): Cycle
+  "Cursor-paginated; ordering is driven by cursor_keys to preserve keyset semantics — pass `sort` to cycleList instead."
+  cycles(filter: CycleFilter, first: Int, after: String, last: Int, before: String): CycleConnection!
+  cycleList(filter: CycleFilter, sort: [CycleSort!], limit: Int, offset: Int): CycleListResult!
+}
+
+extend type Mutation {
+  createCycle(input: CreateCycleInput!): Cycle!
+  createCycles(inputs: [CreateCycleInput!]!): [Cycle!]!
+  updateCycle(id: UUID!, input: UpdateCycleInput!): Cycle!
+  updateCycles(filter: CycleFilter!, input: UpdateCycleInput!): [Cycle!]!
+  upsertCycle(input: CreateCycleInput!): Cycle!
+  deleteCycle(id: UUID!): Boolean!
+}
+
+input UpdateCycleWithRelatedInput {
+  cycle: UpdateCycleInput
+  tasks: CycleTasksUpdateNested
+}
+
+input CycleTasksUpdateNested {
+  clear: Boolean
+  create: [CycleTasksCreateInput!]
+  connect: [UUID!]
+  disconnect: [UUID!]
+}
+
+input CycleTasksCreateInput {
+  workspaceID: UUID!
+  projectID: UUID!
+  parentTaskID: UUID
+  reporterID: UUID!
+  title: String!
+  description: String
+  status: TaskStatus!
+  priority: TaskPriority!
+  customFields: JSON!
+  dueAt: Time
+  createdAt: Time!
+  updatedAt: Time!
+  deletedAt: Time
+}
+
+extend type Mutation {
+  updateCycleWithRelated(id: UUID!, input: UpdateCycleWithRelatedInput!): Cycle!
+}

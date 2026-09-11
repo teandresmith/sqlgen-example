@@ -1,0 +1,75 @@
+"""
+API access tokens, personal or service-account scoped
+"""
+type APIToken {
+  "Unique identifier"
+  id: UUID!
+  "Owning workspace (tenant column)"
+  workspaceID: UUID!
+  "Owning user; NULL for service-account tokens"
+  userID: UUID
+  "Human-readable token label"
+  name: String!
+  "Granted permission scopes"
+  scopes: [String!]!
+  "Timestamp of the most recent use"
+  lastUsedAt: Time
+  "Optional expiry; NULL never expires"
+  expiresAt: Time
+  "Row creation timestamp"
+  createdAt: Time!
+}
+
+type APITokenConnection {
+  edges:      [APITokenEdge!]!
+  pageInfo:   PageInfo!
+  totalCount: Int!
+}
+
+type APITokenEdge {
+  node:   APIToken!
+  cursor: String!
+}
+
+type APITokenListResult {
+  items:      [APIToken!]!
+  totalCount: Int!
+  offset:     Int!
+  limit:      Int!
+  hasMore:    Boolean!
+}
+
+input APITokenFilter {
+  workspaceID: IDComparator
+  userID: NullableIDComparator
+  name: StringComparator
+  scopes: StringSliceComparator
+  lastUsedAt: NullableTimeComparator
+  expiresAt: NullableTimeComparator
+  createdAt: TimeComparator
+  and: [APITokenFilter!]
+  or:  [APITokenFilter!]
+}
+
+enum APITokenSortField {
+  ID
+  WORKSPACE_ID
+  USER_ID
+  NAME
+  SCOPES
+  LAST_USED_AT
+  EXPIRES_AT
+  CREATED_AT
+}
+
+input APITokenSort {
+  field:     APITokenSortField!
+  direction: SortDirection!
+}
+
+extend type Query {
+  apiToken(id: UUID!): APIToken
+  "Cursor-paginated; ordering is driven by cursor_keys to preserve keyset semantics — pass `sort` to apiTokenList instead."
+  apiTokens(filter: APITokenFilter, first: Int, after: String, last: Int, before: String): APITokenConnection!
+  apiTokenList(filter: APITokenFilter, sort: [APITokenSort!], limit: Int, offset: Int): APITokenListResult!
+}
