@@ -67,13 +67,13 @@ input ActivitySort {
   direction: SortDirection!
 }
 input CreateActivityInput {
-  workspaceID: UUID!
+  workspaceID: UUID
   actorID: UUID
   entityTable: String!
   entityID: UUID!
   action: String!
-  payload: JSON!
-  createdAt: Time!
+  payload: JSON
+  createdAt: Time
 }
 input UpdateActivityInput {
   actorID: UUID

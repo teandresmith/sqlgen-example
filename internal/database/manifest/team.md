@@ -32,7 +32,7 @@ A group of users within a workspace that owns projects
 | --- | --- | --- | --- | --- |
 | `idx_teams_workspace` | workspace_id |  | btree |  |
 | `teams_pkey` | id | yes | btree |  |
-| `teams_workspace_id_slug_idx` | workspace_id, slug | yes | btree |  |
+| `teams_workspace_id_slug_key` | workspace_id, slug | yes | btree |  |
 | `teams_ws_id_key` | workspace_id, id | yes | btree |  |
 
 ## Relationships
@@ -40,7 +40,7 @@ A group of users within a workspace that owns projects
 | Name | Kind | Target | FK | Filter |
 | --- | --- | --- | --- | --- |
 | cycles | o2m | Cycle | public.cycles.team_id |  |
-| projects | o2m | Project | public.projects.team_id |  |
+| projects | o2m | Project | public.projects.(workspace_id, team_id) |  |
 | users | m2m | User | public.team_members (team_id → user_id) |  |
 
 ## Query methods
@@ -74,20 +74,6 @@ postgres:
 SELECT "created_at", "description", "id", "name", "slug", "updated_at", "workspace_id" FROM "public"."teams" WHERE <filter> ORDER BY <sort> LIMIT <limit>
 ```
 
-### Count
-
-- Params: `filter *TeamFilter`
-- Returns: `int64`, `error`
-- Errors: `tenancy.ErrMissing`
-
-Generated SQL:
-
-postgres:
-
-```sql
-SELECT COUNT(*) FROM "public"."teams" WHERE <filter>
-```
-
 ### Exists
 
 - Params: `id uuid.UUID`
@@ -114,6 +100,20 @@ postgres:
 
 ```sql
 SELECT EXISTS(SELECT 1 FROM "public"."teams" WHERE <filter>)
+```
+
+### Count
+
+- Params: `filter *TeamFilter`
+- Returns: `int64`, `error`
+- Errors: `tenancy.ErrMissing`
+
+Generated SQL:
+
+postgres:
+
+```sql
+SELECT COUNT(*) FROM "public"."teams" WHERE <filter>
 ```
 
 ### Paginate
@@ -176,36 +176,6 @@ postgres:
 INSERT INTO "public"."teams" (<columns>) VALUES <values> RETURNING "id"
 ```
 
-### Upsert
-
-- Params: `input *CreateTeamInput`, `target TeamConflictTarget`
-- Returns: `*Team`, `error`
-- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
-- Notes: One method over the generated TeamConflictTarget enum — the target argument selects the conflict columns at call time.
-
-Generated SQL:
-
-postgres:
-
-```sql
-INSERT INTO "public"."teams" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING "id"
-```
-
-### UpsertMany
-
-- Params: `inputs []*CreateTeamInput`, `target TeamConflictTarget`
-- Returns: `[]*Team`, `error`
-- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
-- Notes: Batched in generation.batch_size chunks over the same TeamConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.
-
-Generated SQL:
-
-postgres:
-
-```sql
-INSERT INTO "public"."teams" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>
-```
-
 ### Update
 
 - Params: `id uuid.UUID`, `input *UpdateTeamInput`
@@ -250,6 +220,43 @@ postgres:
 ```sql
 UPDATE "public"."teams" SET <set> WHERE <filter> RETURNING "id"
 ```
+
+### Upsert
+
+- Params: `input *CreateTeamInput`, `target TeamConflictTarget`
+- Returns: `*Team`, `error`
+- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
+- Notes: One method over the generated TeamConflictTarget enum — the target argument selects the conflict columns at call time.
+
+Generated SQL:
+
+postgres:
+
+```sql
+INSERT INTO "public"."teams" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING "id"
+```
+
+### UpsertMany
+
+- Params: `inputs []*CreateTeamInput`, `target TeamConflictTarget`
+- Returns: `[]*Team`, `error`
+- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
+- Notes: Batched in generation.batch_size chunks over the same TeamConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.
+
+Generated SQL:
+
+postgres:
+
+```sql
+INSERT INTO "public"."teams" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>
+```
+
+### UpdateWithRelated
+
+- Params: `id uuid.UUID`, `input *UpdateTeamWithRelatedInput`
+- Returns: `*Team`, `error`
+- Errors: `ErrNilInput`, `ErrNotFound`, `ErrNestedVerbConflict`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
+- Notes: Writes the parent and its nested rows in one transaction — a SAVEPOINT when ctx already holds one. Issues no statement of its own: it composes Update and, per eligible relationship (Projects), the target's and junction's own client methods, so no sql_bodies entry. Each inner call fires its own hooks, events and cache invalidation under its own op; the nested method has none.
 
 ### HardDelete
 
@@ -296,13 +303,6 @@ postgres:
 DELETE FROM "public"."teams" WHERE <filter> RETURNING "id"
 ```
 
-### UpdateWithRelated
-
-- Params: `id uuid.UUID`, `input *UpdateTeamWithRelatedInput`
-- Returns: `*Team`, `error`
-- Errors: `ErrNilInput`, `ErrNotFound`, `ErrNestedVerbConflict`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
-- Notes: Writes the parent and its nested rows in one transaction — a SAVEPOINT when ctx already holds one. Issues no statement of its own: it composes Update and, per eligible relationship (Projects), the target's and junction's own client methods, so no sql_bodies entry. Each inner call fires its own hooks, events and cache invalidation under its own op; the nested method has none.
-
 ## Filter
 
 Type `TeamFilter`.
@@ -324,3 +324,17 @@ Type `TeamFilter`.
 Type `TeamSort`.
 
 Fields: CreatedAt, Description, ID, Name, Slug, UpdatedAt, WorkspaceID
+
+## Read examples
+
+```go
+row, err := client.Teams().Get(ctx, uuid.NewV4())
+rows, err := client.Teams().GetMany(ctx, &database.GetTeamsInput{Filter: &database.TeamFilter{Name: &comparator.String{Eq: new("example")}}})
+```
+
+## Write examples
+
+```go
+created, err := client.Teams().Create(ctx, &database.CreateTeamInput{Name: "example", Slug: "example"})
+updated, err := client.Teams().Update(ctx, uuid.NewV4(), &database.UpdateTeamInput{WorkspaceID: omittable.Set(uuid.NewV4())})
+```

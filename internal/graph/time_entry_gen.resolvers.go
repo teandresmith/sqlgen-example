@@ -7,57 +7,29 @@ package graph
 
 import (
 	"context"
-	uuid1 "uuid"
+	"uuid"
 
 	"github.com/teandresmith/sqlgen-example/internal/database"
 	gqlmodel "github.com/teandresmith/sqlgen-example/internal/graph/model"
-	"github.com/teandresmith/sqlgen-example/internal/graph/sqlgenresolver"
 )
 
 // UpdateTimeEntry is the resolver for the updateTimeEntry field.
-func (r *mutationResolver) UpdateTimeEntry(ctx context.Context, id uuid1.UUID, input gqlmodel.UpdateTimeEntryInput) (*database.TimeEntry, error) {
-	if input.Hours != nil && input.HoursInc != nil {
-		return nil, sqlgenresolver.InvalidInputError("update time_entries: column \"hours\" cannot be both set and incremented in one mutation")
-	}
-	if input.HoursInc != nil && input.HoursDec != nil {
-		return nil, sqlgenresolver.InvalidInputError("update time_entries: column \"hours\" cannot be both incremented and decremented in one mutation")
-	}
-	setIn := translateUpdateTimeEntryInput(input)
-	hasSet := hasUpdateTimeEntrySetFields(input)
-	var incOps []sqlgenresolver.IncrementOp[database.TimeEntryIncrementColumn]
-	if input.HoursInc != nil {
-		incOps = append(incOps, sqlgenresolver.IncrementOp[database.TimeEntryIncrementColumn]{
-			Column: database.TimeEntryIncrementHours,
-			Amount: int(*input.HoursInc),
-		})
-	}
-	if input.HoursDec != nil {
-		incOps = append(incOps, sqlgenresolver.IncrementOp[database.TimeEntryIncrementColumn]{
-			Column: database.TimeEntryIncrementHours,
-			Amount: -int(*input.HoursDec),
-		})
-	}
-	return r.M.UpdateTimeEntry(ctx, id, setIn, hasSet, incOps)
+func (r *mutationResolver) UpdateTimeEntry(ctx context.Context, id uuid.UUID, input gqlmodel.UpdateTimeEntryInput) (*database.TimeEntry, error) {
+	return r.M.UpdateTimeEntry(ctx, id, translateUpdateTimeEntryRequest(input))
 }
 
 // UpdateTimeEntries is the resolver for the updateTimeEntries field.
 func (r *mutationResolver) UpdateTimeEntries(ctx context.Context, filter gqlmodel.TimeEntryFilter, input gqlmodel.UpdateTimeEntryInput) ([]*database.TimeEntry, error) {
-	if input.Hours != nil && input.HoursInc != nil {
-		return nil, sqlgenresolver.InvalidInputError("update time_entries: column \"hours\" cannot be both set and incremented in one mutation")
-	}
-	if input.HoursInc != nil && input.HoursDec != nil {
-		return nil, sqlgenresolver.InvalidInputError("update time_entries: column \"hours\" cannot be both incremented and decremented in one mutation")
-	}
-	return r.M.UpdateTimeEntries(ctx, translateTimeEntryFilter(&filter), translateUpdateTimeEntryInput(input))
+	return r.M.UpdateTimeEntries(ctx, translateTimeEntryFilter(&filter), translateUpdateTimeEntryRequest(input))
 }
 
 // DeleteTimeEntry is the resolver for the deleteTimeEntry field.
-func (r *mutationResolver) DeleteTimeEntry(ctx context.Context, id uuid1.UUID) (bool, error) {
+func (r *mutationResolver) DeleteTimeEntry(ctx context.Context, id uuid.UUID) (bool, error) {
 	return r.M.DeleteTimeEntry(ctx, id)
 }
 
 // TimeEntry is the resolver for the timeEntry field.
-func (r *queryResolver) TimeEntry(ctx context.Context, id uuid1.UUID) (*database.TimeEntry, error) {
+func (r *queryResolver) TimeEntry(ctx context.Context, id uuid.UUID) (*database.TimeEntry, error) {
 	return r.Q.TimeEntry(ctx, id)
 }
 

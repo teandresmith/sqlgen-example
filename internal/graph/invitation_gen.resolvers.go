@@ -7,19 +7,19 @@ package graph
 
 import (
 	"context"
-	uuid1 "uuid"
+	"uuid"
 
 	"github.com/teandresmith/sqlgen-example/internal/database"
 	gqlmodel "github.com/teandresmith/sqlgen-example/internal/graph/model"
 )
 
 // DeleteInvitation is the resolver for the deleteInvitation field.
-func (r *mutationResolver) DeleteInvitation(ctx context.Context, id uuid1.UUID) (bool, error) {
+func (r *mutationResolver) DeleteInvitation(ctx context.Context, id uuid.UUID) (bool, error) {
 	return r.M.DeleteInvitation(ctx, id)
 }
 
 // Invitation is the resolver for the invitation field.
-func (r *queryResolver) Invitation(ctx context.Context, id uuid1.UUID) (*database.Invitation, error) {
+func (r *queryResolver) Invitation(ctx context.Context, id uuid.UUID) (*database.Invitation, error) {
 	return r.Q.Invitation(ctx, id)
 }
 

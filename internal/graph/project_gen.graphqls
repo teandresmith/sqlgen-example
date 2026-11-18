@@ -70,11 +70,11 @@ input ProjectSort {
   direction: SortDirection!
 }
 input CreateProjectInput {
-  workspaceID: UUID!
+  workspaceID: UUID
   name: String!
   description: String
-  createdAt: Time!
-  updatedAt: Time!
+  createdAt: Time
+  updatedAt: Time
   deletedAt: Time
   teamID: UUID
 }

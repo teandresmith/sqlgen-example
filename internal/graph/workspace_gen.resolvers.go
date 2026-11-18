@@ -7,7 +7,7 @@ package graph
 
 import (
 	"context"
-	uuid1 "uuid"
+	"uuid"
 
 	"github.com/teandresmith/sqlgen-example/internal/database"
 	gqlmodel "github.com/teandresmith/sqlgen-example/internal/graph/model"
@@ -31,18 +31,13 @@ func (r *mutationResolver) CreateWorkspaces(ctx context.Context, inputs []*gqlmo
 }
 
 // UpdateWorkspace is the resolver for the updateWorkspace field.
-// FIX-066: no numeric non-PK columns → no IncrementColumn enum, no `_inc`/
-// `_dec` operators on the input, and the seed delegates with the reduced
-// (set-only) signature exposed by Q/M.
-func (r *mutationResolver) UpdateWorkspace(ctx context.Context, id uuid1.UUID, input gqlmodel.UpdateWorkspaceInput) (*database.Workspace, error) {
-	setIn := translateUpdateWorkspaceInput(input)
-	hasSet := hasUpdateWorkspaceSetFields(input)
-	return r.M.UpdateWorkspace(ctx, id, setIn, hasSet)
+func (r *mutationResolver) UpdateWorkspace(ctx context.Context, id uuid.UUID, input gqlmodel.UpdateWorkspaceInput) (*database.Workspace, error) {
+	return r.M.UpdateWorkspace(ctx, id, translateUpdateWorkspaceRequest(input))
 }
 
 // UpdateWorkspaces is the resolver for the updateWorkspaces field.
 func (r *mutationResolver) UpdateWorkspaces(ctx context.Context, filter gqlmodel.WorkspaceFilter, input gqlmodel.UpdateWorkspaceInput) ([]*database.Workspace, error) {
-	return r.M.UpdateWorkspaces(ctx, translateWorkspaceFilter(&filter), translateUpdateWorkspaceInput(input))
+	return r.M.UpdateWorkspaces(ctx, translateWorkspaceFilter(&filter), translateUpdateWorkspaceRequest(input))
 }
 
 // UpsertWorkspace is the resolver for the upsertWorkspace field.
@@ -51,12 +46,12 @@ func (r *mutationResolver) UpsertWorkspace(ctx context.Context, input gqlmodel.C
 }
 
 // DeleteWorkspace is the resolver for the deleteWorkspace field.
-func (r *mutationResolver) DeleteWorkspace(ctx context.Context, id uuid1.UUID) (bool, error) {
+func (r *mutationResolver) DeleteWorkspace(ctx context.Context, id uuid.UUID) (bool, error) {
 	return r.M.DeleteWorkspace(ctx, id)
 }
 
 // Workspace is the resolver for the workspace field.
-func (r *queryResolver) Workspace(ctx context.Context, id uuid1.UUID) (*database.Workspace, error) {
+func (r *queryResolver) Workspace(ctx context.Context, id uuid.UUID) (*database.Workspace, error) {
 	return r.Q.Workspace(ctx, id)
 }
 

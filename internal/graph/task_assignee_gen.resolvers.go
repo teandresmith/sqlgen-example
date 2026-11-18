@@ -7,34 +7,29 @@ package graph
 
 import (
 	"context"
-	uuid1 "uuid"
+	"uuid"
 
 	"github.com/teandresmith/sqlgen-example/internal/database"
 	gqlmodel "github.com/teandresmith/sqlgen-example/internal/graph/model"
 )
 
 // UpdateTaskAssignee is the resolver for the updateTaskAssignee field.
-// FIX-066: no numeric non-PK columns → no IncrementColumn enum, no `_inc`/
-// `_dec` operators on the input, and the seed delegates with the reduced
-// (set-only) signature exposed by Q/M.
-func (r *mutationResolver) UpdateTaskAssignee(ctx context.Context, taskID uuid1.UUID, userID uuid1.UUID, input gqlmodel.UpdateTaskAssigneeInput) (*database.TaskAssignee, error) {
-	setIn := translateUpdateTaskAssigneeInput(input)
-	hasSet := hasUpdateTaskAssigneeSetFields(input)
-	return r.M.UpdateTaskAssignee(ctx, taskID, userID, setIn, hasSet)
+func (r *mutationResolver) UpdateTaskAssignee(ctx context.Context, taskID uuid.UUID, userID uuid.UUID, input gqlmodel.UpdateTaskAssigneeInput) (*database.TaskAssignee, error) {
+	return r.M.UpdateTaskAssignee(ctx, taskID, userID, translateUpdateTaskAssigneeRequest(input))
 }
 
 // UpdateTaskAssignees is the resolver for the updateTaskAssignees field.
 func (r *mutationResolver) UpdateTaskAssignees(ctx context.Context, filter gqlmodel.TaskAssigneeFilter, input gqlmodel.UpdateTaskAssigneeInput) ([]*database.TaskAssignee, error) {
-	return r.M.UpdateTaskAssignees(ctx, translateTaskAssigneeFilter(&filter), translateUpdateTaskAssigneeInput(input))
+	return r.M.UpdateTaskAssignees(ctx, translateTaskAssigneeFilter(&filter), translateUpdateTaskAssigneeRequest(input))
 }
 
 // DeleteTaskAssignee is the resolver for the deleteTaskAssignee field.
-func (r *mutationResolver) DeleteTaskAssignee(ctx context.Context, taskID uuid1.UUID, userID uuid1.UUID) (bool, error) {
+func (r *mutationResolver) DeleteTaskAssignee(ctx context.Context, taskID uuid.UUID, userID uuid.UUID) (bool, error) {
 	return r.M.DeleteTaskAssignee(ctx, taskID, userID)
 }
 
 // TaskAssignee is the resolver for the taskAssignee field.
-func (r *queryResolver) TaskAssignee(ctx context.Context, taskID uuid1.UUID, userID uuid1.UUID) (*database.TaskAssignee, error) {
+func (r *queryResolver) TaskAssignee(ctx context.Context, taskID uuid.UUID, userID uuid.UUID) (*database.TaskAssignee, error) {
 	return r.Q.TaskAssignee(ctx, taskID, userID)
 }
 

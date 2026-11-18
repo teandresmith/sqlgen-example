@@ -67,19 +67,6 @@ postgres:
 SELECT "created_at", "depends_on_task_id", "task_id", "type" FROM "public"."task_dependencies" WHERE <filter> ORDER BY <sort> LIMIT <limit>
 ```
 
-### Count
-
-- Params: `filter *TaskDependencyFilter`
-- Returns: `int64`, `error`
-
-Generated SQL:
-
-postgres:
-
-```sql
-SELECT COUNT(*) FROM "public"."task_dependencies" WHERE <filter>
-```
-
 ### Exists
 
 - Params: `pk TaskDependencyPK`
@@ -104,6 +91,19 @@ postgres:
 
 ```sql
 SELECT EXISTS(SELECT 1 FROM "public"."task_dependencies" WHERE <filter>)
+```
+
+### Count
+
+- Params: `filter *TaskDependencyFilter`
+- Returns: `int64`, `error`
+
+Generated SQL:
+
+postgres:
+
+```sql
+SELECT COUNT(*) FROM "public"."task_dependencies" WHERE <filter>
 ```
 
 ### Paginate
@@ -164,36 +164,6 @@ postgres:
 INSERT INTO "public"."task_dependencies" (<columns>) VALUES <values>
 ```
 
-### Upsert
-
-- Params: `input *CreateTaskDependencyInput`, `target TaskDependencyConflictTarget`
-- Returns: `*TaskDependency`, `error`
-- Errors: `ErrNilInput`, `ErrConstraintViolation`
-- Notes: One method over the generated TaskDependencyConflictTarget enum — the target argument selects the conflict columns at call time.
-
-Generated SQL:
-
-postgres:
-
-```sql
-INSERT INTO "public"."task_dependencies" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>
-```
-
-### UpsertMany
-
-- Params: `inputs []*CreateTaskDependencyInput`, `target TaskDependencyConflictTarget`
-- Returns: `[]*TaskDependency`, `error`
-- Errors: `ErrNilInput`, `ErrConstraintViolation`
-- Notes: Batched in generation.batch_size chunks over the same TaskDependencyConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.
-
-Generated SQL:
-
-postgres:
-
-```sql
-INSERT INTO "public"."task_dependencies" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>
-```
-
 ### Update
 
 - Params: `pk TaskDependencyPK`, `input *UpdateTaskDependencyInput`
@@ -237,6 +207,36 @@ postgres:
 
 ```sql
 UPDATE "public"."task_dependencies" SET <set> WHERE <filter> RETURNING "task_id", "depends_on_task_id"
+```
+
+### Upsert
+
+- Params: `input *CreateTaskDependencyInput`, `target TaskDependencyConflictTarget`
+- Returns: `*TaskDependency`, `error`
+- Errors: `ErrNilInput`, `ErrConstraintViolation`
+- Notes: One method over the generated TaskDependencyConflictTarget enum — the target argument selects the conflict columns at call time.
+
+Generated SQL:
+
+postgres:
+
+```sql
+INSERT INTO "public"."task_dependencies" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>
+```
+
+### UpsertMany
+
+- Params: `inputs []*CreateTaskDependencyInput`, `target TaskDependencyConflictTarget`
+- Returns: `[]*TaskDependency`, `error`
+- Errors: `ErrNilInput`, `ErrConstraintViolation`
+- Notes: Batched in generation.batch_size chunks over the same TaskDependencyConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.
+
+Generated SQL:
+
+postgres:
+
+```sql
+INSERT INTO "public"."task_dependencies" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>
 ```
 
 ### HardDelete
@@ -300,3 +300,17 @@ Type `TaskDependencyFilter`.
 Type `TaskDependencySort`.
 
 Fields: CreatedAt, DependsOnTaskID, TaskID, Type
+
+## Read examples
+
+```go
+row, err := client.TaskDependencies().Get(ctx, database.TaskDependencyPK{TaskID: uuid.NewV4(), DependsOnTaskID: uuid.NewV4()})
+rows, err := client.TaskDependencies().GetMany(ctx, &database.GetTaskDependenciesInput{Filter: &database.TaskDependencyFilter{Type: &comparator.Enum[database.DependencyType]{Eq: new(database.DependencyType("blocks"))}}})
+```
+
+## Write examples
+
+```go
+created, err := client.TaskDependencies().Create(ctx, &database.CreateTaskDependencyInput{TaskID: uuid.NewV4(), DependsOnTaskID: uuid.NewV4()})
+updated, err := client.TaskDependencies().Update(ctx, database.TaskDependencyPK{TaskID: uuid.NewV4(), DependsOnTaskID: uuid.NewV4()}, &database.UpdateTaskDependencyInput{Type: omittable.Set(database.DependencyType("blocks"))})
+```

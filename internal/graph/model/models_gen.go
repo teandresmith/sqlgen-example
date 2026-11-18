@@ -10,6 +10,7 @@ import (
 	"time"
 	"uuid"
 
+	"github.com/99designs/gqlgen/graphql"
 	"github.com/shopspring/decimal"
 	"github.com/teandresmith/sqlgen-example/internal/database"
 	"github.com/teandresmith/sqlgen/types"
@@ -84,8 +85,9 @@ type AuthPayload struct {
 }
 
 type BooleanComparator struct {
-	Eq  *bool `json:"eq,omitempty"`
-	Neq *bool `json:"neq,omitempty"`
+	Eq  *bool  `json:"eq,omitempty"`
+	Neq *bool  `json:"neq,omitempty"`
+	In  []bool `json:"in,omitempty"`
 }
 
 // Details for founding a new Workspace. The caller (from the request's bearer
@@ -150,39 +152,39 @@ type CreateAPITokenResult struct {
 }
 
 type CreateActivityInput struct {
-	WorkspaceID uuid.UUID  `json:"workspaceID"`
+	WorkspaceID *uuid.UUID `json:"workspaceID,omitempty"`
 	ActorID     *uuid.UUID `json:"actorID,omitempty"`
 	EntityTable string     `json:"entityTable"`
 	EntityID    uuid.UUID  `json:"entityID"`
 	Action      string     `json:"action"`
-	Payload     types.JSON `json:"payload"`
-	CreatedAt   time.Time  `json:"createdAt"`
+	Payload     types.JSON `json:"payload,omitempty"`
+	CreatedAt   *time.Time `json:"createdAt,omitempty"`
 }
 
 type CreateCycleInput struct {
-	WorkspaceID uuid.UUID            `json:"workspaceID"`
-	TeamID      *uuid.UUID           `json:"teamID,omitempty"`
-	Name        string               `json:"name"`
-	Status      database.CycleStatus `json:"status"`
-	StartsOn    time.Time            `json:"startsOn"`
-	EndsOn      time.Time            `json:"endsOn"`
-	CreatedAt   time.Time            `json:"createdAt"`
-	UpdatedAt   time.Time            `json:"updatedAt"`
+	WorkspaceID *uuid.UUID            `json:"workspaceID,omitempty"`
+	TeamID      *uuid.UUID            `json:"teamID,omitempty"`
+	Name        string                `json:"name"`
+	Status      *database.CycleStatus `json:"status,omitempty"`
+	StartsOn    time.Time             `json:"startsOn"`
+	EndsOn      time.Time             `json:"endsOn"`
+	CreatedAt   *time.Time            `json:"createdAt,omitempty"`
+	UpdatedAt   *time.Time            `json:"updatedAt,omitempty"`
 }
 
 type CreateLabelInput struct {
-	WorkspaceID uuid.UUID `json:"workspaceID"`
-	Name        string    `json:"name"`
-	Color       string    `json:"color"`
-	CreatedAt   time.Time `json:"createdAt"`
+	WorkspaceID *uuid.UUID `json:"workspaceID,omitempty"`
+	Name        string     `json:"name"`
+	Color       *string    `json:"color,omitempty"`
+	CreatedAt   *time.Time `json:"createdAt,omitempty"`
 }
 
 type CreateProjectInput struct {
-	WorkspaceID uuid.UUID  `json:"workspaceID"`
+	WorkspaceID *uuid.UUID `json:"workspaceID,omitempty"`
 	Name        string     `json:"name"`
 	Description *string    `json:"description,omitempty"`
-	CreatedAt   time.Time  `json:"createdAt"`
-	UpdatedAt   time.Time  `json:"updatedAt"`
+	CreatedAt   *time.Time `json:"createdAt,omitempty"`
+	UpdatedAt   *time.Time `json:"updatedAt,omitempty"`
 	DeletedAt   *time.Time `json:"deletedAt,omitempty"`
 	TeamID      *uuid.UUID `json:"teamID,omitempty"`
 }
@@ -207,51 +209,51 @@ type CreateTaskInProjectInput struct {
 }
 
 type CreateTaskInput struct {
-	WorkspaceID  uuid.UUID             `json:"workspaceID"`
-	ProjectID    uuid.UUID             `json:"projectID"`
-	ParentTaskID *uuid.UUID            `json:"parentTaskID,omitempty"`
-	ReporterID   uuid.UUID             `json:"reporterID"`
-	Title        string                `json:"title"`
-	Description  *string               `json:"description,omitempty"`
-	Status       database.TaskStatus   `json:"status"`
-	Priority     database.TaskPriority `json:"priority"`
-	CustomFields types.JSON            `json:"customFields"`
-	DueAt        *time.Time            `json:"dueAt,omitempty"`
-	CreatedAt    time.Time             `json:"createdAt"`
-	UpdatedAt    time.Time             `json:"updatedAt"`
-	DeletedAt    *time.Time            `json:"deletedAt,omitempty"`
-	CycleID      *uuid.UUID            `json:"cycleID,omitempty"`
+	WorkspaceID  *uuid.UUID             `json:"workspaceID,omitempty"`
+	ProjectID    uuid.UUID              `json:"projectID"`
+	ParentTaskID *uuid.UUID             `json:"parentTaskID,omitempty"`
+	ReporterID   uuid.UUID              `json:"reporterID"`
+	Title        string                 `json:"title"`
+	Description  *string                `json:"description,omitempty"`
+	Status       *database.TaskStatus   `json:"status,omitempty"`
+	Priority     *database.TaskPriority `json:"priority,omitempty"`
+	CustomFields types.JSON             `json:"customFields,omitempty"`
+	DueAt        *time.Time             `json:"dueAt,omitempty"`
+	CreatedAt    *time.Time             `json:"createdAt,omitempty"`
+	UpdatedAt    *time.Time             `json:"updatedAt,omitempty"`
+	DeletedAt    *time.Time             `json:"deletedAt,omitempty"`
+	CycleID      *uuid.UUID             `json:"cycleID,omitempty"`
 }
 
 type CreateTeamInput struct {
-	WorkspaceID uuid.UUID `json:"workspaceID"`
-	Name        string    `json:"name"`
-	Slug        string    `json:"slug"`
-	Description *string   `json:"description,omitempty"`
-	CreatedAt   time.Time `json:"createdAt"`
-	UpdatedAt   time.Time `json:"updatedAt"`
+	WorkspaceID *uuid.UUID `json:"workspaceID,omitempty"`
+	Name        string     `json:"name"`
+	Slug        string     `json:"slug"`
+	Description *string    `json:"description,omitempty"`
+	CreatedAt   *time.Time `json:"createdAt,omitempty"`
+	UpdatedAt   *time.Time `json:"updatedAt,omitempty"`
 }
 
 type CreateUserInput struct {
-	Email        string    `json:"email"`
-	DisplayName  string    `json:"displayName"`
-	PasswordHash string    `json:"passwordHash"`
-	CreatedAt    time.Time `json:"createdAt"`
-	UpdatedAt    time.Time `json:"updatedAt"`
+	Email        string     `json:"email"`
+	DisplayName  string     `json:"displayName"`
+	PasswordHash string     `json:"passwordHash"`
+	CreatedAt    *time.Time `json:"createdAt,omitempty"`
+	UpdatedAt    *time.Time `json:"updatedAt,omitempty"`
 }
 
 type CreateWorkspaceInput struct {
-	Name      string    `json:"name"`
-	Slug      string    `json:"slug"`
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	Name      string     `json:"name"`
+	Slug      string     `json:"slug"`
+	CreatedAt *time.Time `json:"createdAt,omitempty"`
+	UpdatedAt *time.Time `json:"updatedAt,omitempty"`
 }
 
 type CreateWorkspaceSettingInput struct {
-	WorkspaceID uuid.UUID  `json:"workspaceID"`
-	Settings    types.JSON `json:"settings"`
-	CreatedAt   time.Time  `json:"createdAt"`
-	UpdatedAt   time.Time  `json:"updatedAt"`
+	WorkspaceID *uuid.UUID `json:"workspaceID,omitempty"`
+	Settings    types.JSON `json:"settings,omitempty"`
+	CreatedAt   *time.Time `json:"createdAt,omitempty"`
+	UpdatedAt   *time.Time `json:"updatedAt,omitempty"`
 }
 
 type CycleFilter struct {
@@ -281,19 +283,18 @@ type CycleStatusComparator struct {
 }
 
 type CycleTasksCreateInput struct {
-	WorkspaceID  uuid.UUID             `json:"workspaceID"`
-	ProjectID    uuid.UUID             `json:"projectID"`
-	ParentTaskID *uuid.UUID            `json:"parentTaskID,omitempty"`
-	ReporterID   uuid.UUID             `json:"reporterID"`
-	Title        string                `json:"title"`
-	Description  *string               `json:"description,omitempty"`
-	Status       database.TaskStatus   `json:"status"`
-	Priority     database.TaskPriority `json:"priority"`
-	CustomFields types.JSON            `json:"customFields"`
-	DueAt        *time.Time            `json:"dueAt,omitempty"`
-	CreatedAt    time.Time             `json:"createdAt"`
-	UpdatedAt    time.Time             `json:"updatedAt"`
-	DeletedAt    *time.Time            `json:"deletedAt,omitempty"`
+	ProjectID    uuid.UUID              `json:"projectID"`
+	ParentTaskID *uuid.UUID             `json:"parentTaskID,omitempty"`
+	ReporterID   uuid.UUID              `json:"reporterID"`
+	Title        string                 `json:"title"`
+	Description  *string                `json:"description,omitempty"`
+	Status       *database.TaskStatus   `json:"status,omitempty"`
+	Priority     *database.TaskPriority `json:"priority,omitempty"`
+	CustomFields types.JSON             `json:"customFields,omitempty"`
+	DueAt        *time.Time             `json:"dueAt,omitempty"`
+	CreatedAt    *time.Time             `json:"createdAt,omitempty"`
+	UpdatedAt    *time.Time             `json:"updatedAt,omitempty"`
+	DeletedAt    *time.Time             `json:"deletedAt,omitempty"`
 }
 
 type CycleTasksUpdateNested struct {
@@ -502,7 +503,7 @@ type ProjectSort struct {
 }
 
 type ProjectStatFilter struct {
-	WorkspaceID *StringComparator    `json:"workspaceID,omitempty"`
+	WorkspaceID *IDComparator        `json:"workspaceID,omitempty"`
 	TotalTasks  *NumericComparator   `json:"totalTasks,omitempty"`
 	DoneTasks   *NumericComparator   `json:"doneTasks,omitempty"`
 	OpenTasks   *NumericComparator   `json:"openTasks,omitempty"`
@@ -695,11 +696,10 @@ type TeamMemberSort struct {
 }
 
 type TeamProjectsCreateInput struct {
-	WorkspaceID uuid.UUID  `json:"workspaceID"`
 	Name        string     `json:"name"`
 	Description *string    `json:"description,omitempty"`
-	CreatedAt   time.Time  `json:"createdAt"`
-	UpdatedAt   time.Time  `json:"updatedAt"`
+	CreatedAt   *time.Time `json:"createdAt,omitempty"`
+	UpdatedAt   *time.Time `json:"updatedAt,omitempty"`
 	DeletedAt   *time.Time `json:"deletedAt,omitempty"`
 }
 
@@ -752,12 +752,12 @@ type TimeRange struct {
 }
 
 type UpdateActivityInput struct {
-	ActorID     *uuid.UUID `json:"actorID,omitempty"`
-	EntityTable *string    `json:"entityTable,omitempty"`
-	EntityID    *uuid.UUID `json:"entityID,omitempty"`
-	Action      *string    `json:"action,omitempty"`
-	Payload     types.JSON `json:"payload,omitempty"`
-	CreatedAt   *time.Time `json:"createdAt,omitempty"`
+	ActorID     graphql.Omittable[*uuid.UUID] `json:"actorID,omitempty"`
+	EntityTable *string                       `json:"entityTable,omitempty"`
+	EntityID    *uuid.UUID                    `json:"entityID,omitempty"`
+	Action      *string                       `json:"action,omitempty"`
+	Payload     types.JSON                    `json:"payload,omitempty"`
+	CreatedAt   *time.Time                    `json:"createdAt,omitempty"`
 }
 
 type UpdateAttachmentInput struct {
@@ -782,13 +782,13 @@ type UpdateCommentInput struct {
 }
 
 type UpdateCycleInput struct {
-	TeamID    *uuid.UUID            `json:"teamID,omitempty"`
-	Name      *string               `json:"name,omitempty"`
-	Status    *database.CycleStatus `json:"status,omitempty"`
-	StartsOn  *time.Time            `json:"startsOn,omitempty"`
-	EndsOn    *time.Time            `json:"endsOn,omitempty"`
-	CreatedAt *time.Time            `json:"createdAt,omitempty"`
-	UpdatedAt *time.Time            `json:"updatedAt,omitempty"`
+	TeamID    graphql.Omittable[*uuid.UUID] `json:"teamID,omitempty"`
+	Name      *string                       `json:"name,omitempty"`
+	Status    *database.CycleStatus         `json:"status,omitempty"`
+	StartsOn  *time.Time                    `json:"startsOn,omitempty"`
+	EndsOn    *time.Time                    `json:"endsOn,omitempty"`
+	CreatedAt *time.Time                    `json:"createdAt,omitempty"`
+	UpdatedAt *time.Time                    `json:"updatedAt,omitempty"`
 }
 
 type UpdateCycleWithRelatedInput struct {
@@ -809,12 +809,12 @@ type UpdateMembershipInput struct {
 }
 
 type UpdateProjectInput struct {
-	Name        *string    `json:"name,omitempty"`
-	Description *string    `json:"description,omitempty"`
-	CreatedAt   *time.Time `json:"createdAt,omitempty"`
-	UpdatedAt   *time.Time `json:"updatedAt,omitempty"`
-	DeletedAt   *time.Time `json:"deletedAt,omitempty"`
-	TeamID      *uuid.UUID `json:"teamID,omitempty"`
+	Name        *string                       `json:"name,omitempty"`
+	Description graphql.Omittable[*string]    `json:"description,omitempty"`
+	CreatedAt   *time.Time                    `json:"createdAt,omitempty"`
+	UpdatedAt   *time.Time                    `json:"updatedAt,omitempty"`
+	DeletedAt   graphql.Omittable[*time.Time] `json:"deletedAt,omitempty"`
+	TeamID      graphql.Omittable[*uuid.UUID] `json:"teamID,omitempty"`
 }
 
 type UpdateTaskAssigneeInput struct {
@@ -827,19 +827,19 @@ type UpdateTaskDependencyInput struct {
 }
 
 type UpdateTaskInput struct {
-	ProjectID    *uuid.UUID             `json:"projectID,omitempty"`
-	ParentTaskID *uuid.UUID             `json:"parentTaskID,omitempty"`
-	ReporterID   *uuid.UUID             `json:"reporterID,omitempty"`
-	Title        *string                `json:"title,omitempty"`
-	Description  *string                `json:"description,omitempty"`
-	Status       *database.TaskStatus   `json:"status,omitempty"`
-	Priority     *database.TaskPriority `json:"priority,omitempty"`
-	CustomFields types.JSON             `json:"customFields,omitempty"`
-	DueAt        *time.Time             `json:"dueAt,omitempty"`
-	CreatedAt    *time.Time             `json:"createdAt,omitempty"`
-	UpdatedAt    *time.Time             `json:"updatedAt,omitempty"`
-	DeletedAt    *time.Time             `json:"deletedAt,omitempty"`
-	CycleID      *uuid.UUID             `json:"cycleID,omitempty"`
+	ProjectID    *uuid.UUID                    `json:"projectID,omitempty"`
+	ParentTaskID graphql.Omittable[*uuid.UUID] `json:"parentTaskID,omitempty"`
+	ReporterID   *uuid.UUID                    `json:"reporterID,omitempty"`
+	Title        *string                       `json:"title,omitempty"`
+	Description  graphql.Omittable[*string]    `json:"description,omitempty"`
+	Status       *database.TaskStatus          `json:"status,omitempty"`
+	Priority     *database.TaskPriority        `json:"priority,omitempty"`
+	CustomFields types.JSON                    `json:"customFields,omitempty"`
+	DueAt        graphql.Omittable[*time.Time] `json:"dueAt,omitempty"`
+	CreatedAt    *time.Time                    `json:"createdAt,omitempty"`
+	UpdatedAt    *time.Time                    `json:"updatedAt,omitempty"`
+	DeletedAt    graphql.Omittable[*time.Time] `json:"deletedAt,omitempty"`
+	CycleID      graphql.Omittable[*uuid.UUID] `json:"cycleID,omitempty"`
 }
 
 type UpdateTaskWatcherInput struct {
@@ -852,11 +852,11 @@ type UpdateTaskWithRelatedInput struct {
 }
 
 type UpdateTeamInput struct {
-	Name        *string    `json:"name,omitempty"`
-	Slug        *string    `json:"slug,omitempty"`
-	Description *string    `json:"description,omitempty"`
-	CreatedAt   *time.Time `json:"createdAt,omitempty"`
-	UpdatedAt   *time.Time `json:"updatedAt,omitempty"`
+	Name        *string                    `json:"name,omitempty"`
+	Slug        *string                    `json:"slug,omitempty"`
+	Description graphql.Omittable[*string] `json:"description,omitempty"`
+	CreatedAt   *time.Time                 `json:"createdAt,omitempty"`
+	UpdatedAt   *time.Time                 `json:"updatedAt,omitempty"`
 }
 
 type UpdateTeamWithRelatedInput struct {
@@ -865,15 +865,15 @@ type UpdateTeamWithRelatedInput struct {
 }
 
 type UpdateTimeEntryInput struct {
-	TaskID    *uuid.UUID       `json:"taskID,omitempty"`
-	UserID    *uuid.UUID       `json:"userID,omitempty"`
-	Hours     *decimal.Decimal `json:"hours,omitempty"`
-	HoursInc  *int             `json:"hours_inc,omitempty"`
-	HoursDec  *int             `json:"hours_dec,omitempty"`
-	Billable  *bool            `json:"billable,omitempty"`
-	Notes     *string          `json:"notes,omitempty"`
-	SpentOn   *time.Time       `json:"spentOn,omitempty"`
-	CreatedAt *time.Time       `json:"createdAt,omitempty"`
+	TaskID    *uuid.UUID                 `json:"taskID,omitempty"`
+	UserID    *uuid.UUID                 `json:"userID,omitempty"`
+	Hours     *decimal.Decimal           `json:"hours,omitempty"`
+	HoursInc  *int                       `json:"hours_inc,omitempty"`
+	HoursDec  *int                       `json:"hours_dec,omitempty"`
+	Billable  *bool                      `json:"billable,omitempty"`
+	Notes     graphql.Omittable[*string] `json:"notes,omitempty"`
+	SpentOn   *time.Time                 `json:"spentOn,omitempty"`
+	CreatedAt *time.Time                 `json:"createdAt,omitempty"`
 }
 
 type UpdateUserInput struct {

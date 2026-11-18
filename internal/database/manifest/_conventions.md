@@ -18,6 +18,7 @@ Package-wide reference. Per-entity files cross-reference this document rather th
 | `ErrInvalidCursor` | — | database |
 | `ErrDeadlock` | — | database |
 | `ErrConnectionFailed` | — | database |
+| `ErrTxDone` | — | database |
 | `ErrConstraintViolation` | — | database |
 | `ErrAlreadyRelated` | `CONFLICT` | database |
 | `ErrNestedVerbConflict` | `INVALID_INPUT` | database |

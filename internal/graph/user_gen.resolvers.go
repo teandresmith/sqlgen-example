@@ -7,7 +7,7 @@ package graph
 
 import (
 	"context"
-	uuid1 "uuid"
+	"uuid"
 
 	"github.com/teandresmith/sqlgen-example/internal/database"
 	gqlmodel "github.com/teandresmith/sqlgen-example/internal/graph/model"
@@ -31,18 +31,13 @@ func (r *mutationResolver) CreateUsers(ctx context.Context, inputs []*gqlmodel.C
 }
 
 // UpdateUser is the resolver for the updateUser field.
-// FIX-066: no numeric non-PK columns → no IncrementColumn enum, no `_inc`/
-// `_dec` operators on the input, and the seed delegates with the reduced
-// (set-only) signature exposed by Q/M.
-func (r *mutationResolver) UpdateUser(ctx context.Context, id uuid1.UUID, input gqlmodel.UpdateUserInput) (*database.User, error) {
-	setIn := translateUpdateUserInput(input)
-	hasSet := hasUpdateUserSetFields(input)
-	return r.M.UpdateUser(ctx, id, setIn, hasSet)
+func (r *mutationResolver) UpdateUser(ctx context.Context, id uuid.UUID, input gqlmodel.UpdateUserInput) (*database.User, error) {
+	return r.M.UpdateUser(ctx, id, translateUpdateUserRequest(input))
 }
 
 // UpdateUsers is the resolver for the updateUsers field.
 func (r *mutationResolver) UpdateUsers(ctx context.Context, filter gqlmodel.UserFilter, input gqlmodel.UpdateUserInput) ([]*database.User, error) {
-	return r.M.UpdateUsers(ctx, translateUserFilter(&filter), translateUpdateUserInput(input))
+	return r.M.UpdateUsers(ctx, translateUserFilter(&filter), translateUpdateUserRequest(input))
 }
 
 // UpsertUser is the resolver for the upsertUser field.
@@ -51,12 +46,12 @@ func (r *mutationResolver) UpsertUser(ctx context.Context, input gqlmodel.Create
 }
 
 // DeleteUser is the resolver for the deleteUser field.
-func (r *mutationResolver) DeleteUser(ctx context.Context, id uuid1.UUID) (bool, error) {
+func (r *mutationResolver) DeleteUser(ctx context.Context, id uuid.UUID) (bool, error) {
 	return r.M.DeleteUser(ctx, id)
 }
 
 // User is the resolver for the user field.
-func (r *queryResolver) User(ctx context.Context, id uuid1.UUID) (*database.User, error) {
+func (r *queryResolver) User(ctx context.Context, id uuid.UUID) (*database.User, error) {
 	return r.Q.User(ctx, id)
 }
 

@@ -72,12 +72,12 @@ input TeamSort {
   direction: SortDirection!
 }
 input CreateTeamInput {
-  workspaceID: UUID!
+  workspaceID: UUID
   name: String!
   slug: String!
   description: String
-  createdAt: Time!
-  updatedAt: Time!
+  createdAt: Time
+  updatedAt: Time
 }
 input UpdateTeamInput {
   name: String
@@ -116,11 +116,10 @@ input TeamProjectsUpdateNested {
 }
 
 input TeamProjectsCreateInput {
-  workspaceID: UUID!
   name: String!
   description: String
-  createdAt: Time!
-  updatedAt: Time!
+  createdAt: Time
+  updatedAt: Time
   deletedAt: Time
 }
 

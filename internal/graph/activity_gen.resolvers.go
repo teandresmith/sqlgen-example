@@ -7,7 +7,7 @@ package graph
 
 import (
 	"context"
-	uuid1 "uuid"
+	"uuid"
 
 	"github.com/teandresmith/sqlgen-example/internal/database"
 	gqlmodel "github.com/teandresmith/sqlgen-example/internal/graph/model"
@@ -31,18 +31,13 @@ func (r *mutationResolver) CreateActivities(ctx context.Context, inputs []*gqlmo
 }
 
 // UpdateActivity is the resolver for the updateActivity field.
-// FIX-066: no numeric non-PK columns → no IncrementColumn enum, no `_inc`/
-// `_dec` operators on the input, and the seed delegates with the reduced
-// (set-only) signature exposed by Q/M.
-func (r *mutationResolver) UpdateActivity(ctx context.Context, id uuid1.UUID, input gqlmodel.UpdateActivityInput) (*database.Activity, error) {
-	setIn := translateUpdateActivityInput(input)
-	hasSet := hasUpdateActivitySetFields(input)
-	return r.M.UpdateActivity(ctx, id, setIn, hasSet)
+func (r *mutationResolver) UpdateActivity(ctx context.Context, id uuid.UUID, input gqlmodel.UpdateActivityInput) (*database.Activity, error) {
+	return r.M.UpdateActivity(ctx, id, translateUpdateActivityRequest(input))
 }
 
 // UpdateActivities is the resolver for the updateActivities field.
 func (r *mutationResolver) UpdateActivities(ctx context.Context, filter gqlmodel.ActivityFilter, input gqlmodel.UpdateActivityInput) ([]*database.Activity, error) {
-	return r.M.UpdateActivities(ctx, translateActivityFilter(&filter), translateUpdateActivityInput(input))
+	return r.M.UpdateActivities(ctx, translateActivityFilter(&filter), translateUpdateActivityRequest(input))
 }
 
 // UpsertActivity is the resolver for the upsertActivity field.
@@ -51,12 +46,12 @@ func (r *mutationResolver) UpsertActivity(ctx context.Context, input gqlmodel.Cr
 }
 
 // DeleteActivity is the resolver for the deleteActivity field.
-func (r *mutationResolver) DeleteActivity(ctx context.Context, id uuid1.UUID) (bool, error) {
+func (r *mutationResolver) DeleteActivity(ctx context.Context, id uuid.UUID) (bool, error) {
 	return r.M.DeleteActivity(ctx, id)
 }
 
 // Activity is the resolver for the activity field.
-func (r *queryResolver) Activity(ctx context.Context, id uuid1.UUID) (*database.Activity, error) {
+func (r *queryResolver) Activity(ctx context.Context, id uuid.UUID) (*database.Activity, error) {
 	return r.Q.Activity(ctx, id)
 }
 

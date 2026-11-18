@@ -7,19 +7,19 @@ package graph
 
 import (
 	"context"
-	uuid1 "uuid"
+	"uuid"
 
 	"github.com/teandresmith/sqlgen-example/internal/database"
 	gqlmodel "github.com/teandresmith/sqlgen-example/internal/graph/model"
 )
 
 // DeleteSsoConnection is the resolver for the deleteSsoConnection field.
-func (r *mutationResolver) DeleteSsoConnection(ctx context.Context, id uuid1.UUID) (bool, error) {
+func (r *mutationResolver) DeleteSsoConnection(ctx context.Context, id uuid.UUID) (bool, error) {
 	return r.M.DeleteSsoConnection(ctx, id)
 }
 
 // SsoConnection is the resolver for the ssoConnection field.
-func (r *queryResolver) SsoConnection(ctx context.Context, id uuid1.UUID) (*database.SsoConnection, error) {
+func (r *queryResolver) SsoConnection(ctx context.Context, id uuid.UUID) (*database.SsoConnection, error) {
 	return r.Q.SsoConnection(ctx, id)
 }
 

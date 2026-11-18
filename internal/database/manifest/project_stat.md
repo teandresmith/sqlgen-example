@@ -44,8 +44,8 @@ GROUP BY p.id, p.workspace_id;
 
 | Name | Go field | Go type | DB type | Null | PK | Unique | Default | Comparator | Comment |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `project_id` | ProjectID | `uuid.UUID` | `uuid.UUID` |  | yes |  |  | `comparator.ID` |  |
-| `workspace_id` | WorkspaceID | `uuid.UUID` | `uuid.UUID` |  |  |  |  | `comparator.String` |  |
+| `project_id` | ProjectID | `uuid.UUID` | `uuid` |  | yes |  |  | `comparator.ID` |  |
+| `workspace_id` | WorkspaceID | `uuid.UUID` | `uuid` |  |  |  |  | `comparator.ID` |  |
 | `total_tasks` | TotalTasks | `int64` | `int64` |  |  |  |  | `comparator.Number[int64]` |  |
 | `done_tasks` | DoneTasks | `int64` | `int64` |  |  |  |  | `comparator.Number[int64]` |  |
 | `open_tasks` | OpenTasks | `int64` | `int64` |  |  |  |  | `comparator.Number[int64]` |  |
@@ -119,7 +119,7 @@ Type `ProjectStatFilter`.
 | OpenTasks | `*comparator.Number[int64]` |
 | ProjectID | `*comparator.ID` |
 | TotalTasks | `*comparator.Number[int64]` |
-| WorkspaceID | `*comparator.String` |
+| WorkspaceID | `*comparator.ID` |
 | And | `[]*ProjectStatFilter` |
 | Or | `[]*ProjectStatFilter` |
 
@@ -128,3 +128,10 @@ Type `ProjectStatFilter`.
 Type `ProjectStatSort`.
 
 Fields: DoneTasks, OpenTasks, ProjectID, TotalTasks, WorkspaceID
+
+## Read examples
+
+```go
+row, err := client.ProjectStat().Get(ctx, uuid.NewV4())
+rows, err := client.ProjectStat().GetMany(ctx, &database.GetProjectStatsInput{Filter: &database.ProjectStatFilter{DoneTasks: &comparator.Number[int64]{Eq: new(int64(1))}}})
+```

@@ -74,14 +74,14 @@ input CycleSort {
   direction: SortDirection!
 }
 input CreateCycleInput {
-  workspaceID: UUID!
+  workspaceID: UUID
   teamID: UUID
   name: String!
-  status: CycleStatus!
+  status: CycleStatus
   startsOn: Time!
   endsOn: Time!
-  createdAt: Time!
-  updatedAt: Time!
+  createdAt: Time
+  updatedAt: Time
 }
 input UpdateCycleInput {
   teamID: UUID
@@ -122,18 +122,17 @@ input CycleTasksUpdateNested {
 }
 
 input CycleTasksCreateInput {
-  workspaceID: UUID!
   projectID: UUID!
   parentTaskID: UUID
   reporterID: UUID!
   title: String!
   description: String
-  status: TaskStatus!
-  priority: TaskPriority!
-  customFields: JSON!
+  status: TaskStatus
+  priority: TaskPriority
+  customFields: JSON
   dueAt: Time
-  createdAt: Time!
-  updatedAt: Time!
+  createdAt: Time
+  updatedAt: Time
   deletedAt: Time
 }
 

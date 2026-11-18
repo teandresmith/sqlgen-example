@@ -126,6 +126,7 @@ input NumericRange {
 input BooleanComparator {
   eq:  Boolean
   neq: Boolean
+  in:  [Boolean!]
 }
 
 input TimeComparator {

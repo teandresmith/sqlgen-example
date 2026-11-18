@@ -89,20 +89,6 @@ postgres:
 SELECT "created_at", "custom_fields", "cycle_id", "deleted_at", "description", "due_at", "id", "parent_task_id", "priority", "project_id", "reporter_id", "status", "title", "updated_at", "workspace_id" FROM "public"."tasks" WHERE <filter> AND "deleted_at" IS NULL ORDER BY <sort> LIMIT <limit>
 ```
 
-### Count
-
-- Params: `filter *TaskFilter`
-- Returns: `int64`, `error`
-- Errors: `tenancy.ErrMissing`
-
-Generated SQL:
-
-postgres:
-
-```sql
-SELECT COUNT(*) FROM "public"."tasks" WHERE <filter> AND "deleted_at" IS NULL
-```
-
 ### Exists
 
 - Params: `id uuid.UUID`
@@ -129,6 +115,20 @@ postgres:
 
 ```sql
 SELECT EXISTS(SELECT 1 FROM "public"."tasks" WHERE <filter> AND "deleted_at" IS NULL)
+```
+
+### Count
+
+- Params: `filter *TaskFilter`
+- Returns: `int64`, `error`
+- Errors: `tenancy.ErrMissing`
+
+Generated SQL:
+
+postgres:
+
+```sql
+SELECT COUNT(*) FROM "public"."tasks" WHERE <filter> AND "deleted_at" IS NULL
 ```
 
 ### Paginate
@@ -191,36 +191,6 @@ postgres:
 INSERT INTO "public"."tasks" (<columns>) VALUES <values> RETURNING "id"
 ```
 
-### Upsert
-
-- Params: `input *CreateTaskInput`, `target TaskConflictTarget`
-- Returns: `*Task`, `error`
-- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
-- Notes: One method over the generated TaskConflictTarget enum — the target argument selects the conflict columns at call time.
-
-Generated SQL:
-
-postgres:
-
-```sql
-INSERT INTO "public"."tasks" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING "id"
-```
-
-### UpsertMany
-
-- Params: `inputs []*CreateTaskInput`, `target TaskConflictTarget`
-- Returns: `[]*Task`, `error`
-- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
-- Notes: Batched in generation.batch_size chunks over the same TaskConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.
-
-Generated SQL:
-
-postgres:
-
-```sql
-INSERT INTO "public"."tasks" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>
-```
-
 ### Update
 
 - Params: `id uuid.UUID`, `input *UpdateTaskInput`
@@ -265,6 +235,43 @@ postgres:
 ```sql
 UPDATE "public"."tasks" SET <set> WHERE <filter> RETURNING "id"
 ```
+
+### Upsert
+
+- Params: `input *CreateTaskInput`, `target TaskConflictTarget`
+- Returns: `*Task`, `error`
+- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
+- Notes: One method over the generated TaskConflictTarget enum — the target argument selects the conflict columns at call time.
+
+Generated SQL:
+
+postgres:
+
+```sql
+INSERT INTO "public"."tasks" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING "id"
+```
+
+### UpsertMany
+
+- Params: `inputs []*CreateTaskInput`, `target TaskConflictTarget`
+- Returns: `[]*Task`, `error`
+- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
+- Notes: Batched in generation.batch_size chunks over the same TaskConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.
+
+Generated SQL:
+
+postgres:
+
+```sql
+INSERT INTO "public"."tasks" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>
+```
+
+### UpdateWithRelated
+
+- Params: `id uuid.UUID`, `input *UpdateTaskWithRelatedInput`
+- Returns: `*Task`, `error`
+- Errors: `ErrNilInput`, `ErrNotFound`, `ErrNestedVerbConflict`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
+- Notes: Writes the parent and its nested rows in one transaction — a SAVEPOINT when ctx already holds one. Issues no statement of its own: it composes Update and, per eligible relationship (Labels), the target's and junction's own client methods, so no sql_bodies entry. Each inner call fires its own hooks, events and cache invalidation under its own op; the nested method has none.
 
 ### SoftDelete
 
@@ -401,13 +408,6 @@ postgres:
 DELETE FROM "public"."tasks" WHERE <filter> RETURNING "id"
 ```
 
-### UpdateWithRelated
-
-- Params: `id uuid.UUID`, `input *UpdateTaskWithRelatedInput`
-- Returns: `*Task`, `error`
-- Errors: `ErrNilInput`, `ErrNotFound`, `ErrNestedVerbConflict`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
-- Notes: Writes the parent and its nested rows in one transaction — a SAVEPOINT when ctx already holds one. Issues no statement of its own: it composes Update and, per eligible relationship (Labels), the target's and junction's own client methods, so no sql_bodies entry. Each inner call fires its own hooks, events and cache invalidation under its own op; the nested method has none.
-
 ## Filter
 
 Type `TaskFilter`.
@@ -437,3 +437,17 @@ Type `TaskFilter`.
 Type `TaskSort`.
 
 Fields: CreatedAt, CustomFields, CycleID, DeletedAt, Description, DueAt, ID, ParentTaskID, Priority, ProjectID, ReporterID, Status, Title, UpdatedAt, WorkspaceID
+
+## Read examples
+
+```go
+row, err := client.Tasks().Get(ctx, uuid.NewV4())
+rows, err := client.Tasks().GetMany(ctx, &database.GetTasksInput{Filter: &database.TaskFilter{Title: &comparator.String{Eq: new("example")}}})
+```
+
+## Write examples
+
+```go
+created, err := client.Tasks().Create(ctx, &database.CreateTaskInput{ProjectID: uuid.NewV4(), ReporterID: uuid.NewV4(), Title: "example"})
+updated, err := client.Tasks().Update(ctx, uuid.NewV4(), &database.UpdateTaskInput{WorkspaceID: omittable.Set(uuid.NewV4())})
+```

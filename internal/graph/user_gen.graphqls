@@ -91,8 +91,8 @@ input CreateUserInput {
   email: String!
   displayName: String!
   passwordHash: String!
-  createdAt: Time!
-  updatedAt: Time!
+  createdAt: Time
+  updatedAt: Time
 }
 input UpdateUserInput {
   email: String

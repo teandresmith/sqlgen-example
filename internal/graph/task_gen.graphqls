@@ -122,18 +122,18 @@ input TaskSort {
   direction: SortDirection!
 }
 input CreateTaskInput {
-  workspaceID: UUID!
+  workspaceID: UUID
   projectID: UUID!
   parentTaskID: UUID
   reporterID: UUID!
   title: String!
   description: String
-  status: TaskStatus!
-  priority: TaskPriority!
-  customFields: JSON!
+  status: TaskStatus
+  priority: TaskPriority
+  customFields: JSON
   dueAt: Time
-  createdAt: Time!
-  updatedAt: Time!
+  createdAt: Time
+  updatedAt: Time
   deletedAt: Time
   cycleID: UUID
 }

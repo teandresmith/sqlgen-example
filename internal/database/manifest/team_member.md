@@ -61,19 +61,6 @@ postgres:
 SELECT "added_at", "team_id", "user_id" FROM "public"."team_members" WHERE <filter> ORDER BY <sort> LIMIT <limit>
 ```
 
-### Count
-
-- Params: `filter *TeamMemberFilter`
-- Returns: `int64`, `error`
-
-Generated SQL:
-
-postgres:
-
-```sql
-SELECT COUNT(*) FROM "public"."team_members" WHERE <filter>
-```
-
 ### Exists
 
 - Params: `pk TeamMemberPK`
@@ -98,6 +85,19 @@ postgres:
 
 ```sql
 SELECT EXISTS(SELECT 1 FROM "public"."team_members" WHERE <filter>)
+```
+
+### Count
+
+- Params: `filter *TeamMemberFilter`
+- Returns: `int64`, `error`
+
+Generated SQL:
+
+postgres:
+
+```sql
+SELECT COUNT(*) FROM "public"."team_members" WHERE <filter>
 ```
 
 ### Paginate
@@ -158,36 +158,6 @@ postgres:
 INSERT INTO "public"."team_members" (<columns>) VALUES <values>
 ```
 
-### Upsert
-
-- Params: `input *CreateTeamMemberInput`, `target TeamMemberConflictTarget`
-- Returns: `*TeamMember`, `error`
-- Errors: `ErrNilInput`, `ErrConstraintViolation`
-- Notes: One method over the generated TeamMemberConflictTarget enum — the target argument selects the conflict columns at call time.
-
-Generated SQL:
-
-postgres:
-
-```sql
-INSERT INTO "public"."team_members" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>
-```
-
-### UpsertMany
-
-- Params: `inputs []*CreateTeamMemberInput`, `target TeamMemberConflictTarget`
-- Returns: `[]*TeamMember`, `error`
-- Errors: `ErrNilInput`, `ErrConstraintViolation`
-- Notes: Batched in generation.batch_size chunks over the same TeamMemberConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.
-
-Generated SQL:
-
-postgres:
-
-```sql
-INSERT INTO "public"."team_members" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>
-```
-
 ### Update
 
 - Params: `pk TeamMemberPK`, `input *UpdateTeamMemberInput`
@@ -231,6 +201,36 @@ postgres:
 
 ```sql
 UPDATE "public"."team_members" SET <set> WHERE <filter> RETURNING "team_id", "user_id"
+```
+
+### Upsert
+
+- Params: `input *CreateTeamMemberInput`, `target TeamMemberConflictTarget`
+- Returns: `*TeamMember`, `error`
+- Errors: `ErrNilInput`, `ErrConstraintViolation`
+- Notes: One method over the generated TeamMemberConflictTarget enum — the target argument selects the conflict columns at call time.
+
+Generated SQL:
+
+postgres:
+
+```sql
+INSERT INTO "public"."team_members" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>
+```
+
+### UpsertMany
+
+- Params: `inputs []*CreateTeamMemberInput`, `target TeamMemberConflictTarget`
+- Returns: `[]*TeamMember`, `error`
+- Errors: `ErrNilInput`, `ErrConstraintViolation`
+- Notes: Batched in generation.batch_size chunks over the same TeamMemberConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.
+
+Generated SQL:
+
+postgres:
+
+```sql
+INSERT INTO "public"."team_members" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>
 ```
 
 ### HardDelete
@@ -293,3 +293,17 @@ Type `TeamMemberFilter`.
 Type `TeamMemberSort`.
 
 Fields: AddedAt, TeamID, UserID
+
+## Read examples
+
+```go
+row, err := client.TeamMembers().Get(ctx, database.TeamMemberPK{TeamID: uuid.NewV4(), UserID: uuid.NewV4()})
+rows, err := client.TeamMembers().GetMany(ctx, &database.GetTeamMembersInput{Filter: &database.TeamMemberFilter{AddedAt: &comparator.Time{Eq: new(time.Now())}}})
+```
+
+## Write examples
+
+```go
+created, err := client.TeamMembers().Create(ctx, &database.CreateTeamMemberInput{TeamID: uuid.NewV4(), UserID: uuid.NewV4()})
+updated, err := client.TeamMembers().Update(ctx, database.TeamMemberPK{TeamID: uuid.NewV4(), UserID: uuid.NewV4()}, &database.UpdateTeamMemberInput{AddedAt: omittable.Set(time.Now())})
+```

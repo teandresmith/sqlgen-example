@@ -29,7 +29,7 @@ A workspace-scoped tag applied to tasks
 | Name | Columns | Unique | Method | Where |
 | --- | --- | --- | --- | --- |
 | `labels_pkey` | id | yes | btree |  |
-| `labels_workspace_id_name_idx` | workspace_id, name | yes | btree |  |
+| `labels_workspace_id_name_key` | workspace_id, name | yes | btree |  |
 
 ## Relationships
 
@@ -68,20 +68,6 @@ postgres:
 SELECT "color", "created_at", "id", "name", "workspace_id" FROM "public"."labels" WHERE <filter> ORDER BY <sort> LIMIT <limit>
 ```
 
-### Count
-
-- Params: `filter *LabelFilter`
-- Returns: `int64`, `error`
-- Errors: `tenancy.ErrMissing`
-
-Generated SQL:
-
-postgres:
-
-```sql
-SELECT COUNT(*) FROM "public"."labels" WHERE <filter>
-```
-
 ### Exists
 
 - Params: `id uuid.UUID`
@@ -108,6 +94,20 @@ postgres:
 
 ```sql
 SELECT EXISTS(SELECT 1 FROM "public"."labels" WHERE <filter>)
+```
+
+### Count
+
+- Params: `filter *LabelFilter`
+- Returns: `int64`, `error`
+- Errors: `tenancy.ErrMissing`
+
+Generated SQL:
+
+postgres:
+
+```sql
+SELECT COUNT(*) FROM "public"."labels" WHERE <filter>
 ```
 
 ### Paginate
@@ -170,36 +170,6 @@ postgres:
 INSERT INTO "public"."labels" (<columns>) VALUES <values> RETURNING "id"
 ```
 
-### Upsert
-
-- Params: `input *CreateLabelInput`, `target LabelConflictTarget`
-- Returns: `*Label`, `error`
-- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
-- Notes: One method over the generated LabelConflictTarget enum — the target argument selects the conflict columns at call time.
-
-Generated SQL:
-
-postgres:
-
-```sql
-INSERT INTO "public"."labels" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING "id"
-```
-
-### UpsertMany
-
-- Params: `inputs []*CreateLabelInput`, `target LabelConflictTarget`
-- Returns: `[]*Label`, `error`
-- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
-- Notes: Batched in generation.batch_size chunks over the same LabelConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.
-
-Generated SQL:
-
-postgres:
-
-```sql
-INSERT INTO "public"."labels" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>
-```
-
 ### Update
 
 - Params: `id uuid.UUID`, `input *UpdateLabelInput`
@@ -244,6 +214,43 @@ postgres:
 ```sql
 UPDATE "public"."labels" SET <set> WHERE <filter> RETURNING "id"
 ```
+
+### Upsert
+
+- Params: `input *CreateLabelInput`, `target LabelConflictTarget`
+- Returns: `*Label`, `error`
+- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
+- Notes: One method over the generated LabelConflictTarget enum — the target argument selects the conflict columns at call time.
+
+Generated SQL:
+
+postgres:
+
+```sql
+INSERT INTO "public"."labels" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING "id"
+```
+
+### UpsertMany
+
+- Params: `inputs []*CreateLabelInput`, `target LabelConflictTarget`
+- Returns: `[]*Label`, `error`
+- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
+- Notes: Batched in generation.batch_size chunks over the same LabelConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.
+
+Generated SQL:
+
+postgres:
+
+```sql
+INSERT INTO "public"."labels" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>
+```
+
+### UpdateWithRelated
+
+- Params: `id uuid.UUID`, `input *UpdateLabelWithRelatedInput`
+- Returns: `*Label`, `error`
+- Errors: `ErrNilInput`, `ErrNotFound`, `ErrNestedVerbConflict`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
+- Notes: Writes the parent and its nested rows in one transaction — a SAVEPOINT when ctx already holds one. Issues no statement of its own: it composes Update and, per eligible relationship (Tasks), the target's and junction's own client methods, so no sql_bodies entry. Each inner call fires its own hooks, events and cache invalidation under its own op; the nested method has none.
 
 ### HardDelete
 
@@ -290,13 +297,6 @@ postgres:
 DELETE FROM "public"."labels" WHERE <filter> RETURNING "id"
 ```
 
-### UpdateWithRelated
-
-- Params: `id uuid.UUID`, `input *UpdateLabelWithRelatedInput`
-- Returns: `*Label`, `error`
-- Errors: `ErrNilInput`, `ErrNotFound`, `ErrNestedVerbConflict`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
-- Notes: Writes the parent and its nested rows in one transaction — a SAVEPOINT when ctx already holds one. Issues no statement of its own: it composes Update and, per eligible relationship (Tasks), the target's and junction's own client methods, so no sql_bodies entry. Each inner call fires its own hooks, events and cache invalidation under its own op; the nested method has none.
-
 ## Filter
 
 Type `LabelFilter`.
@@ -316,3 +316,17 @@ Type `LabelFilter`.
 Type `LabelSort`.
 
 Fields: Color, CreatedAt, ID, Name, WorkspaceID
+
+## Read examples
+
+```go
+row, err := client.Labels().Get(ctx, uuid.NewV4())
+rows, err := client.Labels().GetMany(ctx, &database.GetLabelsInput{Filter: &database.LabelFilter{Color: &comparator.String{Eq: new("example")}}})
+```
+
+## Write examples
+
+```go
+created, err := client.Labels().Create(ctx, &database.CreateLabelInput{Name: "example"})
+updated, err := client.Labels().Update(ctx, uuid.NewV4(), &database.UpdateLabelInput{WorkspaceID: omittable.Set(uuid.NewV4())})
+```

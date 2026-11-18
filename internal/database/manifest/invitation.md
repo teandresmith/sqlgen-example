@@ -68,20 +68,6 @@ postgres:
 SELECT "created_at", "email", "expires_at", "id", "invited_by", "role", "status", "token", "updated_at", "workspace_id" FROM "public"."invitations" WHERE <filter> ORDER BY <sort> LIMIT <limit>
 ```
 
-### Count
-
-- Params: `filter *InvitationFilter`
-- Returns: `int64`, `error`
-- Errors: `tenancy.ErrMissing`
-
-Generated SQL:
-
-postgres:
-
-```sql
-SELECT COUNT(*) FROM "public"."invitations" WHERE <filter>
-```
-
 ### Exists
 
 - Params: `id uuid.UUID`
@@ -108,6 +94,20 @@ postgres:
 
 ```sql
 SELECT EXISTS(SELECT 1 FROM "public"."invitations" WHERE <filter>)
+```
+
+### Count
+
+- Params: `filter *InvitationFilter`
+- Returns: `int64`, `error`
+- Errors: `tenancy.ErrMissing`
+
+Generated SQL:
+
+postgres:
+
+```sql
+SELECT COUNT(*) FROM "public"."invitations" WHERE <filter>
 ```
 
 ### Paginate
@@ -170,36 +170,6 @@ postgres:
 INSERT INTO "public"."invitations" (<columns>) VALUES <values> RETURNING "id"
 ```
 
-### Upsert
-
-- Params: `input *CreateInvitationInput`, `target InvitationConflictTarget`
-- Returns: `*Invitation`, `error`
-- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
-- Notes: One method over the generated InvitationConflictTarget enum — the target argument selects the conflict columns at call time.
-
-Generated SQL:
-
-postgres:
-
-```sql
-INSERT INTO "public"."invitations" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING "id"
-```
-
-### UpsertMany
-
-- Params: `inputs []*CreateInvitationInput`, `target InvitationConflictTarget`
-- Returns: `[]*Invitation`, `error`
-- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
-- Notes: Batched in generation.batch_size chunks over the same InvitationConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.
-
-Generated SQL:
-
-postgres:
-
-```sql
-INSERT INTO "public"."invitations" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>
-```
-
 ### Update
 
 - Params: `id uuid.UUID`, `input *UpdateInvitationInput`
@@ -243,6 +213,36 @@ postgres:
 
 ```sql
 UPDATE "public"."invitations" SET <set> WHERE <filter> RETURNING "id"
+```
+
+### Upsert
+
+- Params: `input *CreateInvitationInput`, `target InvitationConflictTarget`
+- Returns: `*Invitation`, `error`
+- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
+- Notes: One method over the generated InvitationConflictTarget enum — the target argument selects the conflict columns at call time.
+
+Generated SQL:
+
+postgres:
+
+```sql
+INSERT INTO "public"."invitations" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING "id"
+```
+
+### UpsertMany
+
+- Params: `inputs []*CreateInvitationInput`, `target InvitationConflictTarget`
+- Returns: `[]*Invitation`, `error`
+- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
+- Notes: Batched in generation.batch_size chunks over the same InvitationConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.
+
+Generated SQL:
+
+postgres:
+
+```sql
+INSERT INTO "public"."invitations" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>
 ```
 
 ### HardDelete
@@ -314,3 +314,17 @@ Type `InvitationFilter`.
 Type `InvitationSort`.
 
 Fields: CreatedAt, Email, ExpiresAt, ID, InvitedBy, Role, Status, Token, UpdatedAt, WorkspaceID
+
+## Read examples
+
+```go
+row, err := client.Invitations().Get(ctx, uuid.NewV4())
+rows, err := client.Invitations().GetMany(ctx, &database.GetInvitationsInput{Filter: &database.InvitationFilter{Email: &comparator.String{Eq: new("example")}}})
+```
+
+## Write examples
+
+```go
+created, err := client.Invitations().Create(ctx, &database.CreateInvitationInput{Email: "example", Token: "example", InvitedBy: uuid.NewV4(), ExpiresAt: time.Now()})
+updated, err := client.Invitations().Update(ctx, uuid.NewV4(), &database.UpdateInvitationInput{WorkspaceID: omittable.Set(uuid.NewV4())})
+```

@@ -58,10 +58,10 @@ input LabelSort {
   direction: SortDirection!
 }
 input CreateLabelInput {
-  workspaceID: UUID!
+  workspaceID: UUID
   name: String!
-  color: String!
-  createdAt: Time!
+  color: String
+  createdAt: Time
 }
 input UpdateLabelInput {
   name: String

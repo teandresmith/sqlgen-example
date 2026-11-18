@@ -60,19 +60,6 @@ postgres:
 SELECT "assigned_at", "task_id", "user_id" FROM "public"."task_assignees" WHERE <filter> ORDER BY <sort> LIMIT <limit>
 ```
 
-### Count
-
-- Params: `filter *TaskAssigneeFilter`
-- Returns: `int64`, `error`
-
-Generated SQL:
-
-postgres:
-
-```sql
-SELECT COUNT(*) FROM "public"."task_assignees" WHERE <filter>
-```
-
 ### Exists
 
 - Params: `pk TaskAssigneePK`
@@ -97,6 +84,19 @@ postgres:
 
 ```sql
 SELECT EXISTS(SELECT 1 FROM "public"."task_assignees" WHERE <filter>)
+```
+
+### Count
+
+- Params: `filter *TaskAssigneeFilter`
+- Returns: `int64`, `error`
+
+Generated SQL:
+
+postgres:
+
+```sql
+SELECT COUNT(*) FROM "public"."task_assignees" WHERE <filter>
 ```
 
 ### Paginate
@@ -157,36 +157,6 @@ postgres:
 INSERT INTO "public"."task_assignees" (<columns>) VALUES <values>
 ```
 
-### Upsert
-
-- Params: `input *CreateTaskAssigneeInput`, `target TaskAssigneeConflictTarget`
-- Returns: `*TaskAssignee`, `error`
-- Errors: `ErrNilInput`, `ErrConstraintViolation`
-- Notes: One method over the generated TaskAssigneeConflictTarget enum — the target argument selects the conflict columns at call time.
-
-Generated SQL:
-
-postgres:
-
-```sql
-INSERT INTO "public"."task_assignees" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>
-```
-
-### UpsertMany
-
-- Params: `inputs []*CreateTaskAssigneeInput`, `target TaskAssigneeConflictTarget`
-- Returns: `[]*TaskAssignee`, `error`
-- Errors: `ErrNilInput`, `ErrConstraintViolation`
-- Notes: Batched in generation.batch_size chunks over the same TaskAssigneeConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.
-
-Generated SQL:
-
-postgres:
-
-```sql
-INSERT INTO "public"."task_assignees" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>
-```
-
 ### Update
 
 - Params: `pk TaskAssigneePK`, `input *UpdateTaskAssigneeInput`
@@ -230,6 +200,36 @@ postgres:
 
 ```sql
 UPDATE "public"."task_assignees" SET <set> WHERE <filter> RETURNING "task_id", "user_id"
+```
+
+### Upsert
+
+- Params: `input *CreateTaskAssigneeInput`, `target TaskAssigneeConflictTarget`
+- Returns: `*TaskAssignee`, `error`
+- Errors: `ErrNilInput`, `ErrConstraintViolation`
+- Notes: One method over the generated TaskAssigneeConflictTarget enum — the target argument selects the conflict columns at call time.
+
+Generated SQL:
+
+postgres:
+
+```sql
+INSERT INTO "public"."task_assignees" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>
+```
+
+### UpsertMany
+
+- Params: `inputs []*CreateTaskAssigneeInput`, `target TaskAssigneeConflictTarget`
+- Returns: `[]*TaskAssignee`, `error`
+- Errors: `ErrNilInput`, `ErrConstraintViolation`
+- Notes: Batched in generation.batch_size chunks over the same TaskAssigneeConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.
+
+Generated SQL:
+
+postgres:
+
+```sql
+INSERT INTO "public"."task_assignees" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>
 ```
 
 ### HardDelete
@@ -292,3 +292,17 @@ Type `TaskAssigneeFilter`.
 Type `TaskAssigneeSort`.
 
 Fields: AssignedAt, TaskID, UserID
+
+## Read examples
+
+```go
+row, err := client.TaskAssignees().Get(ctx, database.TaskAssigneePK{TaskID: uuid.NewV4(), UserID: uuid.NewV4()})
+rows, err := client.TaskAssignees().GetMany(ctx, &database.GetTaskAssigneesInput{Filter: &database.TaskAssigneeFilter{AssignedAt: &comparator.Time{Eq: new(time.Now())}}})
+```
+
+## Write examples
+
+```go
+created, err := client.TaskAssignees().Create(ctx, &database.CreateTaskAssigneeInput{TaskID: uuid.NewV4(), UserID: uuid.NewV4()})
+updated, err := client.TaskAssignees().Update(ctx, database.TaskAssigneePK{TaskID: uuid.NewV4(), UserID: uuid.NewV4()}, &database.UpdateTaskAssigneeInput{AssignedAt: omittable.Set(time.Now())})
+```

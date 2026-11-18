@@ -7,34 +7,29 @@ package graph
 
 import (
 	"context"
-	uuid1 "uuid"
+	"uuid"
 
 	"github.com/teandresmith/sqlgen-example/internal/database"
 	gqlmodel "github.com/teandresmith/sqlgen-example/internal/graph/model"
 )
 
 // UpdateComment is the resolver for the updateComment field.
-// FIX-066: no numeric non-PK columns → no IncrementColumn enum, no `_inc`/
-// `_dec` operators on the input, and the seed delegates with the reduced
-// (set-only) signature exposed by Q/M.
-func (r *mutationResolver) UpdateComment(ctx context.Context, id uuid1.UUID, input gqlmodel.UpdateCommentInput) (*database.Comment, error) {
-	setIn := translateUpdateCommentInput(input)
-	hasSet := hasUpdateCommentSetFields(input)
-	return r.M.UpdateComment(ctx, id, setIn, hasSet)
+func (r *mutationResolver) UpdateComment(ctx context.Context, id uuid.UUID, input gqlmodel.UpdateCommentInput) (*database.Comment, error) {
+	return r.M.UpdateComment(ctx, id, translateUpdateCommentRequest(input))
 }
 
 // UpdateComments is the resolver for the updateComments field.
 func (r *mutationResolver) UpdateComments(ctx context.Context, filter gqlmodel.CommentFilter, input gqlmodel.UpdateCommentInput) ([]*database.Comment, error) {
-	return r.M.UpdateComments(ctx, translateCommentFilter(&filter), translateUpdateCommentInput(input))
+	return r.M.UpdateComments(ctx, translateCommentFilter(&filter), translateUpdateCommentRequest(input))
 }
 
 // DeleteComment is the resolver for the deleteComment field.
-func (r *mutationResolver) DeleteComment(ctx context.Context, id uuid1.UUID) (bool, error) {
+func (r *mutationResolver) DeleteComment(ctx context.Context, id uuid.UUID) (bool, error) {
 	return r.M.DeleteComment(ctx, id)
 }
 
 // Comment is the resolver for the comment field.
-func (r *queryResolver) Comment(ctx context.Context, id uuid1.UUID) (*database.Comment, error) {
+func (r *queryResolver) Comment(ctx context.Context, id uuid.UUID) (*database.Comment, error) {
 	return r.Q.Comment(ctx, id)
 }
 

@@ -7,14 +7,14 @@ package graph
 
 import (
 	"context"
-	uuid1 "uuid"
+	"uuid"
 
 	"github.com/teandresmith/sqlgen-example/internal/database"
 	gqlmodel "github.com/teandresmith/sqlgen-example/internal/graph/model"
 )
 
 // TeamMember is the resolver for the teamMember field.
-func (r *queryResolver) TeamMember(ctx context.Context, teamID uuid1.UUID, userID uuid1.UUID) (*database.TeamMember, error) {
+func (r *queryResolver) TeamMember(ctx context.Context, teamID uuid.UUID, userID uuid.UUID) (*database.TeamMember, error) {
 	return r.Q.TeamMember(ctx, teamID, userID)
 }
 

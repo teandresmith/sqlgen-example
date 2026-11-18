@@ -57,10 +57,10 @@ input WorkspaceSettingSort {
   direction: SortDirection!
 }
 input CreateWorkspaceSettingInput {
-  workspaceID: UUID!
-  settings: JSON!
-  createdAt: Time!
-  updatedAt: Time!
+  workspaceID: UUID
+  settings: JSON
+  createdAt: Time
+  updatedAt: Time
 }
 input UpdateWorkspaceSettingInput {
   settings: JSON

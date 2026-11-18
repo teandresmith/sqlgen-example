@@ -7,7 +7,7 @@ package graph
 
 import (
 	"context"
-	uuid1 "uuid"
+	"uuid"
 
 	"github.com/teandresmith/sqlgen-example/internal/database"
 	gqlmodel "github.com/teandresmith/sqlgen-example/internal/graph/model"
@@ -31,18 +31,13 @@ func (r *mutationResolver) CreateProjects(ctx context.Context, inputs []*gqlmode
 }
 
 // UpdateProject is the resolver for the updateProject field.
-// FIX-066: no numeric non-PK columns → no IncrementColumn enum, no `_inc`/
-// `_dec` operators on the input, and the seed delegates with the reduced
-// (set-only) signature exposed by Q/M.
-func (r *mutationResolver) UpdateProject(ctx context.Context, id uuid1.UUID, input gqlmodel.UpdateProjectInput) (*database.Project, error) {
-	setIn := translateUpdateProjectInput(input)
-	hasSet := hasUpdateProjectSetFields(input)
-	return r.M.UpdateProject(ctx, id, setIn, hasSet)
+func (r *mutationResolver) UpdateProject(ctx context.Context, id uuid.UUID, input gqlmodel.UpdateProjectInput) (*database.Project, error) {
+	return r.M.UpdateProject(ctx, id, translateUpdateProjectRequest(input))
 }
 
 // UpdateProjects is the resolver for the updateProjects field.
 func (r *mutationResolver) UpdateProjects(ctx context.Context, filter gqlmodel.ProjectFilter, input gqlmodel.UpdateProjectInput) ([]*database.Project, error) {
-	return r.M.UpdateProjects(ctx, translateProjectFilter(&filter), translateUpdateProjectInput(input))
+	return r.M.UpdateProjects(ctx, translateProjectFilter(&filter), translateUpdateProjectRequest(input))
 }
 
 // UpsertProject is the resolver for the upsertProject field.
@@ -51,22 +46,22 @@ func (r *mutationResolver) UpsertProject(ctx context.Context, input gqlmodel.Cre
 }
 
 // HardDeleteProject is the resolver for the hardDeleteProject field.
-func (r *mutationResolver) HardDeleteProject(ctx context.Context, id uuid1.UUID) (bool, error) {
+func (r *mutationResolver) HardDeleteProject(ctx context.Context, id uuid.UUID) (bool, error) {
 	return r.M.HardDeleteProject(ctx, id)
 }
 
 // SoftDeleteProject is the resolver for the softDeleteProject field.
-func (r *mutationResolver) SoftDeleteProject(ctx context.Context, id uuid1.UUID) (*database.Project, error) {
+func (r *mutationResolver) SoftDeleteProject(ctx context.Context, id uuid.UUID) (*database.Project, error) {
 	return r.M.SoftDeleteProject(ctx, id)
 }
 
 // RestoreProject is the resolver for the restoreProject field.
-func (r *mutationResolver) RestoreProject(ctx context.Context, id uuid1.UUID) (*database.Project, error) {
+func (r *mutationResolver) RestoreProject(ctx context.Context, id uuid.UUID) (*database.Project, error) {
 	return r.M.RestoreProject(ctx, id)
 }
 
 // Project is the resolver for the project field.
-func (r *queryResolver) Project(ctx context.Context, id uuid1.UUID) (*database.Project, error) {
+func (r *queryResolver) Project(ctx context.Context, id uuid.UUID) (*database.Project, error) {
 	return r.Q.Project(ctx, id)
 }
 

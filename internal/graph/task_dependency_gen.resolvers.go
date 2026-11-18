@@ -7,34 +7,29 @@ package graph
 
 import (
 	"context"
-	uuid1 "uuid"
+	"uuid"
 
 	"github.com/teandresmith/sqlgen-example/internal/database"
 	gqlmodel "github.com/teandresmith/sqlgen-example/internal/graph/model"
 )
 
 // UpdateTaskDependency is the resolver for the updateTaskDependency field.
-// FIX-066: no numeric non-PK columns → no IncrementColumn enum, no `_inc`/
-// `_dec` operators on the input, and the seed delegates with the reduced
-// (set-only) signature exposed by Q/M.
-func (r *mutationResolver) UpdateTaskDependency(ctx context.Context, taskID uuid1.UUID, dependsOnTaskID uuid1.UUID, input gqlmodel.UpdateTaskDependencyInput) (*database.TaskDependency, error) {
-	setIn := translateUpdateTaskDependencyInput(input)
-	hasSet := hasUpdateTaskDependencySetFields(input)
-	return r.M.UpdateTaskDependency(ctx, taskID, dependsOnTaskID, setIn, hasSet)
+func (r *mutationResolver) UpdateTaskDependency(ctx context.Context, taskID uuid.UUID, dependsOnTaskID uuid.UUID, input gqlmodel.UpdateTaskDependencyInput) (*database.TaskDependency, error) {
+	return r.M.UpdateTaskDependency(ctx, taskID, dependsOnTaskID, translateUpdateTaskDependencyRequest(input))
 }
 
 // UpdateTaskDependencies is the resolver for the updateTaskDependencies field.
 func (r *mutationResolver) UpdateTaskDependencies(ctx context.Context, filter gqlmodel.TaskDependencyFilter, input gqlmodel.UpdateTaskDependencyInput) ([]*database.TaskDependency, error) {
-	return r.M.UpdateTaskDependencies(ctx, translateTaskDependencyFilter(&filter), translateUpdateTaskDependencyInput(input))
+	return r.M.UpdateTaskDependencies(ctx, translateTaskDependencyFilter(&filter), translateUpdateTaskDependencyRequest(input))
 }
 
 // DeleteTaskDependency is the resolver for the deleteTaskDependency field.
-func (r *mutationResolver) DeleteTaskDependency(ctx context.Context, taskID uuid1.UUID, dependsOnTaskID uuid1.UUID) (bool, error) {
+func (r *mutationResolver) DeleteTaskDependency(ctx context.Context, taskID uuid.UUID, dependsOnTaskID uuid.UUID) (bool, error) {
 	return r.M.DeleteTaskDependency(ctx, taskID, dependsOnTaskID)
 }
 
 // TaskDependency is the resolver for the taskDependency field.
-func (r *queryResolver) TaskDependency(ctx context.Context, taskID uuid1.UUID, dependsOnTaskID uuid1.UUID) (*database.TaskDependency, error) {
+func (r *queryResolver) TaskDependency(ctx context.Context, taskID uuid.UUID, dependsOnTaskID uuid.UUID) (*database.TaskDependency, error) {
 	return r.Q.TaskDependency(ctx, taskID, dependsOnTaskID)
 }
 

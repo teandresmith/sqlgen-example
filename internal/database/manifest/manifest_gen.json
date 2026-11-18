@@ -1,10 +1,10 @@
 {
-  "$schema": "https://raw.githubusercontent.com/teandresmith/sqlgen/v0.1.0/cmd/sqlgen/manifest/schema/v1.json",
-  "schema_version": "0.1.0",
-  "generated_at": "2026-10-05T17:24:49Z",
+  "$schema": "https://raw.githubusercontent.com/teandresmith/sqlgen/v0.1.2/cmd/sqlgen/manifest/schema/v1.json",
+  "schema_version": "0.2.0",
+  "generated_at": "2026-11-18T19:32:24Z",
   "generator": {
     "name": "sqlgen",
-    "version": "0.1.0"
+    "version": "0.1.2"
   },
   "dialect": "postgres",
   "package": "database",
@@ -47,6 +47,11 @@
       },
       {
         "name": "ErrConnectionFailed",
+        "graphql_code": "",
+        "package": "database"
+      },
+      {
+        "name": "ErrTxDone",
         "graphql_code": "",
         "package": "database"
       },
@@ -222,12 +227,14 @@
           "hydration": "eager",
           "key_pattern": "taskr:apitoken:{id}",
           "invalidates_on": [
-            "Create",
             "Update",
-            "Delete",
-            "SoftDelete",
-            "Restore",
-            "Increment"
+            "UpdateMany",
+            "UpdateWhere",
+            "Upsert",
+            "UpsertMany",
+            "HardDelete",
+            "HardDeleteMany",
+            "HardDeleteWhere"
           ]
         },
         "events": {
@@ -393,22 +400,6 @@
             }
           },
           {
-            "name": "Count",
-            "params": [
-              {
-                "name": "filter",
-                "type": "*APITokenFilter"
-              }
-            ],
-            "returns": "int64",
-            "errors": [
-              "tenancy.ErrMissing"
-            ],
-            "sql_bodies": {
-              "postgres": "SELECT COUNT(*) FROM \"public\".\"api_tokens\" WHERE <filter>"
-            }
-          },
-          {
             "name": "Exists",
             "params": [
               {
@@ -438,6 +429,22 @@
             ],
             "sql_bodies": {
               "postgres": "SELECT EXISTS(SELECT 1 FROM \"public\".\"api_tokens\" WHERE <filter>)"
+            }
+          },
+          {
+            "name": "Count",
+            "params": [
+              {
+                "name": "filter",
+                "type": "*APITokenFilter"
+              }
+            ],
+            "returns": "int64",
+            "errors": [
+              "tenancy.ErrMissing"
+            ],
+            "sql_bodies": {
+              "postgres": "SELECT COUNT(*) FROM \"public\".\"api_tokens\" WHERE <filter>"
             }
           },
           {
@@ -528,54 +535,6 @@
             }
           },
           {
-            "name": "Upsert",
-            "params": [
-              {
-                "name": "input",
-                "type": "*CreateAPITokenInput"
-              },
-              {
-                "name": "target",
-                "type": "APITokenConflictTarget"
-              }
-            ],
-            "returns": "*APIToken",
-            "errors": [
-              "ErrNilInput",
-              "ErrConstraintViolation",
-              "tenancy.ErrMissing",
-              "tenancy.ErrMismatch"
-            ],
-            "notes": "One method over the generated APITokenConflictTarget enum — the target argument selects the conflict columns at call time.",
-            "sql_bodies": {
-              "postgres": "INSERT INTO \"public\".\"api_tokens\" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING \"id\""
-            }
-          },
-          {
-            "name": "UpsertMany",
-            "params": [
-              {
-                "name": "inputs",
-                "type": "[]*CreateAPITokenInput"
-              },
-              {
-                "name": "target",
-                "type": "APITokenConflictTarget"
-              }
-            ],
-            "returns": "[]*APIToken",
-            "errors": [
-              "ErrNilInput",
-              "ErrConstraintViolation",
-              "tenancy.ErrMissing",
-              "tenancy.ErrMismatch"
-            ],
-            "notes": "Batched in generation.batch_size chunks over the same APITokenConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.",
-            "sql_bodies": {
-              "postgres": "INSERT INTO \"public\".\"api_tokens\" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>"
-            }
-          },
-          {
             "name": "Update",
             "params": [
               {
@@ -643,6 +602,54 @@
             "notes": "Idempotent — returns an empty slice when no row matches. ErrEmptyFilter when the filter produces no conditions.",
             "sql_bodies": {
               "postgres": "UPDATE \"public\".\"api_tokens\" SET <set> WHERE <filter> RETURNING \"id\""
+            }
+          },
+          {
+            "name": "Upsert",
+            "params": [
+              {
+                "name": "input",
+                "type": "*CreateAPITokenInput"
+              },
+              {
+                "name": "target",
+                "type": "APITokenConflictTarget"
+              }
+            ],
+            "returns": "*APIToken",
+            "errors": [
+              "ErrNilInput",
+              "ErrConstraintViolation",
+              "tenancy.ErrMissing",
+              "tenancy.ErrMismatch"
+            ],
+            "notes": "One method over the generated APITokenConflictTarget enum — the target argument selects the conflict columns at call time.",
+            "sql_bodies": {
+              "postgres": "INSERT INTO \"public\".\"api_tokens\" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING \"id\""
+            }
+          },
+          {
+            "name": "UpsertMany",
+            "params": [
+              {
+                "name": "inputs",
+                "type": "[]*CreateAPITokenInput"
+              },
+              {
+                "name": "target",
+                "type": "APITokenConflictTarget"
+              }
+            ],
+            "returns": "[]*APIToken",
+            "errors": [
+              "ErrNilInput",
+              "ErrConstraintViolation",
+              "tenancy.ErrMissing",
+              "tenancy.ErrMismatch"
+            ],
+            "notes": "Batched in generation.batch_size chunks over the same APITokenConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.",
+            "sql_bodies": {
+              "postgres": "INSERT INTO \"public\".\"api_tokens\" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>"
             }
           },
           {
@@ -762,7 +769,16 @@
           "WorkspaceID"
         ]
       },
-      "examples": {}
+      "examples": {
+        "read": [
+          "row, err := client.APITokens().Get(ctx, uuid.NewV4())",
+          "rows, err := client.APITokens().GetMany(ctx, &database.GetAPITokensInput{Filter: &database.APITokenFilter{Name: &comparator.String{Eq: new(\"example\")}}})"
+        ],
+        "write": [
+          "created, err := client.APITokens().Create(ctx, &database.CreateAPITokenInput{Name: \"example\", TokenHash: \"example\"})",
+          "updated, err := client.APITokens().Update(ctx, uuid.NewV4(), &database.UpdateAPITokenInput{WorkspaceID: omittable.Set(uuid.NewV4())})"
+        ]
+      }
     },
     {
       "kind": "table",
@@ -810,12 +826,14 @@
           "hydration": "eager",
           "key_pattern": "taskr:activity:{id}",
           "invalidates_on": [
-            "Create",
             "Update",
-            "Delete",
-            "SoftDelete",
-            "Restore",
-            "Increment"
+            "UpdateMany",
+            "UpdateWhere",
+            "Upsert",
+            "UpsertMany",
+            "HardDelete",
+            "HardDeleteMany",
+            "HardDeleteWhere"
           ]
         },
         "events": null,
@@ -960,22 +978,6 @@
             }
           },
           {
-            "name": "Count",
-            "params": [
-              {
-                "name": "filter",
-                "type": "*ActivityFilter"
-              }
-            ],
-            "returns": "int64",
-            "errors": [
-              "tenancy.ErrMissing"
-            ],
-            "sql_bodies": {
-              "postgres": "SELECT COUNT(*) FROM \"public\".\"activity\" WHERE <filter>"
-            }
-          },
-          {
             "name": "Exists",
             "params": [
               {
@@ -1005,6 +1007,22 @@
             ],
             "sql_bodies": {
               "postgres": "SELECT EXISTS(SELECT 1 FROM \"public\".\"activity\" WHERE <filter>)"
+            }
+          },
+          {
+            "name": "Count",
+            "params": [
+              {
+                "name": "filter",
+                "type": "*ActivityFilter"
+              }
+            ],
+            "returns": "int64",
+            "errors": [
+              "tenancy.ErrMissing"
+            ],
+            "sql_bodies": {
+              "postgres": "SELECT COUNT(*) FROM \"public\".\"activity\" WHERE <filter>"
             }
           },
           {
@@ -1095,54 +1113,6 @@
             }
           },
           {
-            "name": "Upsert",
-            "params": [
-              {
-                "name": "input",
-                "type": "*CreateActivityInput"
-              },
-              {
-                "name": "target",
-                "type": "ActivityConflictTarget"
-              }
-            ],
-            "returns": "*Activity",
-            "errors": [
-              "ErrNilInput",
-              "ErrConstraintViolation",
-              "tenancy.ErrMissing",
-              "tenancy.ErrMismatch"
-            ],
-            "notes": "One method over the generated ActivityConflictTarget enum — the target argument selects the conflict columns at call time.",
-            "sql_bodies": {
-              "postgres": "INSERT INTO \"public\".\"activity\" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING \"id\""
-            }
-          },
-          {
-            "name": "UpsertMany",
-            "params": [
-              {
-                "name": "inputs",
-                "type": "[]*CreateActivityInput"
-              },
-              {
-                "name": "target",
-                "type": "ActivityConflictTarget"
-              }
-            ],
-            "returns": "[]*Activity",
-            "errors": [
-              "ErrNilInput",
-              "ErrConstraintViolation",
-              "tenancy.ErrMissing",
-              "tenancy.ErrMismatch"
-            ],
-            "notes": "Batched in generation.batch_size chunks over the same ActivityConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.",
-            "sql_bodies": {
-              "postgres": "INSERT INTO \"public\".\"activity\" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>"
-            }
-          },
-          {
             "name": "Update",
             "params": [
               {
@@ -1210,6 +1180,54 @@
             "notes": "Idempotent — returns an empty slice when no row matches. ErrEmptyFilter when the filter produces no conditions.",
             "sql_bodies": {
               "postgres": "UPDATE \"public\".\"activity\" SET <set> WHERE <filter> RETURNING \"id\""
+            }
+          },
+          {
+            "name": "Upsert",
+            "params": [
+              {
+                "name": "input",
+                "type": "*CreateActivityInput"
+              },
+              {
+                "name": "target",
+                "type": "ActivityConflictTarget"
+              }
+            ],
+            "returns": "*Activity",
+            "errors": [
+              "ErrNilInput",
+              "ErrConstraintViolation",
+              "tenancy.ErrMissing",
+              "tenancy.ErrMismatch"
+            ],
+            "notes": "One method over the generated ActivityConflictTarget enum — the target argument selects the conflict columns at call time.",
+            "sql_bodies": {
+              "postgres": "INSERT INTO \"public\".\"activity\" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING \"id\""
+            }
+          },
+          {
+            "name": "UpsertMany",
+            "params": [
+              {
+                "name": "inputs",
+                "type": "[]*CreateActivityInput"
+              },
+              {
+                "name": "target",
+                "type": "ActivityConflictTarget"
+              }
+            ],
+            "returns": "[]*Activity",
+            "errors": [
+              "ErrNilInput",
+              "ErrConstraintViolation",
+              "tenancy.ErrMissing",
+              "tenancy.ErrMismatch"
+            ],
+            "notes": "Batched in generation.batch_size chunks over the same ActivityConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.",
+            "sql_bodies": {
+              "postgres": "INSERT INTO \"public\".\"activity\" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>"
             }
           },
           {
@@ -1324,7 +1342,16 @@
           "WorkspaceID"
         ]
       },
-      "examples": {}
+      "examples": {
+        "read": [
+          "row, err := client.Activities().Get(ctx, uuid.NewV4())",
+          "rows, err := client.Activities().GetMany(ctx, &database.GetActivitiesInput{Filter: &database.ActivityFilter{Action: &comparator.String{Eq: new(\"example\")}}})"
+        ],
+        "write": [
+          "created, err := client.Activities().Create(ctx, &database.CreateActivityInput{EntityTable: \"example\", EntityID: uuid.NewV4(), Action: \"example\"})",
+          "updated, err := client.Activities().Update(ctx, uuid.NewV4(), &database.UpdateActivityInput{WorkspaceID: omittable.Set(uuid.NewV4())})"
+        ]
+      }
     },
     {
       "kind": "table",
@@ -1372,12 +1399,15 @@
           "hydration": "eager",
           "key_pattern": "taskr:attachment:{id}",
           "invalidates_on": [
-            "Create",
             "Update",
-            "Delete",
-            "SoftDelete",
-            "Restore",
-            "Increment"
+            "UpdateMany",
+            "UpdateWhere",
+            "Upsert",
+            "UpsertMany",
+            "Increment",
+            "HardDelete",
+            "HardDeleteMany",
+            "HardDeleteWhere"
           ]
         },
         "events": {
@@ -1550,22 +1580,6 @@
             }
           },
           {
-            "name": "Count",
-            "params": [
-              {
-                "name": "filter",
-                "type": "*AttachmentFilter"
-              }
-            ],
-            "returns": "int64",
-            "errors": [
-              "tenancy.ErrMissing"
-            ],
-            "sql_bodies": {
-              "postgres": "SELECT COUNT(*) FROM \"public\".\"attachments\" WHERE <filter>"
-            }
-          },
-          {
             "name": "Exists",
             "params": [
               {
@@ -1595,6 +1609,22 @@
             ],
             "sql_bodies": {
               "postgres": "SELECT EXISTS(SELECT 1 FROM \"public\".\"attachments\" WHERE <filter>)"
+            }
+          },
+          {
+            "name": "Count",
+            "params": [
+              {
+                "name": "filter",
+                "type": "*AttachmentFilter"
+              }
+            ],
+            "returns": "int64",
+            "errors": [
+              "tenancy.ErrMissing"
+            ],
+            "sql_bodies": {
+              "postgres": "SELECT COUNT(*) FROM \"public\".\"attachments\" WHERE <filter>"
             }
           },
           {
@@ -1685,54 +1715,6 @@
             }
           },
           {
-            "name": "Upsert",
-            "params": [
-              {
-                "name": "input",
-                "type": "*CreateAttachmentInput"
-              },
-              {
-                "name": "target",
-                "type": "AttachmentConflictTarget"
-              }
-            ],
-            "returns": "*Attachment",
-            "errors": [
-              "ErrNilInput",
-              "ErrConstraintViolation",
-              "tenancy.ErrMissing",
-              "tenancy.ErrMismatch"
-            ],
-            "notes": "One method over the generated AttachmentConflictTarget enum — the target argument selects the conflict columns at call time.",
-            "sql_bodies": {
-              "postgres": "INSERT INTO \"public\".\"attachments\" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING \"id\""
-            }
-          },
-          {
-            "name": "UpsertMany",
-            "params": [
-              {
-                "name": "inputs",
-                "type": "[]*CreateAttachmentInput"
-              },
-              {
-                "name": "target",
-                "type": "AttachmentConflictTarget"
-              }
-            ],
-            "returns": "[]*Attachment",
-            "errors": [
-              "ErrNilInput",
-              "ErrConstraintViolation",
-              "tenancy.ErrMissing",
-              "tenancy.ErrMismatch"
-            ],
-            "notes": "Batched in generation.batch_size chunks over the same AttachmentConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.",
-            "sql_bodies": {
-              "postgres": "INSERT INTO \"public\".\"attachments\" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>"
-            }
-          },
-          {
             "name": "Update",
             "params": [
               {
@@ -1800,6 +1782,54 @@
             "notes": "Idempotent — returns an empty slice when no row matches. ErrEmptyFilter when the filter produces no conditions.",
             "sql_bodies": {
               "postgres": "UPDATE \"public\".\"attachments\" SET <set> WHERE <filter> RETURNING \"id\""
+            }
+          },
+          {
+            "name": "Upsert",
+            "params": [
+              {
+                "name": "input",
+                "type": "*CreateAttachmentInput"
+              },
+              {
+                "name": "target",
+                "type": "AttachmentConflictTarget"
+              }
+            ],
+            "returns": "*Attachment",
+            "errors": [
+              "ErrNilInput",
+              "ErrConstraintViolation",
+              "tenancy.ErrMissing",
+              "tenancy.ErrMismatch"
+            ],
+            "notes": "One method over the generated AttachmentConflictTarget enum — the target argument selects the conflict columns at call time.",
+            "sql_bodies": {
+              "postgres": "INSERT INTO \"public\".\"attachments\" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING \"id\""
+            }
+          },
+          {
+            "name": "UpsertMany",
+            "params": [
+              {
+                "name": "inputs",
+                "type": "[]*CreateAttachmentInput"
+              },
+              {
+                "name": "target",
+                "type": "AttachmentConflictTarget"
+              }
+            ],
+            "returns": "[]*Attachment",
+            "errors": [
+              "ErrNilInput",
+              "ErrConstraintViolation",
+              "tenancy.ErrMissing",
+              "tenancy.ErrMismatch"
+            ],
+            "notes": "Batched in generation.batch_size chunks over the same AttachmentConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.",
+            "sql_bodies": {
+              "postgres": "INSERT INTO \"public\".\"attachments\" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>"
             }
           },
           {
@@ -1946,7 +1976,16 @@
           "WorkspaceID"
         ]
       },
-      "examples": {}
+      "examples": {
+        "read": [
+          "row, err := client.Attachments().Get(ctx, uuid.NewV4())",
+          "rows, err := client.Attachments().GetMany(ctx, &database.GetAttachmentsInput{Filter: &database.AttachmentFilter{ContentType: &comparator.String{Eq: new(\"example\")}}})"
+        ],
+        "write": [
+          "created, err := client.Attachments().Create(ctx, &database.CreateAttachmentInput{EntityType: database.AttachmentEntityType(\"task\"), EntityID: uuid.NewV4(), UploadedBy: uuid.NewV4(), FileName: \"example\", ContentType: \"example\", SizeBytes: 1, StorageURL: \"example\"})",
+          "updated, err := client.Attachments().Update(ctx, uuid.NewV4(), &database.UpdateAttachmentInput{WorkspaceID: omittable.Set(uuid.NewV4())})"
+        ]
+      }
     },
     {
       "kind": "table",
@@ -1993,12 +2032,14 @@
           "hydration": "eager",
           "key_pattern": "taskr:comment:{id}",
           "invalidates_on": [
-            "Create",
             "Update",
-            "Delete",
-            "SoftDelete",
-            "Restore",
-            "Increment"
+            "UpdateMany",
+            "UpdateWhere",
+            "Upsert",
+            "UpsertMany",
+            "HardDelete",
+            "HardDeleteMany",
+            "HardDeleteWhere"
           ]
         },
         "events": {
@@ -2113,7 +2154,12 @@
           "fk": {
             "table": "attachments",
             "schema": "public",
-            "column": "entity_id"
+            "columns": [
+              "entity_id"
+            ],
+            "references": [
+              "id"
+            ]
           },
           "filter": "entity_type = 'comment'"
         }
@@ -2155,22 +2201,6 @@
             }
           },
           {
-            "name": "Count",
-            "params": [
-              {
-                "name": "filter",
-                "type": "*CommentFilter"
-              }
-            ],
-            "returns": "int64",
-            "errors": [
-              "tenancy.ErrMissing"
-            ],
-            "sql_bodies": {
-              "postgres": "SELECT COUNT(*) FROM \"public\".\"comments\" WHERE <filter>"
-            }
-          },
-          {
             "name": "Exists",
             "params": [
               {
@@ -2200,6 +2230,22 @@
             ],
             "sql_bodies": {
               "postgres": "SELECT EXISTS(SELECT 1 FROM \"public\".\"comments\" WHERE <filter>)"
+            }
+          },
+          {
+            "name": "Count",
+            "params": [
+              {
+                "name": "filter",
+                "type": "*CommentFilter"
+              }
+            ],
+            "returns": "int64",
+            "errors": [
+              "tenancy.ErrMissing"
+            ],
+            "sql_bodies": {
+              "postgres": "SELECT COUNT(*) FROM \"public\".\"comments\" WHERE <filter>"
             }
           },
           {
@@ -2290,54 +2336,6 @@
             }
           },
           {
-            "name": "Upsert",
-            "params": [
-              {
-                "name": "input",
-                "type": "*CreateCommentInput"
-              },
-              {
-                "name": "target",
-                "type": "CommentConflictTarget"
-              }
-            ],
-            "returns": "*Comment",
-            "errors": [
-              "ErrNilInput",
-              "ErrConstraintViolation",
-              "tenancy.ErrMissing",
-              "tenancy.ErrMismatch"
-            ],
-            "notes": "One method over the generated CommentConflictTarget enum — the target argument selects the conflict columns at call time.",
-            "sql_bodies": {
-              "postgres": "INSERT INTO \"public\".\"comments\" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING \"id\""
-            }
-          },
-          {
-            "name": "UpsertMany",
-            "params": [
-              {
-                "name": "inputs",
-                "type": "[]*CreateCommentInput"
-              },
-              {
-                "name": "target",
-                "type": "CommentConflictTarget"
-              }
-            ],
-            "returns": "[]*Comment",
-            "errors": [
-              "ErrNilInput",
-              "ErrConstraintViolation",
-              "tenancy.ErrMissing",
-              "tenancy.ErrMismatch"
-            ],
-            "notes": "Batched in generation.batch_size chunks over the same CommentConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.",
-            "sql_bodies": {
-              "postgres": "INSERT INTO \"public\".\"comments\" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>"
-            }
-          },
-          {
             "name": "Update",
             "params": [
               {
@@ -2405,6 +2403,54 @@
             "notes": "Idempotent — returns an empty slice when no row matches. ErrEmptyFilter when the filter produces no conditions.",
             "sql_bodies": {
               "postgres": "UPDATE \"public\".\"comments\" SET <set> WHERE <filter> RETURNING \"id\""
+            }
+          },
+          {
+            "name": "Upsert",
+            "params": [
+              {
+                "name": "input",
+                "type": "*CreateCommentInput"
+              },
+              {
+                "name": "target",
+                "type": "CommentConflictTarget"
+              }
+            ],
+            "returns": "*Comment",
+            "errors": [
+              "ErrNilInput",
+              "ErrConstraintViolation",
+              "tenancy.ErrMissing",
+              "tenancy.ErrMismatch"
+            ],
+            "notes": "One method over the generated CommentConflictTarget enum — the target argument selects the conflict columns at call time.",
+            "sql_bodies": {
+              "postgres": "INSERT INTO \"public\".\"comments\" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING \"id\""
+            }
+          },
+          {
+            "name": "UpsertMany",
+            "params": [
+              {
+                "name": "inputs",
+                "type": "[]*CreateCommentInput"
+              },
+              {
+                "name": "target",
+                "type": "CommentConflictTarget"
+              }
+            ],
+            "returns": "[]*Comment",
+            "errors": [
+              "ErrNilInput",
+              "ErrConstraintViolation",
+              "tenancy.ErrMissing",
+              "tenancy.ErrMismatch"
+            ],
+            "notes": "Batched in generation.batch_size chunks over the same CommentConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.",
+            "sql_bodies": {
+              "postgres": "INSERT INTO \"public\".\"comments\" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>"
             }
           },
           {
@@ -2514,7 +2560,16 @@
           "WorkspaceID"
         ]
       },
-      "examples": {}
+      "examples": {
+        "read": [
+          "row, err := client.Comments().Get(ctx, uuid.NewV4())",
+          "rows, err := client.Comments().GetMany(ctx, &database.GetCommentsInput{Filter: &database.CommentFilter{Body: &comparator.String{Eq: new(\"example\")}}})"
+        ],
+        "write": [
+          "created, err := client.Comments().Create(ctx, &database.CreateCommentInput{TaskID: uuid.NewV4(), AuthorID: uuid.NewV4(), Body: \"example\"})",
+          "updated, err := client.Comments().Update(ctx, uuid.NewV4(), &database.UpdateCommentInput{WorkspaceID: omittable.Set(uuid.NewV4())})"
+        ]
+      }
     },
     {
       "kind": "table",
@@ -2570,12 +2625,14 @@
           "hydration": "eager",
           "key_pattern": "taskr:cycle:{id}",
           "invalidates_on": [
-            "Create",
             "Update",
-            "Delete",
-            "SoftDelete",
-            "Restore",
-            "Increment"
+            "UpdateMany",
+            "UpdateWhere",
+            "Upsert",
+            "UpsertMany",
+            "HardDelete",
+            "HardDeleteMany",
+            "HardDeleteWhere"
           ]
         },
         "events": {
@@ -2714,7 +2771,15 @@
           "fk": {
             "table": "tasks",
             "schema": "public",
-            "column": "cycle_id"
+            "columns": [
+              "workspace_id",
+              "cycle_id"
+            ],
+            "references": [
+              "workspace_id",
+              "id"
+            ],
+            "constraint": "tasks_cycle_same_ws"
           }
         }
       ],
@@ -2755,22 +2820,6 @@
             }
           },
           {
-            "name": "Count",
-            "params": [
-              {
-                "name": "filter",
-                "type": "*CycleFilter"
-              }
-            ],
-            "returns": "int64",
-            "errors": [
-              "tenancy.ErrMissing"
-            ],
-            "sql_bodies": {
-              "postgres": "SELECT COUNT(*) FROM \"public\".\"cycles\" WHERE <filter>"
-            }
-          },
-          {
             "name": "Exists",
             "params": [
               {
@@ -2800,6 +2849,22 @@
             ],
             "sql_bodies": {
               "postgres": "SELECT EXISTS(SELECT 1 FROM \"public\".\"cycles\" WHERE <filter>)"
+            }
+          },
+          {
+            "name": "Count",
+            "params": [
+              {
+                "name": "filter",
+                "type": "*CycleFilter"
+              }
+            ],
+            "returns": "int64",
+            "errors": [
+              "tenancy.ErrMissing"
+            ],
+            "sql_bodies": {
+              "postgres": "SELECT COUNT(*) FROM \"public\".\"cycles\" WHERE <filter>"
             }
           },
           {
@@ -2890,54 +2955,6 @@
             }
           },
           {
-            "name": "Upsert",
-            "params": [
-              {
-                "name": "input",
-                "type": "*CreateCycleInput"
-              },
-              {
-                "name": "target",
-                "type": "CycleConflictTarget"
-              }
-            ],
-            "returns": "*Cycle",
-            "errors": [
-              "ErrNilInput",
-              "ErrConstraintViolation",
-              "tenancy.ErrMissing",
-              "tenancy.ErrMismatch"
-            ],
-            "notes": "One method over the generated CycleConflictTarget enum — the target argument selects the conflict columns at call time.",
-            "sql_bodies": {
-              "postgres": "INSERT INTO \"public\".\"cycles\" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING \"id\""
-            }
-          },
-          {
-            "name": "UpsertMany",
-            "params": [
-              {
-                "name": "inputs",
-                "type": "[]*CreateCycleInput"
-              },
-              {
-                "name": "target",
-                "type": "CycleConflictTarget"
-              }
-            ],
-            "returns": "[]*Cycle",
-            "errors": [
-              "ErrNilInput",
-              "ErrConstraintViolation",
-              "tenancy.ErrMissing",
-              "tenancy.ErrMismatch"
-            ],
-            "notes": "Batched in generation.batch_size chunks over the same CycleConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.",
-            "sql_bodies": {
-              "postgres": "INSERT INTO \"public\".\"cycles\" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>"
-            }
-          },
-          {
             "name": "Update",
             "params": [
               {
@@ -3008,6 +3025,77 @@
             }
           },
           {
+            "name": "Upsert",
+            "params": [
+              {
+                "name": "input",
+                "type": "*CreateCycleInput"
+              },
+              {
+                "name": "target",
+                "type": "CycleConflictTarget"
+              }
+            ],
+            "returns": "*Cycle",
+            "errors": [
+              "ErrNilInput",
+              "ErrConstraintViolation",
+              "tenancy.ErrMissing",
+              "tenancy.ErrMismatch"
+            ],
+            "notes": "One method over the generated CycleConflictTarget enum — the target argument selects the conflict columns at call time.",
+            "sql_bodies": {
+              "postgres": "INSERT INTO \"public\".\"cycles\" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING \"id\""
+            }
+          },
+          {
+            "name": "UpsertMany",
+            "params": [
+              {
+                "name": "inputs",
+                "type": "[]*CreateCycleInput"
+              },
+              {
+                "name": "target",
+                "type": "CycleConflictTarget"
+              }
+            ],
+            "returns": "[]*Cycle",
+            "errors": [
+              "ErrNilInput",
+              "ErrConstraintViolation",
+              "tenancy.ErrMissing",
+              "tenancy.ErrMismatch"
+            ],
+            "notes": "Batched in generation.batch_size chunks over the same CycleConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.",
+            "sql_bodies": {
+              "postgres": "INSERT INTO \"public\".\"cycles\" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>"
+            }
+          },
+          {
+            "name": "UpdateWithRelated",
+            "params": [
+              {
+                "name": "id",
+                "type": "uuid.UUID"
+              },
+              {
+                "name": "input",
+                "type": "*UpdateCycleWithRelatedInput"
+              }
+            ],
+            "returns": "*Cycle",
+            "errors": [
+              "ErrNilInput",
+              "ErrNotFound",
+              "ErrNestedVerbConflict",
+              "ErrConstraintViolation",
+              "tenancy.ErrMissing",
+              "tenancy.ErrMismatch"
+            ],
+            "notes": "Writes the parent and its nested rows in one transaction — a SAVEPOINT when ctx already holds one. Issues no statement of its own: it composes Update and, per eligible relationship (Tasks), the target's and junction's own client methods, so no sql_bodies entry. Each inner call fires its own hooks, events and cache invalidation under its own op; the nested method has none."
+          },
+          {
             "name": "HardDelete",
             "params": [
               {
@@ -3058,29 +3146,6 @@
             "sql_bodies": {
               "postgres": "DELETE FROM \"public\".\"cycles\" WHERE <filter> RETURNING \"id\""
             }
-          },
-          {
-            "name": "UpdateWithRelated",
-            "params": [
-              {
-                "name": "id",
-                "type": "uuid.UUID"
-              },
-              {
-                "name": "input",
-                "type": "*UpdateCycleWithRelatedInput"
-              }
-            ],
-            "returns": "*Cycle",
-            "errors": [
-              "ErrNilInput",
-              "ErrNotFound",
-              "ErrNestedVerbConflict",
-              "ErrConstraintViolation",
-              "tenancy.ErrMissing",
-              "tenancy.ErrMismatch"
-            ],
-            "notes": "Writes the parent and its nested rows in one transaction — a SAVEPOINT when ctx already holds one. Issues no statement of its own: it composes Update and, per eligible relationship (Tasks), the target's and junction's own client methods, so no sql_bodies entry. Each inner call fires its own hooks, events and cache invalidation under its own op; the nested method has none."
           }
         ]
       },
@@ -3147,7 +3212,16 @@
           "WorkspaceID"
         ]
       },
-      "examples": {}
+      "examples": {
+        "read": [
+          "row, err := client.Cycles().Get(ctx, uuid.NewV4())",
+          "rows, err := client.Cycles().GetMany(ctx, &database.GetCyclesInput{Filter: &database.CycleFilter{Name: &comparator.String{Eq: new(\"example\")}}})"
+        ],
+        "write": [
+          "created, err := client.Cycles().Create(ctx, &database.CreateCycleInput{Name: \"example\", StartsOn: time.Now(), EndsOn: time.Now()})",
+          "updated, err := client.Cycles().Update(ctx, uuid.NewV4(), &database.UpdateCycleInput{WorkspaceID: omittable.Set(uuid.NewV4())})"
+        ]
+      }
     },
     {
       "kind": "table",
@@ -3202,12 +3276,14 @@
           "hydration": "eager",
           "key_pattern": "taskr:invitation:{id}",
           "invalidates_on": [
-            "Create",
             "Update",
-            "Delete",
-            "SoftDelete",
-            "Restore",
-            "Increment"
+            "UpdateMany",
+            "UpdateWhere",
+            "Upsert",
+            "UpsertMany",
+            "HardDelete",
+            "HardDeleteMany",
+            "HardDeleteWhere"
           ]
         },
         "events": {
@@ -3389,22 +3465,6 @@
             }
           },
           {
-            "name": "Count",
-            "params": [
-              {
-                "name": "filter",
-                "type": "*InvitationFilter"
-              }
-            ],
-            "returns": "int64",
-            "errors": [
-              "tenancy.ErrMissing"
-            ],
-            "sql_bodies": {
-              "postgres": "SELECT COUNT(*) FROM \"public\".\"invitations\" WHERE <filter>"
-            }
-          },
-          {
             "name": "Exists",
             "params": [
               {
@@ -3434,6 +3494,22 @@
             ],
             "sql_bodies": {
               "postgres": "SELECT EXISTS(SELECT 1 FROM \"public\".\"invitations\" WHERE <filter>)"
+            }
+          },
+          {
+            "name": "Count",
+            "params": [
+              {
+                "name": "filter",
+                "type": "*InvitationFilter"
+              }
+            ],
+            "returns": "int64",
+            "errors": [
+              "tenancy.ErrMissing"
+            ],
+            "sql_bodies": {
+              "postgres": "SELECT COUNT(*) FROM \"public\".\"invitations\" WHERE <filter>"
             }
           },
           {
@@ -3524,54 +3600,6 @@
             }
           },
           {
-            "name": "Upsert",
-            "params": [
-              {
-                "name": "input",
-                "type": "*CreateInvitationInput"
-              },
-              {
-                "name": "target",
-                "type": "InvitationConflictTarget"
-              }
-            ],
-            "returns": "*Invitation",
-            "errors": [
-              "ErrNilInput",
-              "ErrConstraintViolation",
-              "tenancy.ErrMissing",
-              "tenancy.ErrMismatch"
-            ],
-            "notes": "One method over the generated InvitationConflictTarget enum — the target argument selects the conflict columns at call time.",
-            "sql_bodies": {
-              "postgres": "INSERT INTO \"public\".\"invitations\" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING \"id\""
-            }
-          },
-          {
-            "name": "UpsertMany",
-            "params": [
-              {
-                "name": "inputs",
-                "type": "[]*CreateInvitationInput"
-              },
-              {
-                "name": "target",
-                "type": "InvitationConflictTarget"
-              }
-            ],
-            "returns": "[]*Invitation",
-            "errors": [
-              "ErrNilInput",
-              "ErrConstraintViolation",
-              "tenancy.ErrMissing",
-              "tenancy.ErrMismatch"
-            ],
-            "notes": "Batched in generation.batch_size chunks over the same InvitationConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.",
-            "sql_bodies": {
-              "postgres": "INSERT INTO \"public\".\"invitations\" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>"
-            }
-          },
-          {
             "name": "Update",
             "params": [
               {
@@ -3639,6 +3667,54 @@
             "notes": "Idempotent — returns an empty slice when no row matches. ErrEmptyFilter when the filter produces no conditions.",
             "sql_bodies": {
               "postgres": "UPDATE \"public\".\"invitations\" SET <set> WHERE <filter> RETURNING \"id\""
+            }
+          },
+          {
+            "name": "Upsert",
+            "params": [
+              {
+                "name": "input",
+                "type": "*CreateInvitationInput"
+              },
+              {
+                "name": "target",
+                "type": "InvitationConflictTarget"
+              }
+            ],
+            "returns": "*Invitation",
+            "errors": [
+              "ErrNilInput",
+              "ErrConstraintViolation",
+              "tenancy.ErrMissing",
+              "tenancy.ErrMismatch"
+            ],
+            "notes": "One method over the generated InvitationConflictTarget enum — the target argument selects the conflict columns at call time.",
+            "sql_bodies": {
+              "postgres": "INSERT INTO \"public\".\"invitations\" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING \"id\""
+            }
+          },
+          {
+            "name": "UpsertMany",
+            "params": [
+              {
+                "name": "inputs",
+                "type": "[]*CreateInvitationInput"
+              },
+              {
+                "name": "target",
+                "type": "InvitationConflictTarget"
+              }
+            ],
+            "returns": "[]*Invitation",
+            "errors": [
+              "ErrNilInput",
+              "ErrConstraintViolation",
+              "tenancy.ErrMissing",
+              "tenancy.ErrMismatch"
+            ],
+            "notes": "Batched in generation.batch_size chunks over the same InvitationConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.",
+            "sql_bodies": {
+              "postgres": "INSERT INTO \"public\".\"invitations\" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>"
             }
           },
           {
@@ -3763,7 +3839,16 @@
           "WorkspaceID"
         ]
       },
-      "examples": {}
+      "examples": {
+        "read": [
+          "row, err := client.Invitations().Get(ctx, uuid.NewV4())",
+          "rows, err := client.Invitations().GetMany(ctx, &database.GetInvitationsInput{Filter: &database.InvitationFilter{Email: &comparator.String{Eq: new(\"example\")}}})"
+        ],
+        "write": [
+          "created, err := client.Invitations().Create(ctx, &database.CreateInvitationInput{Email: \"example\", Token: \"example\", InvitedBy: uuid.NewV4(), ExpiresAt: time.Now()})",
+          "updated, err := client.Invitations().Update(ctx, uuid.NewV4(), &database.UpdateInvitationInput{WorkspaceID: omittable.Set(uuid.NewV4())})"
+        ]
+      }
     },
     {
       "kind": "table",
@@ -3785,7 +3870,7 @@
           "method": "btree"
         },
         {
-          "name": "labels_workspace_id_name_idx",
+          "name": "labels_workspace_id_name_key",
           "columns": [
             "workspace_id",
             "name"
@@ -3811,12 +3896,14 @@
           "hydration": "eager",
           "key_pattern": "taskr:label:{id}",
           "invalidates_on": [
-            "Create",
             "Update",
-            "Delete",
-            "SoftDelete",
-            "Restore",
-            "Increment"
+            "UpdateMany",
+            "UpdateWhere",
+            "Upsert",
+            "UpsertMany",
+            "HardDelete",
+            "HardDeleteMany",
+            "HardDeleteWhere"
           ]
         },
         "events": {
@@ -3906,8 +3993,24 @@
           "junction": {
             "table": "task_labels",
             "schema": "public",
-            "local_fk": "label_id",
-            "target_fk": "task_id"
+            "local_fk": {
+              "columns": [
+                "label_id"
+              ],
+              "references": [
+                "id"
+              ],
+              "constraint": "task_labels_label_id_fkey"
+            },
+            "target_fk": {
+              "columns": [
+                "task_id"
+              ],
+              "references": [
+                "id"
+              ],
+              "constraint": "task_labels_task_id_fkey"
+            }
           }
         }
       ],
@@ -3948,22 +4051,6 @@
             }
           },
           {
-            "name": "Count",
-            "params": [
-              {
-                "name": "filter",
-                "type": "*LabelFilter"
-              }
-            ],
-            "returns": "int64",
-            "errors": [
-              "tenancy.ErrMissing"
-            ],
-            "sql_bodies": {
-              "postgres": "SELECT COUNT(*) FROM \"public\".\"labels\" WHERE <filter>"
-            }
-          },
-          {
             "name": "Exists",
             "params": [
               {
@@ -3993,6 +4080,22 @@
             ],
             "sql_bodies": {
               "postgres": "SELECT EXISTS(SELECT 1 FROM \"public\".\"labels\" WHERE <filter>)"
+            }
+          },
+          {
+            "name": "Count",
+            "params": [
+              {
+                "name": "filter",
+                "type": "*LabelFilter"
+              }
+            ],
+            "returns": "int64",
+            "errors": [
+              "tenancy.ErrMissing"
+            ],
+            "sql_bodies": {
+              "postgres": "SELECT COUNT(*) FROM \"public\".\"labels\" WHERE <filter>"
             }
           },
           {
@@ -4083,54 +4186,6 @@
             }
           },
           {
-            "name": "Upsert",
-            "params": [
-              {
-                "name": "input",
-                "type": "*CreateLabelInput"
-              },
-              {
-                "name": "target",
-                "type": "LabelConflictTarget"
-              }
-            ],
-            "returns": "*Label",
-            "errors": [
-              "ErrNilInput",
-              "ErrConstraintViolation",
-              "tenancy.ErrMissing",
-              "tenancy.ErrMismatch"
-            ],
-            "notes": "One method over the generated LabelConflictTarget enum — the target argument selects the conflict columns at call time.",
-            "sql_bodies": {
-              "postgres": "INSERT INTO \"public\".\"labels\" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING \"id\""
-            }
-          },
-          {
-            "name": "UpsertMany",
-            "params": [
-              {
-                "name": "inputs",
-                "type": "[]*CreateLabelInput"
-              },
-              {
-                "name": "target",
-                "type": "LabelConflictTarget"
-              }
-            ],
-            "returns": "[]*Label",
-            "errors": [
-              "ErrNilInput",
-              "ErrConstraintViolation",
-              "tenancy.ErrMissing",
-              "tenancy.ErrMismatch"
-            ],
-            "notes": "Batched in generation.batch_size chunks over the same LabelConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.",
-            "sql_bodies": {
-              "postgres": "INSERT INTO \"public\".\"labels\" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>"
-            }
-          },
-          {
             "name": "Update",
             "params": [
               {
@@ -4201,6 +4256,77 @@
             }
           },
           {
+            "name": "Upsert",
+            "params": [
+              {
+                "name": "input",
+                "type": "*CreateLabelInput"
+              },
+              {
+                "name": "target",
+                "type": "LabelConflictTarget"
+              }
+            ],
+            "returns": "*Label",
+            "errors": [
+              "ErrNilInput",
+              "ErrConstraintViolation",
+              "tenancy.ErrMissing",
+              "tenancy.ErrMismatch"
+            ],
+            "notes": "One method over the generated LabelConflictTarget enum — the target argument selects the conflict columns at call time.",
+            "sql_bodies": {
+              "postgres": "INSERT INTO \"public\".\"labels\" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING \"id\""
+            }
+          },
+          {
+            "name": "UpsertMany",
+            "params": [
+              {
+                "name": "inputs",
+                "type": "[]*CreateLabelInput"
+              },
+              {
+                "name": "target",
+                "type": "LabelConflictTarget"
+              }
+            ],
+            "returns": "[]*Label",
+            "errors": [
+              "ErrNilInput",
+              "ErrConstraintViolation",
+              "tenancy.ErrMissing",
+              "tenancy.ErrMismatch"
+            ],
+            "notes": "Batched in generation.batch_size chunks over the same LabelConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.",
+            "sql_bodies": {
+              "postgres": "INSERT INTO \"public\".\"labels\" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>"
+            }
+          },
+          {
+            "name": "UpdateWithRelated",
+            "params": [
+              {
+                "name": "id",
+                "type": "uuid.UUID"
+              },
+              {
+                "name": "input",
+                "type": "*UpdateLabelWithRelatedInput"
+              }
+            ],
+            "returns": "*Label",
+            "errors": [
+              "ErrNilInput",
+              "ErrNotFound",
+              "ErrNestedVerbConflict",
+              "ErrConstraintViolation",
+              "tenancy.ErrMissing",
+              "tenancy.ErrMismatch"
+            ],
+            "notes": "Writes the parent and its nested rows in one transaction — a SAVEPOINT when ctx already holds one. Issues no statement of its own: it composes Update and, per eligible relationship (Tasks), the target's and junction's own client methods, so no sql_bodies entry. Each inner call fires its own hooks, events and cache invalidation under its own op; the nested method has none."
+          },
+          {
             "name": "HardDelete",
             "params": [
               {
@@ -4251,29 +4377,6 @@
             "sql_bodies": {
               "postgres": "DELETE FROM \"public\".\"labels\" WHERE <filter> RETURNING \"id\""
             }
-          },
-          {
-            "name": "UpdateWithRelated",
-            "params": [
-              {
-                "name": "id",
-                "type": "uuid.UUID"
-              },
-              {
-                "name": "input",
-                "type": "*UpdateLabelWithRelatedInput"
-              }
-            ],
-            "returns": "*Label",
-            "errors": [
-              "ErrNilInput",
-              "ErrNotFound",
-              "ErrNestedVerbConflict",
-              "ErrConstraintViolation",
-              "tenancy.ErrMissing",
-              "tenancy.ErrMismatch"
-            ],
-            "notes": "Writes the parent and its nested rows in one transaction — a SAVEPOINT when ctx already holds one. Issues no statement of its own: it composes Update and, per eligible relationship (Tasks), the target's and junction's own client methods, so no sql_bodies entry. Each inner call fires its own hooks, events and cache invalidation under its own op; the nested method has none."
           }
         ]
       },
@@ -4320,7 +4423,16 @@
           "WorkspaceID"
         ]
       },
-      "examples": {}
+      "examples": {
+        "read": [
+          "row, err := client.Labels().Get(ctx, uuid.NewV4())",
+          "rows, err := client.Labels().GetMany(ctx, &database.GetLabelsInput{Filter: &database.LabelFilter{Color: &comparator.String{Eq: new(\"example\")}}})"
+        ],
+        "write": [
+          "created, err := client.Labels().Create(ctx, &database.CreateLabelInput{Name: \"example\"})",
+          "updated, err := client.Labels().Update(ctx, uuid.NewV4(), &database.UpdateLabelInput{WorkspaceID: omittable.Set(uuid.NewV4())})"
+        ]
+      }
     },
     {
       "kind": "table",
@@ -4366,12 +4478,14 @@
           "hydration": "eager",
           "key_pattern": "taskr:membership:{workspace_id}:{user_id}",
           "invalidates_on": [
-            "Create",
             "Update",
-            "Delete",
-            "SoftDelete",
-            "Restore",
-            "Increment"
+            "UpdateMany",
+            "UpdateWhere",
+            "Upsert",
+            "UpsertMany",
+            "HardDelete",
+            "HardDeleteMany",
+            "HardDeleteWhere"
           ]
         },
         "events": {
@@ -4495,22 +4609,6 @@
             }
           },
           {
-            "name": "Count",
-            "params": [
-              {
-                "name": "filter",
-                "type": "*MembershipFilter"
-              }
-            ],
-            "returns": "int64",
-            "errors": [
-              "tenancy.ErrMissing"
-            ],
-            "sql_bodies": {
-              "postgres": "SELECT COUNT(*) FROM \"public\".\"memberships\" WHERE <filter>"
-            }
-          },
-          {
             "name": "Exists",
             "params": [
               {
@@ -4541,6 +4639,22 @@
             ],
             "sql_bodies": {
               "postgres": "SELECT EXISTS(SELECT 1 FROM \"public\".\"memberships\" WHERE <filter>)"
+            }
+          },
+          {
+            "name": "Count",
+            "params": [
+              {
+                "name": "filter",
+                "type": "*MembershipFilter"
+              }
+            ],
+            "returns": "int64",
+            "errors": [
+              "tenancy.ErrMissing"
+            ],
+            "sql_bodies": {
+              "postgres": "SELECT COUNT(*) FROM \"public\".\"memberships\" WHERE <filter>"
             }
           },
           {
@@ -4631,54 +4745,6 @@
             }
           },
           {
-            "name": "Upsert",
-            "params": [
-              {
-                "name": "input",
-                "type": "*CreateMembershipInput"
-              },
-              {
-                "name": "target",
-                "type": "MembershipConflictTarget"
-              }
-            ],
-            "returns": "*Membership",
-            "errors": [
-              "ErrNilInput",
-              "ErrConstraintViolation",
-              "tenancy.ErrMissing",
-              "tenancy.ErrMismatch"
-            ],
-            "notes": "One method over the generated MembershipConflictTarget enum — the target argument selects the conflict columns at call time.",
-            "sql_bodies": {
-              "postgres": "INSERT INTO \"public\".\"memberships\" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>"
-            }
-          },
-          {
-            "name": "UpsertMany",
-            "params": [
-              {
-                "name": "inputs",
-                "type": "[]*CreateMembershipInput"
-              },
-              {
-                "name": "target",
-                "type": "MembershipConflictTarget"
-              }
-            ],
-            "returns": "[]*Membership",
-            "errors": [
-              "ErrNilInput",
-              "ErrConstraintViolation",
-              "tenancy.ErrMissing",
-              "tenancy.ErrMismatch"
-            ],
-            "notes": "Batched in generation.batch_size chunks over the same MembershipConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.",
-            "sql_bodies": {
-              "postgres": "INSERT INTO \"public\".\"memberships\" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>"
-            }
-          },
-          {
             "name": "Update",
             "params": [
               {
@@ -4745,6 +4811,54 @@
             "notes": "Idempotent — returns an empty slice when no row matches. ErrEmptyFilter when the filter produces no conditions.",
             "sql_bodies": {
               "postgres": "UPDATE \"public\".\"memberships\" SET <set> WHERE <filter> RETURNING \"workspace_id\", \"user_id\""
+            }
+          },
+          {
+            "name": "Upsert",
+            "params": [
+              {
+                "name": "input",
+                "type": "*CreateMembershipInput"
+              },
+              {
+                "name": "target",
+                "type": "MembershipConflictTarget"
+              }
+            ],
+            "returns": "*Membership",
+            "errors": [
+              "ErrNilInput",
+              "ErrConstraintViolation",
+              "tenancy.ErrMissing",
+              "tenancy.ErrMismatch"
+            ],
+            "notes": "One method over the generated MembershipConflictTarget enum — the target argument selects the conflict columns at call time.",
+            "sql_bodies": {
+              "postgres": "INSERT INTO \"public\".\"memberships\" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>"
+            }
+          },
+          {
+            "name": "UpsertMany",
+            "params": [
+              {
+                "name": "inputs",
+                "type": "[]*CreateMembershipInput"
+              },
+              {
+                "name": "target",
+                "type": "MembershipConflictTarget"
+              }
+            ],
+            "returns": "[]*Membership",
+            "errors": [
+              "ErrNilInput",
+              "ErrConstraintViolation",
+              "tenancy.ErrMissing",
+              "tenancy.ErrMismatch"
+            ],
+            "notes": "Batched in generation.batch_size chunks over the same MembershipConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.",
+            "sql_bodies": {
+              "postgres": "INSERT INTO \"public\".\"memberships\" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>"
             }
           },
           {
@@ -4846,7 +4960,16 @@
           "WorkspaceID"
         ]
       },
-      "examples": {}
+      "examples": {
+        "read": [
+          "row, err := client.Memberships().Get(ctx, database.MembershipPK{WorkspaceID: uuid.NewV4(), UserID: uuid.NewV4()})",
+          "rows, err := client.Memberships().GetMany(ctx, &database.GetMembershipsInput{Filter: &database.MembershipFilter{Role: &comparator.Enum[database.MembershipRole]{Eq: new(database.MembershipRole(\"owner\"))}}})"
+        ],
+        "write": [
+          "created, err := client.Memberships().Create(ctx, &database.CreateMembershipInput{WorkspaceID: uuid.NewV4(), UserID: uuid.NewV4()})",
+          "updated, err := client.Memberships().Update(ctx, database.MembershipPK{WorkspaceID: uuid.NewV4(), UserID: uuid.NewV4()}, &database.UpdateMembershipInput{Role: omittable.Set(database.MembershipRole(\"owner\"))})"
+        ]
+      }
     },
     {
       "kind": "table",
@@ -4904,12 +5027,20 @@
           "hydration": "eager",
           "key_pattern": "taskr:project:{id}",
           "invalidates_on": [
-            "Create",
             "Update",
-            "Delete",
+            "UpdateMany",
+            "UpdateWhere",
+            "Upsert",
+            "UpsertMany",
             "SoftDelete",
+            "SoftDeleteMany",
+            "SoftDeleteWhere",
             "Restore",
-            "Increment"
+            "RestoreMany",
+            "RestoreWhere",
+            "HardDelete",
+            "HardDeleteMany",
+            "HardDeleteWhere"
           ]
         },
         "events": {
@@ -5037,7 +5168,13 @@
           "fk": {
             "table": "tasks",
             "schema": "public",
-            "column": "project_id"
+            "columns": [
+              "project_id"
+            ],
+            "references": [
+              "id"
+            ],
+            "constraint": "tasks_project_id_fkey"
           }
         }
       ],
@@ -5078,22 +5215,6 @@
             }
           },
           {
-            "name": "Count",
-            "params": [
-              {
-                "name": "filter",
-                "type": "*ProjectFilter"
-              }
-            ],
-            "returns": "int64",
-            "errors": [
-              "tenancy.ErrMissing"
-            ],
-            "sql_bodies": {
-              "postgres": "SELECT COUNT(*) FROM \"public\".\"projects\" WHERE <filter> AND \"deleted_at\" IS NULL"
-            }
-          },
-          {
             "name": "Exists",
             "params": [
               {
@@ -5123,6 +5244,22 @@
             ],
             "sql_bodies": {
               "postgres": "SELECT EXISTS(SELECT 1 FROM \"public\".\"projects\" WHERE <filter> AND \"deleted_at\" IS NULL)"
+            }
+          },
+          {
+            "name": "Count",
+            "params": [
+              {
+                "name": "filter",
+                "type": "*ProjectFilter"
+              }
+            ],
+            "returns": "int64",
+            "errors": [
+              "tenancy.ErrMissing"
+            ],
+            "sql_bodies": {
+              "postgres": "SELECT COUNT(*) FROM \"public\".\"projects\" WHERE <filter> AND \"deleted_at\" IS NULL"
             }
           },
           {
@@ -5213,54 +5350,6 @@
             }
           },
           {
-            "name": "Upsert",
-            "params": [
-              {
-                "name": "input",
-                "type": "*CreateProjectInput"
-              },
-              {
-                "name": "target",
-                "type": "ProjectConflictTarget"
-              }
-            ],
-            "returns": "*Project",
-            "errors": [
-              "ErrNilInput",
-              "ErrConstraintViolation",
-              "tenancy.ErrMissing",
-              "tenancy.ErrMismatch"
-            ],
-            "notes": "One method over the generated ProjectConflictTarget enum — the target argument selects the conflict columns at call time.",
-            "sql_bodies": {
-              "postgres": "INSERT INTO \"public\".\"projects\" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING \"id\""
-            }
-          },
-          {
-            "name": "UpsertMany",
-            "params": [
-              {
-                "name": "inputs",
-                "type": "[]*CreateProjectInput"
-              },
-              {
-                "name": "target",
-                "type": "ProjectConflictTarget"
-              }
-            ],
-            "returns": "[]*Project",
-            "errors": [
-              "ErrNilInput",
-              "ErrConstraintViolation",
-              "tenancy.ErrMissing",
-              "tenancy.ErrMismatch"
-            ],
-            "notes": "Batched in generation.batch_size chunks over the same ProjectConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.",
-            "sql_bodies": {
-              "postgres": "INSERT INTO \"public\".\"projects\" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>"
-            }
-          },
-          {
             "name": "Update",
             "params": [
               {
@@ -5329,6 +5418,76 @@
             "sql_bodies": {
               "postgres": "UPDATE \"public\".\"projects\" SET <set> WHERE <filter> RETURNING \"id\""
             }
+          },
+          {
+            "name": "Upsert",
+            "params": [
+              {
+                "name": "input",
+                "type": "*CreateProjectInput"
+              },
+              {
+                "name": "target",
+                "type": "ProjectConflictTarget"
+              }
+            ],
+            "returns": "*Project",
+            "errors": [
+              "ErrNilInput",
+              "ErrConstraintViolation",
+              "tenancy.ErrMissing",
+              "tenancy.ErrMismatch"
+            ],
+            "notes": "One method over the generated ProjectConflictTarget enum — the target argument selects the conflict columns at call time.",
+            "sql_bodies": {
+              "postgres": "INSERT INTO \"public\".\"projects\" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING \"id\""
+            }
+          },
+          {
+            "name": "UpsertMany",
+            "params": [
+              {
+                "name": "inputs",
+                "type": "[]*CreateProjectInput"
+              },
+              {
+                "name": "target",
+                "type": "ProjectConflictTarget"
+              }
+            ],
+            "returns": "[]*Project",
+            "errors": [
+              "ErrNilInput",
+              "ErrConstraintViolation",
+              "tenancy.ErrMissing",
+              "tenancy.ErrMismatch"
+            ],
+            "notes": "Batched in generation.batch_size chunks over the same ProjectConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.",
+            "sql_bodies": {
+              "postgres": "INSERT INTO \"public\".\"projects\" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>"
+            }
+          },
+          {
+            "name": "UpdateWithRelated",
+            "params": [
+              {
+                "name": "id",
+                "type": "uuid.UUID"
+              },
+              {
+                "name": "input",
+                "type": "*UpdateProjectWithRelatedInput"
+              }
+            ],
+            "returns": "*Project",
+            "errors": [
+              "ErrNilInput",
+              "ErrNotFound",
+              "ErrConstraintViolation",
+              "tenancy.ErrMissing",
+              "tenancy.ErrMismatch"
+            ],
+            "notes": "Writes the parent and its nested rows in one transaction — a SAVEPOINT when ctx already holds one. Issues no statement of its own: it composes Update and, per eligible relationship (Tasks), the target's and junction's own client methods, so no sql_bodies entry. Each inner call fires its own hooks, events and cache invalidation under its own op; the nested method has none."
           },
           {
             "name": "SoftDelete",
@@ -5485,28 +5644,6 @@
             "sql_bodies": {
               "postgres": "DELETE FROM \"public\".\"projects\" WHERE <filter> RETURNING \"id\""
             }
-          },
-          {
-            "name": "UpdateWithRelated",
-            "params": [
-              {
-                "name": "id",
-                "type": "uuid.UUID"
-              },
-              {
-                "name": "input",
-                "type": "*UpdateProjectWithRelatedInput"
-              }
-            ],
-            "returns": "*Project",
-            "errors": [
-              "ErrNilInput",
-              "ErrNotFound",
-              "ErrConstraintViolation",
-              "tenancy.ErrMissing",
-              "tenancy.ErrMismatch"
-            ],
-            "notes": "Writes the parent and its nested rows in one transaction — a SAVEPOINT when ctx already holds one. Issues no statement of its own: it composes Update and, per eligible relationship (Tasks), the target's and junction's own client methods, so no sql_bodies entry. Each inner call fires its own hooks, events and cache invalidation under its own op; the nested method has none."
           }
         ]
       },
@@ -5568,7 +5705,16 @@
           "WorkspaceID"
         ]
       },
-      "examples": {}
+      "examples": {
+        "read": [
+          "row, err := client.Projects().Get(ctx, uuid.NewV4())",
+          "rows, err := client.Projects().GetMany(ctx, &database.GetProjectsInput{Filter: &database.ProjectFilter{Name: &comparator.String{Eq: new(\"example\")}}})"
+        ],
+        "write": [
+          "created, err := client.Projects().Create(ctx, &database.CreateProjectInput{Name: \"example\"})",
+          "updated, err := client.Projects().Update(ctx, uuid.NewV4(), &database.UpdateProjectInput{WorkspaceID: omittable.Set(uuid.NewV4())})"
+        ]
+      }
     },
     {
       "kind": "view",
@@ -5607,7 +5753,7 @@
           "name": "project_id",
           "go_field": "ProjectID",
           "go_type": "uuid.UUID",
-          "db_type": "uuid.UUID",
+          "db_type": "uuid",
           "nullable": false,
           "pk": true,
           "unique": false,
@@ -5618,11 +5764,11 @@
           "name": "workspace_id",
           "go_field": "WorkspaceID",
           "go_type": "uuid.UUID",
-          "db_type": "uuid.UUID",
+          "db_type": "uuid",
           "nullable": false,
           "pk": false,
           "unique": false,
-          "comparator": "comparator.String",
+          "comparator": "comparator.ID",
           "comment": ""
         },
         {
@@ -5765,7 +5911,7 @@
           },
           {
             "name": "WorkspaceID",
-            "type": "*comparator.String"
+            "type": "*comparator.ID"
           },
           {
             "name": "And",
@@ -5785,6 +5931,12 @@
           "ProjectID",
           "TotalTasks",
           "WorkspaceID"
+        ]
+      },
+      "examples": {
+        "read": [
+          "row, err := client.ProjectStat().Get(ctx, uuid.NewV4())",
+          "rows, err := client.ProjectStat().GetMany(ctx, &database.GetProjectStatsInput{Filter: &database.ProjectStatFilter{DoneTasks: &comparator.Number[int64]{Eq: new(int64(1))}}})"
         ]
       }
     },
@@ -5808,7 +5960,7 @@
           "method": "btree"
         },
         {
-          "name": "sso_connections_workspace_id_provider_idx",
+          "name": "sso_connections_workspace_id_provider_key",
           "columns": [
             "workspace_id",
             "provider"
@@ -5834,12 +5986,14 @@
           "hydration": "eager",
           "key_pattern": "taskr:ssoconnection:{id}",
           "invalidates_on": [
-            "Create",
             "Update",
-            "Delete",
-            "SoftDelete",
-            "Restore",
-            "Increment"
+            "UpdateMany",
+            "UpdateWhere",
+            "Upsert",
+            "UpsertMany",
+            "HardDelete",
+            "HardDeleteMany",
+            "HardDeleteWhere"
           ]
         },
         "events": {
@@ -5988,22 +6142,6 @@
             }
           },
           {
-            "name": "Count",
-            "params": [
-              {
-                "name": "filter",
-                "type": "*SsoConnectionFilter"
-              }
-            ],
-            "returns": "int64",
-            "errors": [
-              "tenancy.ErrMissing"
-            ],
-            "sql_bodies": {
-              "postgres": "SELECT COUNT(*) FROM \"public\".\"sso_connections\" WHERE <filter>"
-            }
-          },
-          {
             "name": "Exists",
             "params": [
               {
@@ -6033,6 +6171,22 @@
             ],
             "sql_bodies": {
               "postgres": "SELECT EXISTS(SELECT 1 FROM \"public\".\"sso_connections\" WHERE <filter>)"
+            }
+          },
+          {
+            "name": "Count",
+            "params": [
+              {
+                "name": "filter",
+                "type": "*SsoConnectionFilter"
+              }
+            ],
+            "returns": "int64",
+            "errors": [
+              "tenancy.ErrMissing"
+            ],
+            "sql_bodies": {
+              "postgres": "SELECT COUNT(*) FROM \"public\".\"sso_connections\" WHERE <filter>"
             }
           },
           {
@@ -6123,54 +6277,6 @@
             }
           },
           {
-            "name": "Upsert",
-            "params": [
-              {
-                "name": "input",
-                "type": "*CreateSsoConnectionInput"
-              },
-              {
-                "name": "target",
-                "type": "SsoConnectionConflictTarget"
-              }
-            ],
-            "returns": "*SsoConnection",
-            "errors": [
-              "ErrNilInput",
-              "ErrConstraintViolation",
-              "tenancy.ErrMissing",
-              "tenancy.ErrMismatch"
-            ],
-            "notes": "One method over the generated SsoConnectionConflictTarget enum — the target argument selects the conflict columns at call time.",
-            "sql_bodies": {
-              "postgres": "INSERT INTO \"public\".\"sso_connections\" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING \"id\""
-            }
-          },
-          {
-            "name": "UpsertMany",
-            "params": [
-              {
-                "name": "inputs",
-                "type": "[]*CreateSsoConnectionInput"
-              },
-              {
-                "name": "target",
-                "type": "SsoConnectionConflictTarget"
-              }
-            ],
-            "returns": "[]*SsoConnection",
-            "errors": [
-              "ErrNilInput",
-              "ErrConstraintViolation",
-              "tenancy.ErrMissing",
-              "tenancy.ErrMismatch"
-            ],
-            "notes": "Batched in generation.batch_size chunks over the same SsoConnectionConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.",
-            "sql_bodies": {
-              "postgres": "INSERT INTO \"public\".\"sso_connections\" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>"
-            }
-          },
-          {
             "name": "Update",
             "params": [
               {
@@ -6238,6 +6344,54 @@
             "notes": "Idempotent — returns an empty slice when no row matches. ErrEmptyFilter when the filter produces no conditions.",
             "sql_bodies": {
               "postgres": "UPDATE \"public\".\"sso_connections\" SET <set> WHERE <filter> RETURNING \"id\""
+            }
+          },
+          {
+            "name": "Upsert",
+            "params": [
+              {
+                "name": "input",
+                "type": "*CreateSsoConnectionInput"
+              },
+              {
+                "name": "target",
+                "type": "SsoConnectionConflictTarget"
+              }
+            ],
+            "returns": "*SsoConnection",
+            "errors": [
+              "ErrNilInput",
+              "ErrConstraintViolation",
+              "tenancy.ErrMissing",
+              "tenancy.ErrMismatch"
+            ],
+            "notes": "One method over the generated SsoConnectionConflictTarget enum — the target argument selects the conflict columns at call time.",
+            "sql_bodies": {
+              "postgres": "INSERT INTO \"public\".\"sso_connections\" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING \"id\""
+            }
+          },
+          {
+            "name": "UpsertMany",
+            "params": [
+              {
+                "name": "inputs",
+                "type": "[]*CreateSsoConnectionInput"
+              },
+              {
+                "name": "target",
+                "type": "SsoConnectionConflictTarget"
+              }
+            ],
+            "returns": "[]*SsoConnection",
+            "errors": [
+              "ErrNilInput",
+              "ErrConstraintViolation",
+              "tenancy.ErrMissing",
+              "tenancy.ErrMismatch"
+            ],
+            "notes": "Batched in generation.batch_size chunks over the same SsoConnectionConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.",
+            "sql_bodies": {
+              "postgres": "INSERT INTO \"public\".\"sso_connections\" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>"
             }
           },
           {
@@ -6347,7 +6501,16 @@
           "WorkspaceID"
         ]
       },
-      "examples": {}
+      "examples": {
+        "read": [
+          "row, err := client.SsoConnections().Get(ctx, uuid.NewV4())",
+          "rows, err := client.SsoConnections().GetMany(ctx, &database.GetSsoConnectionsInput{Filter: &database.SsoConnectionFilter{Provider: &comparator.Enum[database.SsoProvider]{Eq: new(database.SsoProvider(\"saml\"))}}})"
+        ],
+        "write": [
+          "created, err := client.SsoConnections().Create(ctx, &database.CreateSsoConnectionInput{Provider: database.SsoProvider(\"saml\")})",
+          "updated, err := client.SsoConnections().Update(ctx, uuid.NewV4(), &database.UpdateSsoConnectionInput{WorkspaceID: omittable.Set(uuid.NewV4())})"
+        ]
+      }
     },
     {
       "kind": "table",
@@ -6422,12 +6585,20 @@
           "hydration": "eager",
           "key_pattern": "taskr:task:{id}",
           "invalidates_on": [
-            "Create",
             "Update",
-            "Delete",
+            "UpdateMany",
+            "UpdateWhere",
+            "Upsert",
+            "UpsertMany",
             "SoftDelete",
+            "SoftDeleteMany",
+            "SoftDeleteWhere",
             "Restore",
-            "Increment"
+            "RestoreMany",
+            "RestoreWhere",
+            "HardDelete",
+            "HardDeleteMany",
+            "HardDeleteWhere"
           ]
         },
         "events": {
@@ -6638,8 +6809,22 @@
           "junction": {
             "table": "task_assignees",
             "schema": "public",
-            "local_fk": "task_id",
-            "target_fk": "user_id"
+            "local_fk": {
+              "columns": [
+                "task_id"
+              ],
+              "references": [
+                "id"
+              ]
+            },
+            "target_fk": {
+              "columns": [
+                "user_id"
+              ],
+              "references": [
+                "id"
+              ]
+            }
           }
         },
         {
@@ -6649,7 +6834,12 @@
           "fk": {
             "table": "attachments",
             "schema": "public",
-            "column": "entity_id"
+            "columns": [
+              "entity_id"
+            ],
+            "references": [
+              "id"
+            ]
           },
           "filter": "entity_type = 'task'"
         },
@@ -6660,7 +6850,12 @@
           "fk": {
             "table": "tasks",
             "schema": "public",
-            "column": "parent_task_id"
+            "columns": [
+              "parent_task_id"
+            ],
+            "references": [
+              "id"
+            ]
           }
         },
         {
@@ -6670,8 +6865,22 @@
           "junction": {
             "table": "task_watchers",
             "schema": "public",
-            "local_fk": "task_id",
-            "target_fk": "user_id"
+            "local_fk": {
+              "columns": [
+                "task_id"
+              ],
+              "references": [
+                "id"
+              ]
+            },
+            "target_fk": {
+              "columns": [
+                "user_id"
+              ],
+              "references": [
+                "id"
+              ]
+            }
           }
         },
         {
@@ -6681,7 +6890,13 @@
           "fk": {
             "table": "comments",
             "schema": "public",
-            "column": "task_id"
+            "columns": [
+              "task_id"
+            ],
+            "references": [
+              "id"
+            ],
+            "constraint": "comments_task_id_fkey"
           }
         },
         {
@@ -6691,8 +6906,24 @@
           "junction": {
             "table": "task_dependencies",
             "schema": "public",
-            "local_fk": "task_id",
-            "target_fk": "depends_on_task_id"
+            "local_fk": {
+              "columns": [
+                "task_id"
+              ],
+              "references": [
+                "id"
+              ],
+              "constraint": "task_dependencies_task_id_fkey"
+            },
+            "target_fk": {
+              "columns": [
+                "depends_on_task_id"
+              ],
+              "references": [
+                "id"
+              ],
+              "constraint": "task_dependencies_depends_on_task_id_fkey"
+            }
           }
         },
         {
@@ -6702,8 +6933,24 @@
           "junction": {
             "table": "task_labels",
             "schema": "public",
-            "local_fk": "task_id",
-            "target_fk": "label_id"
+            "local_fk": {
+              "columns": [
+                "task_id"
+              ],
+              "references": [
+                "id"
+              ],
+              "constraint": "task_labels_task_id_fkey"
+            },
+            "target_fk": {
+              "columns": [
+                "label_id"
+              ],
+              "references": [
+                "id"
+              ],
+              "constraint": "task_labels_label_id_fkey"
+            }
           }
         },
         {
@@ -6713,8 +6960,24 @@
           "junction": {
             "table": "task_dependencies",
             "schema": "public",
-            "local_fk": "depends_on_task_id",
-            "target_fk": "task_id"
+            "local_fk": {
+              "columns": [
+                "depends_on_task_id"
+              ],
+              "references": [
+                "id"
+              ],
+              "constraint": "task_dependencies_depends_on_task_id_fkey"
+            },
+            "target_fk": {
+              "columns": [
+                "task_id"
+              ],
+              "references": [
+                "id"
+              ],
+              "constraint": "task_dependencies_task_id_fkey"
+            }
           }
         },
         {
@@ -6724,7 +6987,13 @@
           "fk": {
             "table": "time_entries",
             "schema": "public",
-            "column": "task_id"
+            "columns": [
+              "task_id"
+            ],
+            "references": [
+              "id"
+            ],
+            "constraint": "time_entries_task_id_fkey"
           }
         }
       ],
@@ -6765,22 +7034,6 @@
             }
           },
           {
-            "name": "Count",
-            "params": [
-              {
-                "name": "filter",
-                "type": "*TaskFilter"
-              }
-            ],
-            "returns": "int64",
-            "errors": [
-              "tenancy.ErrMissing"
-            ],
-            "sql_bodies": {
-              "postgres": "SELECT COUNT(*) FROM \"public\".\"tasks\" WHERE <filter> AND \"deleted_at\" IS NULL"
-            }
-          },
-          {
             "name": "Exists",
             "params": [
               {
@@ -6810,6 +7063,22 @@
             ],
             "sql_bodies": {
               "postgres": "SELECT EXISTS(SELECT 1 FROM \"public\".\"tasks\" WHERE <filter> AND \"deleted_at\" IS NULL)"
+            }
+          },
+          {
+            "name": "Count",
+            "params": [
+              {
+                "name": "filter",
+                "type": "*TaskFilter"
+              }
+            ],
+            "returns": "int64",
+            "errors": [
+              "tenancy.ErrMissing"
+            ],
+            "sql_bodies": {
+              "postgres": "SELECT COUNT(*) FROM \"public\".\"tasks\" WHERE <filter> AND \"deleted_at\" IS NULL"
             }
           },
           {
@@ -6900,54 +7169,6 @@
             }
           },
           {
-            "name": "Upsert",
-            "params": [
-              {
-                "name": "input",
-                "type": "*CreateTaskInput"
-              },
-              {
-                "name": "target",
-                "type": "TaskConflictTarget"
-              }
-            ],
-            "returns": "*Task",
-            "errors": [
-              "ErrNilInput",
-              "ErrConstraintViolation",
-              "tenancy.ErrMissing",
-              "tenancy.ErrMismatch"
-            ],
-            "notes": "One method over the generated TaskConflictTarget enum — the target argument selects the conflict columns at call time.",
-            "sql_bodies": {
-              "postgres": "INSERT INTO \"public\".\"tasks\" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING \"id\""
-            }
-          },
-          {
-            "name": "UpsertMany",
-            "params": [
-              {
-                "name": "inputs",
-                "type": "[]*CreateTaskInput"
-              },
-              {
-                "name": "target",
-                "type": "TaskConflictTarget"
-              }
-            ],
-            "returns": "[]*Task",
-            "errors": [
-              "ErrNilInput",
-              "ErrConstraintViolation",
-              "tenancy.ErrMissing",
-              "tenancy.ErrMismatch"
-            ],
-            "notes": "Batched in generation.batch_size chunks over the same TaskConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.",
-            "sql_bodies": {
-              "postgres": "INSERT INTO \"public\".\"tasks\" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>"
-            }
-          },
-          {
             "name": "Update",
             "params": [
               {
@@ -7016,6 +7237,77 @@
             "sql_bodies": {
               "postgres": "UPDATE \"public\".\"tasks\" SET <set> WHERE <filter> RETURNING \"id\""
             }
+          },
+          {
+            "name": "Upsert",
+            "params": [
+              {
+                "name": "input",
+                "type": "*CreateTaskInput"
+              },
+              {
+                "name": "target",
+                "type": "TaskConflictTarget"
+              }
+            ],
+            "returns": "*Task",
+            "errors": [
+              "ErrNilInput",
+              "ErrConstraintViolation",
+              "tenancy.ErrMissing",
+              "tenancy.ErrMismatch"
+            ],
+            "notes": "One method over the generated TaskConflictTarget enum — the target argument selects the conflict columns at call time.",
+            "sql_bodies": {
+              "postgres": "INSERT INTO \"public\".\"tasks\" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING \"id\""
+            }
+          },
+          {
+            "name": "UpsertMany",
+            "params": [
+              {
+                "name": "inputs",
+                "type": "[]*CreateTaskInput"
+              },
+              {
+                "name": "target",
+                "type": "TaskConflictTarget"
+              }
+            ],
+            "returns": "[]*Task",
+            "errors": [
+              "ErrNilInput",
+              "ErrConstraintViolation",
+              "tenancy.ErrMissing",
+              "tenancy.ErrMismatch"
+            ],
+            "notes": "Batched in generation.batch_size chunks over the same TaskConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.",
+            "sql_bodies": {
+              "postgres": "INSERT INTO \"public\".\"tasks\" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>"
+            }
+          },
+          {
+            "name": "UpdateWithRelated",
+            "params": [
+              {
+                "name": "id",
+                "type": "uuid.UUID"
+              },
+              {
+                "name": "input",
+                "type": "*UpdateTaskWithRelatedInput"
+              }
+            ],
+            "returns": "*Task",
+            "errors": [
+              "ErrNilInput",
+              "ErrNotFound",
+              "ErrNestedVerbConflict",
+              "ErrConstraintViolation",
+              "tenancy.ErrMissing",
+              "tenancy.ErrMismatch"
+            ],
+            "notes": "Writes the parent and its nested rows in one transaction — a SAVEPOINT when ctx already holds one. Issues no statement of its own: it composes Update and, per eligible relationship (Labels), the target's and junction's own client methods, so no sql_bodies entry. Each inner call fires its own hooks, events and cache invalidation under its own op; the nested method has none."
           },
           {
             "name": "SoftDelete",
@@ -7172,29 +7464,6 @@
             "sql_bodies": {
               "postgres": "DELETE FROM \"public\".\"tasks\" WHERE <filter> RETURNING \"id\""
             }
-          },
-          {
-            "name": "UpdateWithRelated",
-            "params": [
-              {
-                "name": "id",
-                "type": "uuid.UUID"
-              },
-              {
-                "name": "input",
-                "type": "*UpdateTaskWithRelatedInput"
-              }
-            ],
-            "returns": "*Task",
-            "errors": [
-              "ErrNilInput",
-              "ErrNotFound",
-              "ErrNestedVerbConflict",
-              "ErrConstraintViolation",
-              "tenancy.ErrMissing",
-              "tenancy.ErrMismatch"
-            ],
-            "notes": "Writes the parent and its nested rows in one transaction — a SAVEPOINT when ctx already holds one. Issues no statement of its own: it composes Update and, per eligible relationship (Labels), the target's and junction's own client methods, so no sql_bodies entry. Each inner call fires its own hooks, events and cache invalidation under its own op; the nested method has none."
           }
         ]
       },
@@ -7291,7 +7560,16 @@
           "WorkspaceID"
         ]
       },
-      "examples": {}
+      "examples": {
+        "read": [
+          "row, err := client.Tasks().Get(ctx, uuid.NewV4())",
+          "rows, err := client.Tasks().GetMany(ctx, &database.GetTasksInput{Filter: &database.TaskFilter{Title: &comparator.String{Eq: new(\"example\")}}})"
+        ],
+        "write": [
+          "created, err := client.Tasks().Create(ctx, &database.CreateTaskInput{ProjectID: uuid.NewV4(), ReporterID: uuid.NewV4(), Title: \"example\"})",
+          "updated, err := client.Tasks().Update(ctx, uuid.NewV4(), &database.UpdateTaskInput{WorkspaceID: omittable.Set(uuid.NewV4())})"
+        ]
+      }
     },
     {
       "kind": "table",
@@ -7337,12 +7615,14 @@
           "hydration": "eager",
           "key_pattern": "taskr:taskassignee:{task_id}:{user_id}",
           "invalidates_on": [
-            "Create",
             "Update",
-            "Delete",
-            "SoftDelete",
-            "Restore",
-            "Increment"
+            "UpdateMany",
+            "UpdateWhere",
+            "Upsert",
+            "UpsertMany",
+            "HardDelete",
+            "HardDeleteMany",
+            "HardDeleteWhere"
           ]
         },
         "events": {
@@ -7428,20 +7708,6 @@
             }
           },
           {
-            "name": "Count",
-            "params": [
-              {
-                "name": "filter",
-                "type": "*TaskAssigneeFilter"
-              }
-            ],
-            "returns": "int64",
-            "errors": [],
-            "sql_bodies": {
-              "postgres": "SELECT COUNT(*) FROM \"public\".\"task_assignees\" WHERE <filter>"
-            }
-          },
-          {
             "name": "Exists",
             "params": [
               {
@@ -7467,6 +7733,20 @@
             "errors": [],
             "sql_bodies": {
               "postgres": "SELECT EXISTS(SELECT 1 FROM \"public\".\"task_assignees\" WHERE <filter>)"
+            }
+          },
+          {
+            "name": "Count",
+            "params": [
+              {
+                "name": "filter",
+                "type": "*TaskAssigneeFilter"
+              }
+            ],
+            "returns": "int64",
+            "errors": [],
+            "sql_bodies": {
+              "postgres": "SELECT COUNT(*) FROM \"public\".\"task_assignees\" WHERE <filter>"
             }
           },
           {
@@ -7548,50 +7828,6 @@
             }
           },
           {
-            "name": "Upsert",
-            "params": [
-              {
-                "name": "input",
-                "type": "*CreateTaskAssigneeInput"
-              },
-              {
-                "name": "target",
-                "type": "TaskAssigneeConflictTarget"
-              }
-            ],
-            "returns": "*TaskAssignee",
-            "errors": [
-              "ErrNilInput",
-              "ErrConstraintViolation"
-            ],
-            "notes": "One method over the generated TaskAssigneeConflictTarget enum — the target argument selects the conflict columns at call time.",
-            "sql_bodies": {
-              "postgres": "INSERT INTO \"public\".\"task_assignees\" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>"
-            }
-          },
-          {
-            "name": "UpsertMany",
-            "params": [
-              {
-                "name": "inputs",
-                "type": "[]*CreateTaskAssigneeInput"
-              },
-              {
-                "name": "target",
-                "type": "TaskAssigneeConflictTarget"
-              }
-            ],
-            "returns": "[]*TaskAssignee",
-            "errors": [
-              "ErrNilInput",
-              "ErrConstraintViolation"
-            ],
-            "notes": "Batched in generation.batch_size chunks over the same TaskAssigneeConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.",
-            "sql_bodies": {
-              "postgres": "INSERT INTO \"public\".\"task_assignees\" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>"
-            }
-          },
-          {
             "name": "Update",
             "params": [
               {
@@ -7653,6 +7889,50 @@
             "notes": "Idempotent — returns an empty slice when no row matches. ErrEmptyFilter when the filter produces no conditions.",
             "sql_bodies": {
               "postgres": "UPDATE \"public\".\"task_assignees\" SET <set> WHERE <filter> RETURNING \"task_id\", \"user_id\""
+            }
+          },
+          {
+            "name": "Upsert",
+            "params": [
+              {
+                "name": "input",
+                "type": "*CreateTaskAssigneeInput"
+              },
+              {
+                "name": "target",
+                "type": "TaskAssigneeConflictTarget"
+              }
+            ],
+            "returns": "*TaskAssignee",
+            "errors": [
+              "ErrNilInput",
+              "ErrConstraintViolation"
+            ],
+            "notes": "One method over the generated TaskAssigneeConflictTarget enum — the target argument selects the conflict columns at call time.",
+            "sql_bodies": {
+              "postgres": "INSERT INTO \"public\".\"task_assignees\" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>"
+            }
+          },
+          {
+            "name": "UpsertMany",
+            "params": [
+              {
+                "name": "inputs",
+                "type": "[]*CreateTaskAssigneeInput"
+              },
+              {
+                "name": "target",
+                "type": "TaskAssigneeConflictTarget"
+              }
+            ],
+            "returns": "[]*TaskAssignee",
+            "errors": [
+              "ErrNilInput",
+              "ErrConstraintViolation"
+            ],
+            "notes": "Batched in generation.batch_size chunks over the same TaskAssigneeConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.",
+            "sql_bodies": {
+              "postgres": "INSERT INTO \"public\".\"task_assignees\" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>"
             }
           },
           {
@@ -7737,7 +8017,16 @@
           "UserID"
         ]
       },
-      "examples": {}
+      "examples": {
+        "read": [
+          "row, err := client.TaskAssignees().Get(ctx, database.TaskAssigneePK{TaskID: uuid.NewV4(), UserID: uuid.NewV4()})",
+          "rows, err := client.TaskAssignees().GetMany(ctx, &database.GetTaskAssigneesInput{Filter: &database.TaskAssigneeFilter{AssignedAt: &comparator.Time{Eq: new(time.Now())}}})"
+        ],
+        "write": [
+          "created, err := client.TaskAssignees().Create(ctx, &database.CreateTaskAssigneeInput{TaskID: uuid.NewV4(), UserID: uuid.NewV4()})",
+          "updated, err := client.TaskAssignees().Update(ctx, database.TaskAssigneePK{TaskID: uuid.NewV4(), UserID: uuid.NewV4()}, &database.UpdateTaskAssigneeInput{AssignedAt: omittable.Set(time.Now())})"
+        ]
+      }
     },
     {
       "kind": "table",
@@ -7791,12 +8080,14 @@
           "hydration": "eager",
           "key_pattern": "taskr:taskdependency:{task_id}:{depends_on_task_id}",
           "invalidates_on": [
-            "Create",
             "Update",
-            "Delete",
-            "SoftDelete",
-            "Restore",
-            "Increment"
+            "UpdateMany",
+            "UpdateWhere",
+            "Upsert",
+            "UpsertMany",
+            "HardDelete",
+            "HardDeleteMany",
+            "HardDeleteWhere"
           ]
         },
         "events": {
@@ -7897,20 +8188,6 @@
             }
           },
           {
-            "name": "Count",
-            "params": [
-              {
-                "name": "filter",
-                "type": "*TaskDependencyFilter"
-              }
-            ],
-            "returns": "int64",
-            "errors": [],
-            "sql_bodies": {
-              "postgres": "SELECT COUNT(*) FROM \"public\".\"task_dependencies\" WHERE <filter>"
-            }
-          },
-          {
             "name": "Exists",
             "params": [
               {
@@ -7936,6 +8213,20 @@
             "errors": [],
             "sql_bodies": {
               "postgres": "SELECT EXISTS(SELECT 1 FROM \"public\".\"task_dependencies\" WHERE <filter>)"
+            }
+          },
+          {
+            "name": "Count",
+            "params": [
+              {
+                "name": "filter",
+                "type": "*TaskDependencyFilter"
+              }
+            ],
+            "returns": "int64",
+            "errors": [],
+            "sql_bodies": {
+              "postgres": "SELECT COUNT(*) FROM \"public\".\"task_dependencies\" WHERE <filter>"
             }
           },
           {
@@ -8017,50 +8308,6 @@
             }
           },
           {
-            "name": "Upsert",
-            "params": [
-              {
-                "name": "input",
-                "type": "*CreateTaskDependencyInput"
-              },
-              {
-                "name": "target",
-                "type": "TaskDependencyConflictTarget"
-              }
-            ],
-            "returns": "*TaskDependency",
-            "errors": [
-              "ErrNilInput",
-              "ErrConstraintViolation"
-            ],
-            "notes": "One method over the generated TaskDependencyConflictTarget enum — the target argument selects the conflict columns at call time.",
-            "sql_bodies": {
-              "postgres": "INSERT INTO \"public\".\"task_dependencies\" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>"
-            }
-          },
-          {
-            "name": "UpsertMany",
-            "params": [
-              {
-                "name": "inputs",
-                "type": "[]*CreateTaskDependencyInput"
-              },
-              {
-                "name": "target",
-                "type": "TaskDependencyConflictTarget"
-              }
-            ],
-            "returns": "[]*TaskDependency",
-            "errors": [
-              "ErrNilInput",
-              "ErrConstraintViolation"
-            ],
-            "notes": "Batched in generation.batch_size chunks over the same TaskDependencyConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.",
-            "sql_bodies": {
-              "postgres": "INSERT INTO \"public\".\"task_dependencies\" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>"
-            }
-          },
-          {
             "name": "Update",
             "params": [
               {
@@ -8122,6 +8369,50 @@
             "notes": "Idempotent — returns an empty slice when no row matches. ErrEmptyFilter when the filter produces no conditions.",
             "sql_bodies": {
               "postgres": "UPDATE \"public\".\"task_dependencies\" SET <set> WHERE <filter> RETURNING \"task_id\", \"depends_on_task_id\""
+            }
+          },
+          {
+            "name": "Upsert",
+            "params": [
+              {
+                "name": "input",
+                "type": "*CreateTaskDependencyInput"
+              },
+              {
+                "name": "target",
+                "type": "TaskDependencyConflictTarget"
+              }
+            ],
+            "returns": "*TaskDependency",
+            "errors": [
+              "ErrNilInput",
+              "ErrConstraintViolation"
+            ],
+            "notes": "One method over the generated TaskDependencyConflictTarget enum — the target argument selects the conflict columns at call time.",
+            "sql_bodies": {
+              "postgres": "INSERT INTO \"public\".\"task_dependencies\" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>"
+            }
+          },
+          {
+            "name": "UpsertMany",
+            "params": [
+              {
+                "name": "inputs",
+                "type": "[]*CreateTaskDependencyInput"
+              },
+              {
+                "name": "target",
+                "type": "TaskDependencyConflictTarget"
+              }
+            ],
+            "returns": "[]*TaskDependency",
+            "errors": [
+              "ErrNilInput",
+              "ErrConstraintViolation"
+            ],
+            "notes": "Batched in generation.batch_size chunks over the same TaskDependencyConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.",
+            "sql_bodies": {
+              "postgres": "INSERT INTO \"public\".\"task_dependencies\" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>"
             }
           },
           {
@@ -8211,7 +8502,16 @@
           "Type"
         ]
       },
-      "examples": {}
+      "examples": {
+        "read": [
+          "row, err := client.TaskDependencies().Get(ctx, database.TaskDependencyPK{TaskID: uuid.NewV4(), DependsOnTaskID: uuid.NewV4()})",
+          "rows, err := client.TaskDependencies().GetMany(ctx, &database.GetTaskDependenciesInput{Filter: &database.TaskDependencyFilter{Type: &comparator.Enum[database.DependencyType]{Eq: new(database.DependencyType(\"blocks\"))}}})"
+        ],
+        "write": [
+          "created, err := client.TaskDependencies().Create(ctx, &database.CreateTaskDependencyInput{TaskID: uuid.NewV4(), DependsOnTaskID: uuid.NewV4()})",
+          "updated, err := client.TaskDependencies().Update(ctx, database.TaskDependencyPK{TaskID: uuid.NewV4(), DependsOnTaskID: uuid.NewV4()}, &database.UpdateTaskDependencyInput{Type: omittable.Set(database.DependencyType(\"blocks\"))})"
+        ]
+      }
     },
     {
       "kind": "table",
@@ -8257,12 +8557,14 @@
           "hydration": "eager",
           "key_pattern": "taskr:tasklabel:{task_id}:{label_id}",
           "invalidates_on": [
-            "Create",
             "Update",
-            "Delete",
-            "SoftDelete",
-            "Restore",
-            "Increment"
+            "UpdateMany",
+            "UpdateWhere",
+            "Upsert",
+            "UpsertMany",
+            "HardDelete",
+            "HardDeleteMany",
+            "HardDeleteWhere"
           ]
         },
         "events": {
@@ -8335,20 +8637,6 @@
             }
           },
           {
-            "name": "Count",
-            "params": [
-              {
-                "name": "filter",
-                "type": "*TaskLabelFilter"
-              }
-            ],
-            "returns": "int64",
-            "errors": [],
-            "sql_bodies": {
-              "postgres": "SELECT COUNT(*) FROM \"public\".\"task_labels\" WHERE <filter>"
-            }
-          },
-          {
             "name": "Exists",
             "params": [
               {
@@ -8374,6 +8662,20 @@
             "errors": [],
             "sql_bodies": {
               "postgres": "SELECT EXISTS(SELECT 1 FROM \"public\".\"task_labels\" WHERE <filter>)"
+            }
+          },
+          {
+            "name": "Count",
+            "params": [
+              {
+                "name": "filter",
+                "type": "*TaskLabelFilter"
+              }
+            ],
+            "returns": "int64",
+            "errors": [],
+            "sql_bodies": {
+              "postgres": "SELECT COUNT(*) FROM \"public\".\"task_labels\" WHERE <filter>"
             }
           },
           {
@@ -8455,50 +8757,6 @@
             }
           },
           {
-            "name": "Upsert",
-            "params": [
-              {
-                "name": "input",
-                "type": "*CreateTaskLabelInput"
-              },
-              {
-                "name": "target",
-                "type": "TaskLabelConflictTarget"
-              }
-            ],
-            "returns": "*TaskLabel",
-            "errors": [
-              "ErrNilInput",
-              "ErrConstraintViolation"
-            ],
-            "notes": "One method over the generated TaskLabelConflictTarget enum — the target argument selects the conflict columns at call time.",
-            "sql_bodies": {
-              "postgres": "INSERT INTO \"public\".\"task_labels\" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>"
-            }
-          },
-          {
-            "name": "UpsertMany",
-            "params": [
-              {
-                "name": "inputs",
-                "type": "[]*CreateTaskLabelInput"
-              },
-              {
-                "name": "target",
-                "type": "TaskLabelConflictTarget"
-              }
-            ],
-            "returns": "[]*TaskLabel",
-            "errors": [
-              "ErrNilInput",
-              "ErrConstraintViolation"
-            ],
-            "notes": "Batched in generation.batch_size chunks over the same TaskLabelConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.",
-            "sql_bodies": {
-              "postgres": "INSERT INTO \"public\".\"task_labels\" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>"
-            }
-          },
-          {
             "name": "Update",
             "params": [
               {
@@ -8560,6 +8818,50 @@
             "notes": "Idempotent — returns an empty slice when no row matches. ErrEmptyFilter when the filter produces no conditions.",
             "sql_bodies": {
               "postgres": "UPDATE \"public\".\"task_labels\" SET <set> WHERE <filter> RETURNING \"task_id\", \"label_id\""
+            }
+          },
+          {
+            "name": "Upsert",
+            "params": [
+              {
+                "name": "input",
+                "type": "*CreateTaskLabelInput"
+              },
+              {
+                "name": "target",
+                "type": "TaskLabelConflictTarget"
+              }
+            ],
+            "returns": "*TaskLabel",
+            "errors": [
+              "ErrNilInput",
+              "ErrConstraintViolation"
+            ],
+            "notes": "One method over the generated TaskLabelConflictTarget enum — the target argument selects the conflict columns at call time.",
+            "sql_bodies": {
+              "postgres": "INSERT INTO \"public\".\"task_labels\" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>"
+            }
+          },
+          {
+            "name": "UpsertMany",
+            "params": [
+              {
+                "name": "inputs",
+                "type": "[]*CreateTaskLabelInput"
+              },
+              {
+                "name": "target",
+                "type": "TaskLabelConflictTarget"
+              }
+            ],
+            "returns": "[]*TaskLabel",
+            "errors": [
+              "ErrNilInput",
+              "ErrConstraintViolation"
+            ],
+            "notes": "Batched in generation.batch_size chunks over the same TaskLabelConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.",
+            "sql_bodies": {
+              "postgres": "INSERT INTO \"public\".\"task_labels\" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>"
             }
           },
           {
@@ -8639,7 +8941,16 @@
           "TaskID"
         ]
       },
-      "examples": {}
+      "examples": {
+        "read": [
+          "row, err := client.TaskLabels().Get(ctx, database.TaskLabelPK{TaskID: uuid.NewV4(), LabelID: uuid.NewV4()})",
+          "rows, err := client.TaskLabels().GetMany(ctx, &database.GetTaskLabelsInput{Filter: &database.TaskLabelFilter{LabelID: &comparator.ID{Eq: new(\"123e4567-e89b-12d3-a456-426614174000\")}}})"
+        ],
+        "write": [
+          "created, err := client.TaskLabels().Create(ctx, &database.CreateTaskLabelInput{TaskID: uuid.NewV4(), LabelID: uuid.NewV4()})",
+          "updated, err := client.TaskLabels().Update(ctx, database.TaskLabelPK{TaskID: uuid.NewV4(), LabelID: uuid.NewV4()}, &database.UpdateTaskLabelInput{})"
+        ]
+      }
     },
     {
       "kind": "table",
@@ -8693,12 +9004,14 @@
           "hydration": "eager",
           "key_pattern": "taskr:taskwatcher:{task_id}:{user_id}",
           "invalidates_on": [
-            "Create",
             "Update",
-            "Delete",
-            "SoftDelete",
-            "Restore",
-            "Increment"
+            "UpdateMany",
+            "UpdateWhere",
+            "Upsert",
+            "UpsertMany",
+            "HardDelete",
+            "HardDeleteMany",
+            "HardDeleteWhere"
           ]
         },
         "events": {
@@ -8784,20 +9097,6 @@
             }
           },
           {
-            "name": "Count",
-            "params": [
-              {
-                "name": "filter",
-                "type": "*TaskWatcherFilter"
-              }
-            ],
-            "returns": "int64",
-            "errors": [],
-            "sql_bodies": {
-              "postgres": "SELECT COUNT(*) FROM \"public\".\"task_watchers\" WHERE <filter>"
-            }
-          },
-          {
             "name": "Exists",
             "params": [
               {
@@ -8823,6 +9122,20 @@
             "errors": [],
             "sql_bodies": {
               "postgres": "SELECT EXISTS(SELECT 1 FROM \"public\".\"task_watchers\" WHERE <filter>)"
+            }
+          },
+          {
+            "name": "Count",
+            "params": [
+              {
+                "name": "filter",
+                "type": "*TaskWatcherFilter"
+              }
+            ],
+            "returns": "int64",
+            "errors": [],
+            "sql_bodies": {
+              "postgres": "SELECT COUNT(*) FROM \"public\".\"task_watchers\" WHERE <filter>"
             }
           },
           {
@@ -8904,50 +9217,6 @@
             }
           },
           {
-            "name": "Upsert",
-            "params": [
-              {
-                "name": "input",
-                "type": "*CreateTaskWatcherInput"
-              },
-              {
-                "name": "target",
-                "type": "TaskWatcherConflictTarget"
-              }
-            ],
-            "returns": "*TaskWatcher",
-            "errors": [
-              "ErrNilInput",
-              "ErrConstraintViolation"
-            ],
-            "notes": "One method over the generated TaskWatcherConflictTarget enum — the target argument selects the conflict columns at call time.",
-            "sql_bodies": {
-              "postgres": "INSERT INTO \"public\".\"task_watchers\" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>"
-            }
-          },
-          {
-            "name": "UpsertMany",
-            "params": [
-              {
-                "name": "inputs",
-                "type": "[]*CreateTaskWatcherInput"
-              },
-              {
-                "name": "target",
-                "type": "TaskWatcherConflictTarget"
-              }
-            ],
-            "returns": "[]*TaskWatcher",
-            "errors": [
-              "ErrNilInput",
-              "ErrConstraintViolation"
-            ],
-            "notes": "Batched in generation.batch_size chunks over the same TaskWatcherConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.",
-            "sql_bodies": {
-              "postgres": "INSERT INTO \"public\".\"task_watchers\" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>"
-            }
-          },
-          {
             "name": "Update",
             "params": [
               {
@@ -9009,6 +9278,50 @@
             "notes": "Idempotent — returns an empty slice when no row matches. ErrEmptyFilter when the filter produces no conditions.",
             "sql_bodies": {
               "postgres": "UPDATE \"public\".\"task_watchers\" SET <set> WHERE <filter> RETURNING \"task_id\", \"user_id\""
+            }
+          },
+          {
+            "name": "Upsert",
+            "params": [
+              {
+                "name": "input",
+                "type": "*CreateTaskWatcherInput"
+              },
+              {
+                "name": "target",
+                "type": "TaskWatcherConflictTarget"
+              }
+            ],
+            "returns": "*TaskWatcher",
+            "errors": [
+              "ErrNilInput",
+              "ErrConstraintViolation"
+            ],
+            "notes": "One method over the generated TaskWatcherConflictTarget enum — the target argument selects the conflict columns at call time.",
+            "sql_bodies": {
+              "postgres": "INSERT INTO \"public\".\"task_watchers\" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>"
+            }
+          },
+          {
+            "name": "UpsertMany",
+            "params": [
+              {
+                "name": "inputs",
+                "type": "[]*CreateTaskWatcherInput"
+              },
+              {
+                "name": "target",
+                "type": "TaskWatcherConflictTarget"
+              }
+            ],
+            "returns": "[]*TaskWatcher",
+            "errors": [
+              "ErrNilInput",
+              "ErrConstraintViolation"
+            ],
+            "notes": "Batched in generation.batch_size chunks over the same TaskWatcherConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.",
+            "sql_bodies": {
+              "postgres": "INSERT INTO \"public\".\"task_watchers\" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>"
             }
           },
           {
@@ -9093,7 +9406,16 @@
           "UserID"
         ]
       },
-      "examples": {}
+      "examples": {
+        "read": [
+          "row, err := client.TaskWatchers().Get(ctx, database.TaskWatcherPK{TaskID: uuid.NewV4(), UserID: uuid.NewV4()})",
+          "rows, err := client.TaskWatchers().GetMany(ctx, &database.GetTaskWatchersInput{Filter: &database.TaskWatcherFilter{CreatedAt: &comparator.Time{Eq: new(time.Now())}}})"
+        ],
+        "write": [
+          "created, err := client.TaskWatchers().Create(ctx, &database.CreateTaskWatcherInput{TaskID: uuid.NewV4(), UserID: uuid.NewV4()})",
+          "updated, err := client.TaskWatchers().Update(ctx, database.TaskWatcherPK{TaskID: uuid.NewV4(), UserID: uuid.NewV4()}, &database.UpdateTaskWatcherInput{CreatedAt: omittable.Set(time.Now())})"
+        ]
+      }
     },
     {
       "kind": "table",
@@ -9123,7 +9445,7 @@
           "method": "btree"
         },
         {
-          "name": "teams_workspace_id_slug_idx",
+          "name": "teams_workspace_id_slug_key",
           "columns": [
             "workspace_id",
             "slug"
@@ -9158,12 +9480,14 @@
           "hydration": "eager",
           "key_pattern": "taskr:team:{id}",
           "invalidates_on": [
-            "Create",
             "Update",
-            "Delete",
-            "SoftDelete",
-            "Restore",
-            "Increment"
+            "UpdateMany",
+            "UpdateWhere",
+            "Upsert",
+            "UpsertMany",
+            "HardDelete",
+            "HardDeleteMany",
+            "HardDeleteWhere"
           ]
         },
         "events": {
@@ -9278,7 +9602,13 @@
           "fk": {
             "table": "cycles",
             "schema": "public",
-            "column": "team_id"
+            "columns": [
+              "team_id"
+            ],
+            "references": [
+              "id"
+            ],
+            "constraint": "cycles_team_id_fkey"
           }
         },
         {
@@ -9288,7 +9618,15 @@
           "fk": {
             "table": "projects",
             "schema": "public",
-            "column": "team_id"
+            "columns": [
+              "workspace_id",
+              "team_id"
+            ],
+            "references": [
+              "workspace_id",
+              "id"
+            ],
+            "constraint": "projects_team_same_ws"
           }
         },
         {
@@ -9298,8 +9636,24 @@
           "junction": {
             "table": "team_members",
             "schema": "public",
-            "local_fk": "team_id",
-            "target_fk": "user_id"
+            "local_fk": {
+              "columns": [
+                "team_id"
+              ],
+              "references": [
+                "id"
+              ],
+              "constraint": "team_members_team_id_fkey"
+            },
+            "target_fk": {
+              "columns": [
+                "user_id"
+              ],
+              "references": [
+                "id"
+              ],
+              "constraint": "team_members_user_id_fkey"
+            }
           }
         }
       ],
@@ -9340,22 +9694,6 @@
             }
           },
           {
-            "name": "Count",
-            "params": [
-              {
-                "name": "filter",
-                "type": "*TeamFilter"
-              }
-            ],
-            "returns": "int64",
-            "errors": [
-              "tenancy.ErrMissing"
-            ],
-            "sql_bodies": {
-              "postgres": "SELECT COUNT(*) FROM \"public\".\"teams\" WHERE <filter>"
-            }
-          },
-          {
             "name": "Exists",
             "params": [
               {
@@ -9385,6 +9723,22 @@
             ],
             "sql_bodies": {
               "postgres": "SELECT EXISTS(SELECT 1 FROM \"public\".\"teams\" WHERE <filter>)"
+            }
+          },
+          {
+            "name": "Count",
+            "params": [
+              {
+                "name": "filter",
+                "type": "*TeamFilter"
+              }
+            ],
+            "returns": "int64",
+            "errors": [
+              "tenancy.ErrMissing"
+            ],
+            "sql_bodies": {
+              "postgres": "SELECT COUNT(*) FROM \"public\".\"teams\" WHERE <filter>"
             }
           },
           {
@@ -9475,54 +9829,6 @@
             }
           },
           {
-            "name": "Upsert",
-            "params": [
-              {
-                "name": "input",
-                "type": "*CreateTeamInput"
-              },
-              {
-                "name": "target",
-                "type": "TeamConflictTarget"
-              }
-            ],
-            "returns": "*Team",
-            "errors": [
-              "ErrNilInput",
-              "ErrConstraintViolation",
-              "tenancy.ErrMissing",
-              "tenancy.ErrMismatch"
-            ],
-            "notes": "One method over the generated TeamConflictTarget enum — the target argument selects the conflict columns at call time.",
-            "sql_bodies": {
-              "postgres": "INSERT INTO \"public\".\"teams\" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING \"id\""
-            }
-          },
-          {
-            "name": "UpsertMany",
-            "params": [
-              {
-                "name": "inputs",
-                "type": "[]*CreateTeamInput"
-              },
-              {
-                "name": "target",
-                "type": "TeamConflictTarget"
-              }
-            ],
-            "returns": "[]*Team",
-            "errors": [
-              "ErrNilInput",
-              "ErrConstraintViolation",
-              "tenancy.ErrMissing",
-              "tenancy.ErrMismatch"
-            ],
-            "notes": "Batched in generation.batch_size chunks over the same TeamConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.",
-            "sql_bodies": {
-              "postgres": "INSERT INTO \"public\".\"teams\" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>"
-            }
-          },
-          {
             "name": "Update",
             "params": [
               {
@@ -9593,6 +9899,77 @@
             }
           },
           {
+            "name": "Upsert",
+            "params": [
+              {
+                "name": "input",
+                "type": "*CreateTeamInput"
+              },
+              {
+                "name": "target",
+                "type": "TeamConflictTarget"
+              }
+            ],
+            "returns": "*Team",
+            "errors": [
+              "ErrNilInput",
+              "ErrConstraintViolation",
+              "tenancy.ErrMissing",
+              "tenancy.ErrMismatch"
+            ],
+            "notes": "One method over the generated TeamConflictTarget enum — the target argument selects the conflict columns at call time.",
+            "sql_bodies": {
+              "postgres": "INSERT INTO \"public\".\"teams\" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING \"id\""
+            }
+          },
+          {
+            "name": "UpsertMany",
+            "params": [
+              {
+                "name": "inputs",
+                "type": "[]*CreateTeamInput"
+              },
+              {
+                "name": "target",
+                "type": "TeamConflictTarget"
+              }
+            ],
+            "returns": "[]*Team",
+            "errors": [
+              "ErrNilInput",
+              "ErrConstraintViolation",
+              "tenancy.ErrMissing",
+              "tenancy.ErrMismatch"
+            ],
+            "notes": "Batched in generation.batch_size chunks over the same TeamConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.",
+            "sql_bodies": {
+              "postgres": "INSERT INTO \"public\".\"teams\" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>"
+            }
+          },
+          {
+            "name": "UpdateWithRelated",
+            "params": [
+              {
+                "name": "id",
+                "type": "uuid.UUID"
+              },
+              {
+                "name": "input",
+                "type": "*UpdateTeamWithRelatedInput"
+              }
+            ],
+            "returns": "*Team",
+            "errors": [
+              "ErrNilInput",
+              "ErrNotFound",
+              "ErrNestedVerbConflict",
+              "ErrConstraintViolation",
+              "tenancy.ErrMissing",
+              "tenancy.ErrMismatch"
+            ],
+            "notes": "Writes the parent and its nested rows in one transaction — a SAVEPOINT when ctx already holds one. Issues no statement of its own: it composes Update and, per eligible relationship (Projects), the target's and junction's own client methods, so no sql_bodies entry. Each inner call fires its own hooks, events and cache invalidation under its own op; the nested method has none."
+          },
+          {
             "name": "HardDelete",
             "params": [
               {
@@ -9643,29 +10020,6 @@
             "sql_bodies": {
               "postgres": "DELETE FROM \"public\".\"teams\" WHERE <filter> RETURNING \"id\""
             }
-          },
-          {
-            "name": "UpdateWithRelated",
-            "params": [
-              {
-                "name": "id",
-                "type": "uuid.UUID"
-              },
-              {
-                "name": "input",
-                "type": "*UpdateTeamWithRelatedInput"
-              }
-            ],
-            "returns": "*Team",
-            "errors": [
-              "ErrNilInput",
-              "ErrNotFound",
-              "ErrNestedVerbConflict",
-              "ErrConstraintViolation",
-              "tenancy.ErrMissing",
-              "tenancy.ErrMismatch"
-            ],
-            "notes": "Writes the parent and its nested rows in one transaction — a SAVEPOINT when ctx already holds one. Issues no statement of its own: it composes Update and, per eligible relationship (Projects), the target's and junction's own client methods, so no sql_bodies entry. Each inner call fires its own hooks, events and cache invalidation under its own op; the nested method has none."
           }
         ]
       },
@@ -9722,7 +10076,16 @@
           "WorkspaceID"
         ]
       },
-      "examples": {}
+      "examples": {
+        "read": [
+          "row, err := client.Teams().Get(ctx, uuid.NewV4())",
+          "rows, err := client.Teams().GetMany(ctx, &database.GetTeamsInput{Filter: &database.TeamFilter{Name: &comparator.String{Eq: new(\"example\")}}})"
+        ],
+        "write": [
+          "created, err := client.Teams().Create(ctx, &database.CreateTeamInput{Name: \"example\", Slug: \"example\"})",
+          "updated, err := client.Teams().Update(ctx, uuid.NewV4(), &database.UpdateTeamInput{WorkspaceID: omittable.Set(uuid.NewV4())})"
+        ]
+      }
     },
     {
       "kind": "table",
@@ -9776,12 +10139,14 @@
           "hydration": "eager",
           "key_pattern": "taskr:teammember:{team_id}:{user_id}",
           "invalidates_on": [
-            "Create",
             "Update",
-            "Delete",
-            "SoftDelete",
-            "Restore",
-            "Increment"
+            "UpdateMany",
+            "UpdateWhere",
+            "Upsert",
+            "UpsertMany",
+            "HardDelete",
+            "HardDeleteMany",
+            "HardDeleteWhere"
           ]
         },
         "events": {
@@ -9867,20 +10232,6 @@
             }
           },
           {
-            "name": "Count",
-            "params": [
-              {
-                "name": "filter",
-                "type": "*TeamMemberFilter"
-              }
-            ],
-            "returns": "int64",
-            "errors": [],
-            "sql_bodies": {
-              "postgres": "SELECT COUNT(*) FROM \"public\".\"team_members\" WHERE <filter>"
-            }
-          },
-          {
             "name": "Exists",
             "params": [
               {
@@ -9906,6 +10257,20 @@
             "errors": [],
             "sql_bodies": {
               "postgres": "SELECT EXISTS(SELECT 1 FROM \"public\".\"team_members\" WHERE <filter>)"
+            }
+          },
+          {
+            "name": "Count",
+            "params": [
+              {
+                "name": "filter",
+                "type": "*TeamMemberFilter"
+              }
+            ],
+            "returns": "int64",
+            "errors": [],
+            "sql_bodies": {
+              "postgres": "SELECT COUNT(*) FROM \"public\".\"team_members\" WHERE <filter>"
             }
           },
           {
@@ -9987,50 +10352,6 @@
             }
           },
           {
-            "name": "Upsert",
-            "params": [
-              {
-                "name": "input",
-                "type": "*CreateTeamMemberInput"
-              },
-              {
-                "name": "target",
-                "type": "TeamMemberConflictTarget"
-              }
-            ],
-            "returns": "*TeamMember",
-            "errors": [
-              "ErrNilInput",
-              "ErrConstraintViolation"
-            ],
-            "notes": "One method over the generated TeamMemberConflictTarget enum — the target argument selects the conflict columns at call time.",
-            "sql_bodies": {
-              "postgres": "INSERT INTO \"public\".\"team_members\" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>"
-            }
-          },
-          {
-            "name": "UpsertMany",
-            "params": [
-              {
-                "name": "inputs",
-                "type": "[]*CreateTeamMemberInput"
-              },
-              {
-                "name": "target",
-                "type": "TeamMemberConflictTarget"
-              }
-            ],
-            "returns": "[]*TeamMember",
-            "errors": [
-              "ErrNilInput",
-              "ErrConstraintViolation"
-            ],
-            "notes": "Batched in generation.batch_size chunks over the same TeamMemberConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.",
-            "sql_bodies": {
-              "postgres": "INSERT INTO \"public\".\"team_members\" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>"
-            }
-          },
-          {
             "name": "Update",
             "params": [
               {
@@ -10092,6 +10413,50 @@
             "notes": "Idempotent — returns an empty slice when no row matches. ErrEmptyFilter when the filter produces no conditions.",
             "sql_bodies": {
               "postgres": "UPDATE \"public\".\"team_members\" SET <set> WHERE <filter> RETURNING \"team_id\", \"user_id\""
+            }
+          },
+          {
+            "name": "Upsert",
+            "params": [
+              {
+                "name": "input",
+                "type": "*CreateTeamMemberInput"
+              },
+              {
+                "name": "target",
+                "type": "TeamMemberConflictTarget"
+              }
+            ],
+            "returns": "*TeamMember",
+            "errors": [
+              "ErrNilInput",
+              "ErrConstraintViolation"
+            ],
+            "notes": "One method over the generated TeamMemberConflictTarget enum — the target argument selects the conflict columns at call time.",
+            "sql_bodies": {
+              "postgres": "INSERT INTO \"public\".\"team_members\" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>"
+            }
+          },
+          {
+            "name": "UpsertMany",
+            "params": [
+              {
+                "name": "inputs",
+                "type": "[]*CreateTeamMemberInput"
+              },
+              {
+                "name": "target",
+                "type": "TeamMemberConflictTarget"
+              }
+            ],
+            "returns": "[]*TeamMember",
+            "errors": [
+              "ErrNilInput",
+              "ErrConstraintViolation"
+            ],
+            "notes": "Batched in generation.batch_size chunks over the same TeamMemberConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.",
+            "sql_bodies": {
+              "postgres": "INSERT INTO \"public\".\"team_members\" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>"
             }
           },
           {
@@ -10176,7 +10541,16 @@
           "UserID"
         ]
       },
-      "examples": {}
+      "examples": {
+        "read": [
+          "row, err := client.TeamMembers().Get(ctx, database.TeamMemberPK{TeamID: uuid.NewV4(), UserID: uuid.NewV4()})",
+          "rows, err := client.TeamMembers().GetMany(ctx, &database.GetTeamMembersInput{Filter: &database.TeamMemberFilter{AddedAt: &comparator.Time{Eq: new(time.Now())}}})"
+        ],
+        "write": [
+          "created, err := client.TeamMembers().Create(ctx, &database.CreateTeamMemberInput{TeamID: uuid.NewV4(), UserID: uuid.NewV4()})",
+          "updated, err := client.TeamMembers().Update(ctx, database.TeamMemberPK{TeamID: uuid.NewV4(), UserID: uuid.NewV4()}, &database.UpdateTeamMemberInput{AddedAt: omittable.Set(time.Now())})"
+        ]
+      }
     },
     {
       "kind": "table",
@@ -10232,12 +10606,15 @@
           "hydration": "eager",
           "key_pattern": "taskr:timeentry:{id}",
           "invalidates_on": [
-            "Create",
             "Update",
-            "Delete",
-            "SoftDelete",
-            "Restore",
-            "Increment"
+            "UpdateMany",
+            "UpdateWhere",
+            "Upsert",
+            "UpsertMany",
+            "Increment",
+            "HardDelete",
+            "HardDeleteMany",
+            "HardDeleteWhere"
           ]
         },
         "events": {
@@ -10307,7 +10684,7 @@
           "name": "hours",
           "go_field": "Hours",
           "go_type": "decimal.Decimal",
-          "db_type": "numeric(6, 2)",
+          "db_type": "numeric(6,2)",
           "nullable": false,
           "pk": false,
           "unique": false,
@@ -10401,22 +10778,6 @@
             }
           },
           {
-            "name": "Count",
-            "params": [
-              {
-                "name": "filter",
-                "type": "*TimeEntryFilter"
-              }
-            ],
-            "returns": "int64",
-            "errors": [
-              "tenancy.ErrMissing"
-            ],
-            "sql_bodies": {
-              "postgres": "SELECT COUNT(*) FROM \"public\".\"time_entries\" WHERE <filter>"
-            }
-          },
-          {
             "name": "Exists",
             "params": [
               {
@@ -10446,6 +10807,22 @@
             ],
             "sql_bodies": {
               "postgres": "SELECT EXISTS(SELECT 1 FROM \"public\".\"time_entries\" WHERE <filter>)"
+            }
+          },
+          {
+            "name": "Count",
+            "params": [
+              {
+                "name": "filter",
+                "type": "*TimeEntryFilter"
+              }
+            ],
+            "returns": "int64",
+            "errors": [
+              "tenancy.ErrMissing"
+            ],
+            "sql_bodies": {
+              "postgres": "SELECT COUNT(*) FROM \"public\".\"time_entries\" WHERE <filter>"
             }
           },
           {
@@ -10536,54 +10913,6 @@
             }
           },
           {
-            "name": "Upsert",
-            "params": [
-              {
-                "name": "input",
-                "type": "*CreateTimeEntryInput"
-              },
-              {
-                "name": "target",
-                "type": "TimeEntryConflictTarget"
-              }
-            ],
-            "returns": "*TimeEntry",
-            "errors": [
-              "ErrNilInput",
-              "ErrConstraintViolation",
-              "tenancy.ErrMissing",
-              "tenancy.ErrMismatch"
-            ],
-            "notes": "One method over the generated TimeEntryConflictTarget enum — the target argument selects the conflict columns at call time.",
-            "sql_bodies": {
-              "postgres": "INSERT INTO \"public\".\"time_entries\" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING \"id\""
-            }
-          },
-          {
-            "name": "UpsertMany",
-            "params": [
-              {
-                "name": "inputs",
-                "type": "[]*CreateTimeEntryInput"
-              },
-              {
-                "name": "target",
-                "type": "TimeEntryConflictTarget"
-              }
-            ],
-            "returns": "[]*TimeEntry",
-            "errors": [
-              "ErrNilInput",
-              "ErrConstraintViolation",
-              "tenancy.ErrMissing",
-              "tenancy.ErrMismatch"
-            ],
-            "notes": "Batched in generation.batch_size chunks over the same TimeEntryConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.",
-            "sql_bodies": {
-              "postgres": "INSERT INTO \"public\".\"time_entries\" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>"
-            }
-          },
-          {
             "name": "Update",
             "params": [
               {
@@ -10651,6 +10980,54 @@
             "notes": "Idempotent — returns an empty slice when no row matches. ErrEmptyFilter when the filter produces no conditions.",
             "sql_bodies": {
               "postgres": "UPDATE \"public\".\"time_entries\" SET <set> WHERE <filter> RETURNING \"id\""
+            }
+          },
+          {
+            "name": "Upsert",
+            "params": [
+              {
+                "name": "input",
+                "type": "*CreateTimeEntryInput"
+              },
+              {
+                "name": "target",
+                "type": "TimeEntryConflictTarget"
+              }
+            ],
+            "returns": "*TimeEntry",
+            "errors": [
+              "ErrNilInput",
+              "ErrConstraintViolation",
+              "tenancy.ErrMissing",
+              "tenancy.ErrMismatch"
+            ],
+            "notes": "One method over the generated TimeEntryConflictTarget enum — the target argument selects the conflict columns at call time.",
+            "sql_bodies": {
+              "postgres": "INSERT INTO \"public\".\"time_entries\" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING \"id\""
+            }
+          },
+          {
+            "name": "UpsertMany",
+            "params": [
+              {
+                "name": "inputs",
+                "type": "[]*CreateTimeEntryInput"
+              },
+              {
+                "name": "target",
+                "type": "TimeEntryConflictTarget"
+              }
+            ],
+            "returns": "[]*TimeEntry",
+            "errors": [
+              "ErrNilInput",
+              "ErrConstraintViolation",
+              "tenancy.ErrMissing",
+              "tenancy.ErrMismatch"
+            ],
+            "notes": "Batched in generation.batch_size chunks over the same TimeEntryConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.",
+            "sql_bodies": {
+              "postgres": "INSERT INTO \"public\".\"time_entries\" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>"
             }
           },
           {
@@ -10792,7 +11169,16 @@
           "WorkspaceID"
         ]
       },
-      "examples": {}
+      "examples": {
+        "read": [
+          "row, err := client.TimeEntries().Get(ctx, uuid.NewV4())",
+          "rows, err := client.TimeEntries().GetMany(ctx, &database.GetTimeEntriesInput{Filter: &database.TimeEntryFilter{Hours: &comparator.String{Eq: new(\"example\")}}})"
+        ],
+        "write": [
+          "created, err := client.TimeEntries().Create(ctx, &database.CreateTimeEntryInput{TaskID: uuid.NewV4(), UserID: uuid.NewV4(), Hours: decimal.NewFromInt(1), SpentOn: time.Now()})",
+          "updated, err := client.TimeEntries().Update(ctx, uuid.NewV4(), &database.UpdateTimeEntryInput{WorkspaceID: omittable.Set(uuid.NewV4())})"
+        ]
+      }
     },
     {
       "kind": "table",
@@ -10839,12 +11225,14 @@
           "hydration": "eager",
           "key_pattern": "taskr:user:{id}",
           "invalidates_on": [
-            "Create",
             "Update",
-            "Delete",
-            "SoftDelete",
-            "Restore",
-            "Increment"
+            "UpdateMany",
+            "UpdateWhere",
+            "Upsert",
+            "UpsertMany",
+            "HardDelete",
+            "HardDeleteMany",
+            "HardDeleteWhere"
           ]
         },
         "events": {
@@ -10945,7 +11333,13 @@
           "fk": {
             "table": "activity",
             "schema": "public",
-            "column": "actor_id"
+            "columns": [
+              "actor_id"
+            ],
+            "references": [
+              "id"
+            ],
+            "constraint": "activity_actor_id_fkey"
           }
         },
         {
@@ -10955,7 +11349,13 @@
           "fk": {
             "table": "api_tokens",
             "schema": "public",
-            "column": "user_id"
+            "columns": [
+              "user_id"
+            ],
+            "references": [
+              "id"
+            ],
+            "constraint": "api_tokens_user_id_fkey"
           }
         },
         {
@@ -10965,7 +11365,13 @@
           "fk": {
             "table": "attachments",
             "schema": "public",
-            "column": "uploaded_by"
+            "columns": [
+              "uploaded_by"
+            ],
+            "references": [
+              "id"
+            ],
+            "constraint": "attachments_uploaded_by_fkey"
           }
         },
         {
@@ -10975,7 +11381,13 @@
           "fk": {
             "table": "comments",
             "schema": "public",
-            "column": "author_id"
+            "columns": [
+              "author_id"
+            ],
+            "references": [
+              "id"
+            ],
+            "constraint": "comments_author_id_fkey"
           }
         },
         {
@@ -10985,7 +11397,13 @@
           "fk": {
             "table": "invitations",
             "schema": "public",
-            "column": "invited_by"
+            "columns": [
+              "invited_by"
+            ],
+            "references": [
+              "id"
+            ],
+            "constraint": "invitations_invited_by_fkey"
           }
         },
         {
@@ -10995,7 +11413,13 @@
           "fk": {
             "table": "tasks",
             "schema": "public",
-            "column": "reporter_id"
+            "columns": [
+              "reporter_id"
+            ],
+            "references": [
+              "id"
+            ],
+            "constraint": "tasks_reporter_id_fkey"
           }
         },
         {
@@ -11005,8 +11429,24 @@
           "junction": {
             "table": "task_assignees",
             "schema": "public",
-            "local_fk": "user_id",
-            "target_fk": "task_id"
+            "local_fk": {
+              "columns": [
+                "user_id"
+              ],
+              "references": [
+                "id"
+              ],
+              "constraint": "task_assignees_user_id_fkey"
+            },
+            "target_fk": {
+              "columns": [
+                "task_id"
+              ],
+              "references": [
+                "id"
+              ],
+              "constraint": "task_assignees_task_id_fkey"
+            }
           }
         },
         {
@@ -11016,8 +11456,24 @@
           "junction": {
             "table": "task_watchers",
             "schema": "public",
-            "local_fk": "user_id",
-            "target_fk": "task_id"
+            "local_fk": {
+              "columns": [
+                "user_id"
+              ],
+              "references": [
+                "id"
+              ],
+              "constraint": "task_watchers_user_id_fkey"
+            },
+            "target_fk": {
+              "columns": [
+                "task_id"
+              ],
+              "references": [
+                "id"
+              ],
+              "constraint": "task_watchers_task_id_fkey"
+            }
           }
         },
         {
@@ -11027,8 +11483,24 @@
           "junction": {
             "table": "team_members",
             "schema": "public",
-            "local_fk": "user_id",
-            "target_fk": "team_id"
+            "local_fk": {
+              "columns": [
+                "user_id"
+              ],
+              "references": [
+                "id"
+              ],
+              "constraint": "team_members_user_id_fkey"
+            },
+            "target_fk": {
+              "columns": [
+                "team_id"
+              ],
+              "references": [
+                "id"
+              ],
+              "constraint": "team_members_team_id_fkey"
+            }
           }
         },
         {
@@ -11038,7 +11510,13 @@
           "fk": {
             "table": "time_entries",
             "schema": "public",
-            "column": "user_id"
+            "columns": [
+              "user_id"
+            ],
+            "references": [
+              "id"
+            ],
+            "constraint": "time_entries_user_id_fkey"
           }
         },
         {
@@ -11048,8 +11526,24 @@
           "junction": {
             "table": "memberships",
             "schema": "public",
-            "local_fk": "user_id",
-            "target_fk": "workspace_id"
+            "local_fk": {
+              "columns": [
+                "user_id"
+              ],
+              "references": [
+                "id"
+              ],
+              "constraint": "memberships_user_id_fkey"
+            },
+            "target_fk": {
+              "columns": [
+                "workspace_id"
+              ],
+              "references": [
+                "id"
+              ],
+              "constraint": "memberships_workspace_id_fkey"
+            }
           }
         }
       ],
@@ -11087,20 +11581,6 @@
             }
           },
           {
-            "name": "Count",
-            "params": [
-              {
-                "name": "filter",
-                "type": "*UserFilter"
-              }
-            ],
-            "returns": "int64",
-            "errors": [],
-            "sql_bodies": {
-              "postgres": "SELECT COUNT(*) FROM \"public\".\"users\" WHERE <filter>"
-            }
-          },
-          {
             "name": "Exists",
             "params": [
               {
@@ -11126,6 +11606,20 @@
             "errors": [],
             "sql_bodies": {
               "postgres": "SELECT EXISTS(SELECT 1 FROM \"public\".\"users\" WHERE <filter>)"
+            }
+          },
+          {
+            "name": "Count",
+            "params": [
+              {
+                "name": "filter",
+                "type": "*UserFilter"
+              }
+            ],
+            "returns": "int64",
+            "errors": [],
+            "sql_bodies": {
+              "postgres": "SELECT COUNT(*) FROM \"public\".\"users\" WHERE <filter>"
             }
           },
           {
@@ -11207,50 +11701,6 @@
             }
           },
           {
-            "name": "Upsert",
-            "params": [
-              {
-                "name": "input",
-                "type": "*CreateUserInput"
-              },
-              {
-                "name": "target",
-                "type": "UserConflictTarget"
-              }
-            ],
-            "returns": "*User",
-            "errors": [
-              "ErrNilInput",
-              "ErrConstraintViolation"
-            ],
-            "notes": "One method over the generated UserConflictTarget enum — the target argument selects the conflict columns at call time.",
-            "sql_bodies": {
-              "postgres": "INSERT INTO \"public\".\"users\" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING \"id\""
-            }
-          },
-          {
-            "name": "UpsertMany",
-            "params": [
-              {
-                "name": "inputs",
-                "type": "[]*CreateUserInput"
-              },
-              {
-                "name": "target",
-                "type": "UserConflictTarget"
-              }
-            ],
-            "returns": "[]*User",
-            "errors": [
-              "ErrNilInput",
-              "ErrConstraintViolation"
-            ],
-            "notes": "Batched in generation.batch_size chunks over the same UserConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.",
-            "sql_bodies": {
-              "postgres": "INSERT INTO \"public\".\"users\" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>"
-            }
-          },
-          {
             "name": "Update",
             "params": [
               {
@@ -11315,6 +11765,72 @@
             }
           },
           {
+            "name": "Upsert",
+            "params": [
+              {
+                "name": "input",
+                "type": "*CreateUserInput"
+              },
+              {
+                "name": "target",
+                "type": "UserConflictTarget"
+              }
+            ],
+            "returns": "*User",
+            "errors": [
+              "ErrNilInput",
+              "ErrConstraintViolation"
+            ],
+            "notes": "One method over the generated UserConflictTarget enum — the target argument selects the conflict columns at call time.",
+            "sql_bodies": {
+              "postgres": "INSERT INTO \"public\".\"users\" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING \"id\""
+            }
+          },
+          {
+            "name": "UpsertMany",
+            "params": [
+              {
+                "name": "inputs",
+                "type": "[]*CreateUserInput"
+              },
+              {
+                "name": "target",
+                "type": "UserConflictTarget"
+              }
+            ],
+            "returns": "[]*User",
+            "errors": [
+              "ErrNilInput",
+              "ErrConstraintViolation"
+            ],
+            "notes": "Batched in generation.batch_size chunks over the same UserConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.",
+            "sql_bodies": {
+              "postgres": "INSERT INTO \"public\".\"users\" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>"
+            }
+          },
+          {
+            "name": "UpdateWithRelated",
+            "params": [
+              {
+                "name": "id",
+                "type": "uuid.UUID"
+              },
+              {
+                "name": "input",
+                "type": "*UpdateUserWithRelatedInput"
+              }
+            ],
+            "returns": "*User",
+            "errors": [
+              "ErrNilInput",
+              "ErrNotFound",
+              "ErrAlreadyRelated",
+              "ErrNestedVerbConflict",
+              "ErrConstraintViolation"
+            ],
+            "notes": "Writes the parent and its nested rows in one transaction — a SAVEPOINT when ctx already holds one. Issues no statement of its own: it composes Update and, per eligible relationship (APITokens, Activities, Attachments, Comments, Invitations, ReporterTasks, TimeEntries), the target's and junction's own client methods, so no sql_bodies entry. Each inner call fires its own hooks, events and cache invalidation under its own op; the nested method has none."
+          },
+          {
             "name": "HardDelete",
             "params": [
               {
@@ -11360,28 +11876,6 @@
             "sql_bodies": {
               "postgres": "DELETE FROM \"public\".\"users\" WHERE <filter> RETURNING \"id\""
             }
-          },
-          {
-            "name": "UpdateWithRelated",
-            "params": [
-              {
-                "name": "id",
-                "type": "uuid.UUID"
-              },
-              {
-                "name": "input",
-                "type": "*UpdateUserWithRelatedInput"
-              }
-            ],
-            "returns": "*User",
-            "errors": [
-              "ErrNilInput",
-              "ErrNotFound",
-              "ErrAlreadyRelated",
-              "ErrNestedVerbConflict",
-              "ErrConstraintViolation"
-            ],
-            "notes": "Writes the parent and its nested rows in one transaction — a SAVEPOINT when ctx already holds one. Issues no statement of its own: it composes Update and, per eligible relationship (APITokens, Activities, Attachments, Comments, Invitations, ReporterTasks, TimeEntries), the target's and junction's own client methods, so no sql_bodies entry. Each inner call fires its own hooks, events and cache invalidation under its own op; the nested method has none."
           }
         ]
       },
@@ -11433,7 +11927,16 @@
           "UpdatedAt"
         ]
       },
-      "examples": {}
+      "examples": {
+        "read": [
+          "row, err := client.Users().Get(ctx, uuid.NewV4())",
+          "rows, err := client.Users().GetMany(ctx, &database.GetUsersInput{Filter: &database.UserFilter{DisplayName: &comparator.String{Eq: new(\"example\")}}})"
+        ],
+        "write": [
+          "created, err := client.Users().Create(ctx, &database.CreateUserInput{Email: \"example\", DisplayName: \"example\", PasswordHash: \"example\"})",
+          "updated, err := client.Users().Update(ctx, uuid.NewV4(), &database.UpdateUserInput{Email: omittable.Set(\"example\")})"
+        ]
+      }
     },
     {
       "kind": "table",
@@ -11480,12 +11983,14 @@
           "hydration": "eager",
           "key_pattern": "taskr:workspace:{id}",
           "invalidates_on": [
-            "Create",
             "Update",
-            "Delete",
-            "SoftDelete",
-            "Restore",
-            "Increment"
+            "UpdateMany",
+            "UpdateWhere",
+            "Upsert",
+            "UpsertMany",
+            "HardDelete",
+            "HardDeleteMany",
+            "HardDeleteWhere"
           ]
         },
         "events": {
@@ -11573,7 +12078,13 @@
           "fk": {
             "table": "activity",
             "schema": "public",
-            "column": "workspace_id"
+            "columns": [
+              "workspace_id"
+            ],
+            "references": [
+              "id"
+            ],
+            "constraint": "activity_workspace_id_fkey"
           }
         },
         {
@@ -11583,7 +12094,13 @@
           "fk": {
             "table": "api_tokens",
             "schema": "public",
-            "column": "workspace_id"
+            "columns": [
+              "workspace_id"
+            ],
+            "references": [
+              "id"
+            ],
+            "constraint": "api_tokens_workspace_id_fkey"
           }
         },
         {
@@ -11593,7 +12110,13 @@
           "fk": {
             "table": "attachments",
             "schema": "public",
-            "column": "workspace_id"
+            "columns": [
+              "workspace_id"
+            ],
+            "references": [
+              "id"
+            ],
+            "constraint": "attachments_workspace_id_fkey"
           }
         },
         {
@@ -11603,7 +12126,13 @@
           "fk": {
             "table": "comments",
             "schema": "public",
-            "column": "workspace_id"
+            "columns": [
+              "workspace_id"
+            ],
+            "references": [
+              "id"
+            ],
+            "constraint": "comments_workspace_id_fkey"
           }
         },
         {
@@ -11613,7 +12142,13 @@
           "fk": {
             "table": "cycles",
             "schema": "public",
-            "column": "workspace_id"
+            "columns": [
+              "workspace_id"
+            ],
+            "references": [
+              "id"
+            ],
+            "constraint": "cycles_workspace_id_fkey"
           }
         },
         {
@@ -11623,7 +12158,13 @@
           "fk": {
             "table": "invitations",
             "schema": "public",
-            "column": "workspace_id"
+            "columns": [
+              "workspace_id"
+            ],
+            "references": [
+              "id"
+            ],
+            "constraint": "invitations_workspace_id_fkey"
           }
         },
         {
@@ -11633,7 +12174,13 @@
           "fk": {
             "table": "labels",
             "schema": "public",
-            "column": "workspace_id"
+            "columns": [
+              "workspace_id"
+            ],
+            "references": [
+              "id"
+            ],
+            "constraint": "labels_workspace_id_fkey"
           }
         },
         {
@@ -11643,7 +12190,13 @@
           "fk": {
             "table": "projects",
             "schema": "public",
-            "column": "workspace_id"
+            "columns": [
+              "workspace_id"
+            ],
+            "references": [
+              "id"
+            ],
+            "constraint": "projects_workspace_id_fkey"
           }
         },
         {
@@ -11653,7 +12206,13 @@
           "fk": {
             "table": "sso_connections",
             "schema": "public",
-            "column": "workspace_id"
+            "columns": [
+              "workspace_id"
+            ],
+            "references": [
+              "id"
+            ],
+            "constraint": "sso_connections_workspace_id_fkey"
           }
         },
         {
@@ -11663,7 +12222,13 @@
           "fk": {
             "table": "tasks",
             "schema": "public",
-            "column": "workspace_id"
+            "columns": [
+              "workspace_id"
+            ],
+            "references": [
+              "id"
+            ],
+            "constraint": "tasks_workspace_id_fkey"
           }
         },
         {
@@ -11673,7 +12238,13 @@
           "fk": {
             "table": "teams",
             "schema": "public",
-            "column": "workspace_id"
+            "columns": [
+              "workspace_id"
+            ],
+            "references": [
+              "id"
+            ],
+            "constraint": "teams_workspace_id_fkey"
           }
         },
         {
@@ -11683,7 +12254,13 @@
           "fk": {
             "table": "time_entries",
             "schema": "public",
-            "column": "workspace_id"
+            "columns": [
+              "workspace_id"
+            ],
+            "references": [
+              "id"
+            ],
+            "constraint": "time_entries_workspace_id_fkey"
           }
         },
         {
@@ -11693,8 +12270,24 @@
           "junction": {
             "table": "memberships",
             "schema": "public",
-            "local_fk": "workspace_id",
-            "target_fk": "user_id"
+            "local_fk": {
+              "columns": [
+                "workspace_id"
+              ],
+              "references": [
+                "id"
+              ],
+              "constraint": "memberships_workspace_id_fkey"
+            },
+            "target_fk": {
+              "columns": [
+                "user_id"
+              ],
+              "references": [
+                "id"
+              ],
+              "constraint": "memberships_user_id_fkey"
+            }
           }
         }
       ],
@@ -11732,20 +12325,6 @@
             }
           },
           {
-            "name": "Count",
-            "params": [
-              {
-                "name": "filter",
-                "type": "*WorkspaceFilter"
-              }
-            ],
-            "returns": "int64",
-            "errors": [],
-            "sql_bodies": {
-              "postgres": "SELECT COUNT(*) FROM \"public\".\"workspaces\" WHERE <filter>"
-            }
-          },
-          {
             "name": "Exists",
             "params": [
               {
@@ -11771,6 +12350,20 @@
             "errors": [],
             "sql_bodies": {
               "postgres": "SELECT EXISTS(SELECT 1 FROM \"public\".\"workspaces\" WHERE <filter>)"
+            }
+          },
+          {
+            "name": "Count",
+            "params": [
+              {
+                "name": "filter",
+                "type": "*WorkspaceFilter"
+              }
+            ],
+            "returns": "int64",
+            "errors": [],
+            "sql_bodies": {
+              "postgres": "SELECT COUNT(*) FROM \"public\".\"workspaces\" WHERE <filter>"
             }
           },
           {
@@ -11852,50 +12445,6 @@
             }
           },
           {
-            "name": "Upsert",
-            "params": [
-              {
-                "name": "input",
-                "type": "*CreateWorkspaceInput"
-              },
-              {
-                "name": "target",
-                "type": "WorkspaceConflictTarget"
-              }
-            ],
-            "returns": "*Workspace",
-            "errors": [
-              "ErrNilInput",
-              "ErrConstraintViolation"
-            ],
-            "notes": "One method over the generated WorkspaceConflictTarget enum — the target argument selects the conflict columns at call time.",
-            "sql_bodies": {
-              "postgres": "INSERT INTO \"public\".\"workspaces\" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING \"id\""
-            }
-          },
-          {
-            "name": "UpsertMany",
-            "params": [
-              {
-                "name": "inputs",
-                "type": "[]*CreateWorkspaceInput"
-              },
-              {
-                "name": "target",
-                "type": "WorkspaceConflictTarget"
-              }
-            ],
-            "returns": "[]*Workspace",
-            "errors": [
-              "ErrNilInput",
-              "ErrConstraintViolation"
-            ],
-            "notes": "Batched in generation.batch_size chunks over the same WorkspaceConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.",
-            "sql_bodies": {
-              "postgres": "INSERT INTO \"public\".\"workspaces\" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>"
-            }
-          },
-          {
             "name": "Update",
             "params": [
               {
@@ -11960,6 +12509,70 @@
             }
           },
           {
+            "name": "Upsert",
+            "params": [
+              {
+                "name": "input",
+                "type": "*CreateWorkspaceInput"
+              },
+              {
+                "name": "target",
+                "type": "WorkspaceConflictTarget"
+              }
+            ],
+            "returns": "*Workspace",
+            "errors": [
+              "ErrNilInput",
+              "ErrConstraintViolation"
+            ],
+            "notes": "One method over the generated WorkspaceConflictTarget enum — the target argument selects the conflict columns at call time.",
+            "sql_bodies": {
+              "postgres": "INSERT INTO \"public\".\"workspaces\" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING \"id\""
+            }
+          },
+          {
+            "name": "UpsertMany",
+            "params": [
+              {
+                "name": "inputs",
+                "type": "[]*CreateWorkspaceInput"
+              },
+              {
+                "name": "target",
+                "type": "WorkspaceConflictTarget"
+              }
+            ],
+            "returns": "[]*Workspace",
+            "errors": [
+              "ErrNilInput",
+              "ErrConstraintViolation"
+            ],
+            "notes": "Batched in generation.batch_size chunks over the same WorkspaceConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.",
+            "sql_bodies": {
+              "postgres": "INSERT INTO \"public\".\"workspaces\" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>"
+            }
+          },
+          {
+            "name": "UpdateWithRelated",
+            "params": [
+              {
+                "name": "id",
+                "type": "uuid.UUID"
+              },
+              {
+                "name": "input",
+                "type": "*UpdateWorkspaceWithRelatedInput"
+              }
+            ],
+            "returns": "*Workspace",
+            "errors": [
+              "ErrNilInput",
+              "ErrNotFound",
+              "ErrConstraintViolation"
+            ],
+            "notes": "Writes the parent and its nested rows in one transaction — a SAVEPOINT when ctx already holds one. Issues no statement of its own: it composes Update and, per eligible relationship (APITokens, Activities, Attachments, Comments, Cycles, Invitations, Labels, Projects, SsoConnections, Tasks, Teams, TimeEntries), the target's and junction's own client methods, so no sql_bodies entry. Each inner call fires its own hooks, events and cache invalidation under its own op; the nested method has none."
+          },
+          {
             "name": "HardDelete",
             "params": [
               {
@@ -12005,26 +12618,6 @@
             "sql_bodies": {
               "postgres": "DELETE FROM \"public\".\"workspaces\" WHERE <filter> RETURNING \"id\""
             }
-          },
-          {
-            "name": "UpdateWithRelated",
-            "params": [
-              {
-                "name": "id",
-                "type": "uuid.UUID"
-              },
-              {
-                "name": "input",
-                "type": "*UpdateWorkspaceWithRelatedInput"
-              }
-            ],
-            "returns": "*Workspace",
-            "errors": [
-              "ErrNilInput",
-              "ErrNotFound",
-              "ErrConstraintViolation"
-            ],
-            "notes": "Writes the parent and its nested rows in one transaction — a SAVEPOINT when ctx already holds one. Issues no statement of its own: it composes Update and, per eligible relationship (APITokens, Activities, Attachments, Comments, Cycles, Invitations, Labels, Projects, SsoConnections, Tasks, Teams, TimeEntries), the target's and junction's own client methods, so no sql_bodies entry. Each inner call fires its own hooks, events and cache invalidation under its own op; the nested method has none."
           }
         ]
       },
@@ -12071,7 +12664,16 @@
           "UpdatedAt"
         ]
       },
-      "examples": {}
+      "examples": {
+        "read": [
+          "row, err := client.Workspaces().Get(ctx, uuid.NewV4())",
+          "rows, err := client.Workspaces().GetMany(ctx, &database.GetWorkspacesInput{Filter: &database.WorkspaceFilter{Name: &comparator.String{Eq: new(\"example\")}}})"
+        ],
+        "write": [
+          "created, err := client.Workspaces().Create(ctx, &database.CreateWorkspaceInput{Name: \"example\", Slug: \"example\"})",
+          "updated, err := client.Workspaces().Update(ctx, uuid.NewV4(), &database.UpdateWorkspaceInput{Name: omittable.Set(\"example\")})"
+        ]
+      }
     },
     {
       "kind": "table",
@@ -12118,12 +12720,14 @@
           "hydration": "eager",
           "key_pattern": "taskr:workspacesetting:{id}",
           "invalidates_on": [
-            "Create",
             "Update",
-            "Delete",
-            "SoftDelete",
-            "Restore",
-            "Increment"
+            "UpdateMany",
+            "UpdateWhere",
+            "Upsert",
+            "UpsertMany",
+            "HardDelete",
+            "HardDeleteMany",
+            "HardDeleteWhere"
           ]
         },
         "events": {
@@ -12218,7 +12822,13 @@
           "fk": {
             "table": "workspace_settings",
             "schema": "public",
-            "column": "workspace_id"
+            "columns": [
+              "workspace_id"
+            ],
+            "references": [
+              "id"
+            ],
+            "constraint": "workspace_settings_workspace_id_fkey"
           }
         }
       ],
@@ -12259,22 +12869,6 @@
             }
           },
           {
-            "name": "Count",
-            "params": [
-              {
-                "name": "filter",
-                "type": "*WorkspaceSettingFilter"
-              }
-            ],
-            "returns": "int64",
-            "errors": [
-              "tenancy.ErrMissing"
-            ],
-            "sql_bodies": {
-              "postgres": "SELECT COUNT(*) FROM \"public\".\"workspace_settings\" WHERE <filter>"
-            }
-          },
-          {
             "name": "Exists",
             "params": [
               {
@@ -12304,6 +12898,22 @@
             ],
             "sql_bodies": {
               "postgres": "SELECT EXISTS(SELECT 1 FROM \"public\".\"workspace_settings\" WHERE <filter>)"
+            }
+          },
+          {
+            "name": "Count",
+            "params": [
+              {
+                "name": "filter",
+                "type": "*WorkspaceSettingFilter"
+              }
+            ],
+            "returns": "int64",
+            "errors": [
+              "tenancy.ErrMissing"
+            ],
+            "sql_bodies": {
+              "postgres": "SELECT COUNT(*) FROM \"public\".\"workspace_settings\" WHERE <filter>"
             }
           },
           {
@@ -12394,54 +13004,6 @@
             }
           },
           {
-            "name": "Upsert",
-            "params": [
-              {
-                "name": "input",
-                "type": "*CreateWorkspaceSettingInput"
-              },
-              {
-                "name": "target",
-                "type": "WorkspaceSettingConflictTarget"
-              }
-            ],
-            "returns": "*WorkspaceSetting",
-            "errors": [
-              "ErrNilInput",
-              "ErrConstraintViolation",
-              "tenancy.ErrMissing",
-              "tenancy.ErrMismatch"
-            ],
-            "notes": "One method over the generated WorkspaceSettingConflictTarget enum — the target argument selects the conflict columns at call time.",
-            "sql_bodies": {
-              "postgres": "INSERT INTO \"public\".\"workspace_settings\" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING \"id\""
-            }
-          },
-          {
-            "name": "UpsertMany",
-            "params": [
-              {
-                "name": "inputs",
-                "type": "[]*CreateWorkspaceSettingInput"
-              },
-              {
-                "name": "target",
-                "type": "WorkspaceSettingConflictTarget"
-              }
-            ],
-            "returns": "[]*WorkspaceSetting",
-            "errors": [
-              "ErrNilInput",
-              "ErrConstraintViolation",
-              "tenancy.ErrMissing",
-              "tenancy.ErrMismatch"
-            ],
-            "notes": "Batched in generation.batch_size chunks over the same WorkspaceSettingConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.",
-            "sql_bodies": {
-              "postgres": "INSERT INTO \"public\".\"workspace_settings\" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>"
-            }
-          },
-          {
             "name": "Update",
             "params": [
               {
@@ -12509,6 +13071,54 @@
             "notes": "Idempotent — returns an empty slice when no row matches. ErrEmptyFilter when the filter produces no conditions.",
             "sql_bodies": {
               "postgres": "UPDATE \"public\".\"workspace_settings\" SET <set> WHERE <filter> RETURNING \"id\""
+            }
+          },
+          {
+            "name": "Upsert",
+            "params": [
+              {
+                "name": "input",
+                "type": "*CreateWorkspaceSettingInput"
+              },
+              {
+                "name": "target",
+                "type": "WorkspaceSettingConflictTarget"
+              }
+            ],
+            "returns": "*WorkspaceSetting",
+            "errors": [
+              "ErrNilInput",
+              "ErrConstraintViolation",
+              "tenancy.ErrMissing",
+              "tenancy.ErrMismatch"
+            ],
+            "notes": "One method over the generated WorkspaceSettingConflictTarget enum — the target argument selects the conflict columns at call time.",
+            "sql_bodies": {
+              "postgres": "INSERT INTO \"public\".\"workspace_settings\" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING \"id\""
+            }
+          },
+          {
+            "name": "UpsertMany",
+            "params": [
+              {
+                "name": "inputs",
+                "type": "[]*CreateWorkspaceSettingInput"
+              },
+              {
+                "name": "target",
+                "type": "WorkspaceSettingConflictTarget"
+              }
+            ],
+            "returns": "[]*WorkspaceSetting",
+            "errors": [
+              "ErrNilInput",
+              "ErrConstraintViolation",
+              "tenancy.ErrMissing",
+              "tenancy.ErrMismatch"
+            ],
+            "notes": "Batched in generation.batch_size chunks over the same WorkspaceSettingConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.",
+            "sql_bodies": {
+              "postgres": "INSERT INTO \"public\".\"workspace_settings\" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>"
             }
           },
           {
@@ -12608,7 +13218,16 @@
           "WorkspaceID"
         ]
       },
-      "examples": {}
+      "examples": {
+        "read": [
+          "row, err := client.WorkspaceSettings().Get(ctx, uuid.NewV4())",
+          "rows, err := client.WorkspaceSettings().GetMany(ctx, &database.GetWorkspaceSettingsInput{Filter: &database.WorkspaceSettingFilter{CreatedAt: &comparator.Time{Eq: new(time.Now())}}})"
+        ],
+        "write": [
+          "created, err := client.WorkspaceSettings().Create(ctx, &database.CreateWorkspaceSettingInput{})",
+          "updated, err := client.WorkspaceSettings().Update(ctx, uuid.NewV4(), &database.UpdateWorkspaceSettingInput{WorkspaceID: omittable.Set(uuid.NewV4())})"
+        ]
+      }
     }
   ],
   "enums": [

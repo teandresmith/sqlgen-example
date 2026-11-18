@@ -40,7 +40,7 @@ A time-boxed planning iteration (sprint)
 
 | Name | Kind | Target | FK | Filter |
 | --- | --- | --- | --- | --- |
-| tasks | o2m | Task | public.tasks.cycle_id |  |
+| tasks | o2m | Task | public.tasks.(workspace_id, cycle_id) |  |
 
 ## Query methods
 
@@ -73,20 +73,6 @@ postgres:
 SELECT "created_at", "ends_on", "id", "name", "starts_on", "status", "team_id", "updated_at", "workspace_id" FROM "public"."cycles" WHERE <filter> ORDER BY <sort> LIMIT <limit>
 ```
 
-### Count
-
-- Params: `filter *CycleFilter`
-- Returns: `int64`, `error`
-- Errors: `tenancy.ErrMissing`
-
-Generated SQL:
-
-postgres:
-
-```sql
-SELECT COUNT(*) FROM "public"."cycles" WHERE <filter>
-```
-
 ### Exists
 
 - Params: `id uuid.UUID`
@@ -113,6 +99,20 @@ postgres:
 
 ```sql
 SELECT EXISTS(SELECT 1 FROM "public"."cycles" WHERE <filter>)
+```
+
+### Count
+
+- Params: `filter *CycleFilter`
+- Returns: `int64`, `error`
+- Errors: `tenancy.ErrMissing`
+
+Generated SQL:
+
+postgres:
+
+```sql
+SELECT COUNT(*) FROM "public"."cycles" WHERE <filter>
 ```
 
 ### Paginate
@@ -175,36 +175,6 @@ postgres:
 INSERT INTO "public"."cycles" (<columns>) VALUES <values> RETURNING "id"
 ```
 
-### Upsert
-
-- Params: `input *CreateCycleInput`, `target CycleConflictTarget`
-- Returns: `*Cycle`, `error`
-- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
-- Notes: One method over the generated CycleConflictTarget enum — the target argument selects the conflict columns at call time.
-
-Generated SQL:
-
-postgres:
-
-```sql
-INSERT INTO "public"."cycles" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING "id"
-```
-
-### UpsertMany
-
-- Params: `inputs []*CreateCycleInput`, `target CycleConflictTarget`
-- Returns: `[]*Cycle`, `error`
-- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
-- Notes: Batched in generation.batch_size chunks over the same CycleConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.
-
-Generated SQL:
-
-postgres:
-
-```sql
-INSERT INTO "public"."cycles" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>
-```
-
 ### Update
 
 - Params: `id uuid.UUID`, `input *UpdateCycleInput`
@@ -249,6 +219,43 @@ postgres:
 ```sql
 UPDATE "public"."cycles" SET <set> WHERE <filter> RETURNING "id"
 ```
+
+### Upsert
+
+- Params: `input *CreateCycleInput`, `target CycleConflictTarget`
+- Returns: `*Cycle`, `error`
+- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
+- Notes: One method over the generated CycleConflictTarget enum — the target argument selects the conflict columns at call time.
+
+Generated SQL:
+
+postgres:
+
+```sql
+INSERT INTO "public"."cycles" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING "id"
+```
+
+### UpsertMany
+
+- Params: `inputs []*CreateCycleInput`, `target CycleConflictTarget`
+- Returns: `[]*Cycle`, `error`
+- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
+- Notes: Batched in generation.batch_size chunks over the same CycleConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.
+
+Generated SQL:
+
+postgres:
+
+```sql
+INSERT INTO "public"."cycles" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>
+```
+
+### UpdateWithRelated
+
+- Params: `id uuid.UUID`, `input *UpdateCycleWithRelatedInput`
+- Returns: `*Cycle`, `error`
+- Errors: `ErrNilInput`, `ErrNotFound`, `ErrNestedVerbConflict`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
+- Notes: Writes the parent and its nested rows in one transaction — a SAVEPOINT when ctx already holds one. Issues no statement of its own: it composes Update and, per eligible relationship (Tasks), the target's and junction's own client methods, so no sql_bodies entry. Each inner call fires its own hooks, events and cache invalidation under its own op; the nested method has none.
 
 ### HardDelete
 
@@ -295,13 +302,6 @@ postgres:
 DELETE FROM "public"."cycles" WHERE <filter> RETURNING "id"
 ```
 
-### UpdateWithRelated
-
-- Params: `id uuid.UUID`, `input *UpdateCycleWithRelatedInput`
-- Returns: `*Cycle`, `error`
-- Errors: `ErrNilInput`, `ErrNotFound`, `ErrNestedVerbConflict`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
-- Notes: Writes the parent and its nested rows in one transaction — a SAVEPOINT when ctx already holds one. Issues no statement of its own: it composes Update and, per eligible relationship (Tasks), the target's and junction's own client methods, so no sql_bodies entry. Each inner call fires its own hooks, events and cache invalidation under its own op; the nested method has none.
-
 ## Filter
 
 Type `CycleFilter`.
@@ -325,3 +325,17 @@ Type `CycleFilter`.
 Type `CycleSort`.
 
 Fields: CreatedAt, EndsOn, ID, Name, StartsOn, Status, TeamID, UpdatedAt, WorkspaceID
+
+## Read examples
+
+```go
+row, err := client.Cycles().Get(ctx, uuid.NewV4())
+rows, err := client.Cycles().GetMany(ctx, &database.GetCyclesInput{Filter: &database.CycleFilter{Name: &comparator.String{Eq: new("example")}}})
+```
+
+## Write examples
+
+```go
+created, err := client.Cycles().Create(ctx, &database.CreateCycleInput{Name: "example", StartsOn: time.Now(), EndsOn: time.Now()})
+updated, err := client.Cycles().Update(ctx, uuid.NewV4(), &database.UpdateCycleInput{WorkspaceID: omittable.Set(uuid.NewV4())})
+```

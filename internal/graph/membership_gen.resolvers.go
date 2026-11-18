@@ -7,34 +7,29 @@ package graph
 
 import (
 	"context"
-	uuid1 "uuid"
+	"uuid"
 
 	"github.com/teandresmith/sqlgen-example/internal/database"
 	gqlmodel "github.com/teandresmith/sqlgen-example/internal/graph/model"
 )
 
 // UpdateMembership is the resolver for the updateMembership field.
-// FIX-066: no numeric non-PK columns → no IncrementColumn enum, no `_inc`/
-// `_dec` operators on the input, and the seed delegates with the reduced
-// (set-only) signature exposed by Q/M.
-func (r *mutationResolver) UpdateMembership(ctx context.Context, workspaceID uuid1.UUID, userID uuid1.UUID, input gqlmodel.UpdateMembershipInput) (*database.Membership, error) {
-	setIn := translateUpdateMembershipInput(input)
-	hasSet := hasUpdateMembershipSetFields(input)
-	return r.M.UpdateMembership(ctx, workspaceID, userID, setIn, hasSet)
+func (r *mutationResolver) UpdateMembership(ctx context.Context, workspaceID uuid.UUID, userID uuid.UUID, input gqlmodel.UpdateMembershipInput) (*database.Membership, error) {
+	return r.M.UpdateMembership(ctx, workspaceID, userID, translateUpdateMembershipRequest(input))
 }
 
 // UpdateMemberships is the resolver for the updateMemberships field.
 func (r *mutationResolver) UpdateMemberships(ctx context.Context, filter gqlmodel.MembershipFilter, input gqlmodel.UpdateMembershipInput) ([]*database.Membership, error) {
-	return r.M.UpdateMemberships(ctx, translateMembershipFilter(&filter), translateUpdateMembershipInput(input))
+	return r.M.UpdateMemberships(ctx, translateMembershipFilter(&filter), translateUpdateMembershipRequest(input))
 }
 
 // DeleteMembership is the resolver for the deleteMembership field.
-func (r *mutationResolver) DeleteMembership(ctx context.Context, workspaceID uuid1.UUID, userID uuid1.UUID) (bool, error) {
+func (r *mutationResolver) DeleteMembership(ctx context.Context, workspaceID uuid.UUID, userID uuid.UUID) (bool, error) {
 	return r.M.DeleteMembership(ctx, workspaceID, userID)
 }
 
 // Membership is the resolver for the membership field.
-func (r *queryResolver) Membership(ctx context.Context, workspaceID uuid1.UUID, userID uuid1.UUID) (*database.Membership, error) {
+func (r *queryResolver) Membership(ctx context.Context, workspaceID uuid.UUID, userID uuid.UUID) (*database.Membership, error) {
 	return r.Q.Membership(ctx, workspaceID, userID)
 }
 

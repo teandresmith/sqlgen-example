@@ -79,19 +79,6 @@ postgres:
 SELECT "created_at", "id", "name", "slug", "updated_at" FROM "public"."workspaces" WHERE <filter> ORDER BY <sort> LIMIT <limit>
 ```
 
-### Count
-
-- Params: `filter *WorkspaceFilter`
-- Returns: `int64`, `error`
-
-Generated SQL:
-
-postgres:
-
-```sql
-SELECT COUNT(*) FROM "public"."workspaces" WHERE <filter>
-```
-
 ### Exists
 
 - Params: `id uuid.UUID`
@@ -116,6 +103,19 @@ postgres:
 
 ```sql
 SELECT EXISTS(SELECT 1 FROM "public"."workspaces" WHERE <filter>)
+```
+
+### Count
+
+- Params: `filter *WorkspaceFilter`
+- Returns: `int64`, `error`
+
+Generated SQL:
+
+postgres:
+
+```sql
+SELECT COUNT(*) FROM "public"."workspaces" WHERE <filter>
 ```
 
 ### Paginate
@@ -176,36 +176,6 @@ postgres:
 INSERT INTO "public"."workspaces" (<columns>) VALUES <values> RETURNING "id"
 ```
 
-### Upsert
-
-- Params: `input *CreateWorkspaceInput`, `target WorkspaceConflictTarget`
-- Returns: `*Workspace`, `error`
-- Errors: `ErrNilInput`, `ErrConstraintViolation`
-- Notes: One method over the generated WorkspaceConflictTarget enum — the target argument selects the conflict columns at call time.
-
-Generated SQL:
-
-postgres:
-
-```sql
-INSERT INTO "public"."workspaces" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING "id"
-```
-
-### UpsertMany
-
-- Params: `inputs []*CreateWorkspaceInput`, `target WorkspaceConflictTarget`
-- Returns: `[]*Workspace`, `error`
-- Errors: `ErrNilInput`, `ErrConstraintViolation`
-- Notes: Batched in generation.batch_size chunks over the same WorkspaceConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.
-
-Generated SQL:
-
-postgres:
-
-```sql
-INSERT INTO "public"."workspaces" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>
-```
-
 ### Update
 
 - Params: `id uuid.UUID`, `input *UpdateWorkspaceInput`
@@ -251,6 +221,43 @@ postgres:
 UPDATE "public"."workspaces" SET <set> WHERE <filter> RETURNING "id"
 ```
 
+### Upsert
+
+- Params: `input *CreateWorkspaceInput`, `target WorkspaceConflictTarget`
+- Returns: `*Workspace`, `error`
+- Errors: `ErrNilInput`, `ErrConstraintViolation`
+- Notes: One method over the generated WorkspaceConflictTarget enum — the target argument selects the conflict columns at call time.
+
+Generated SQL:
+
+postgres:
+
+```sql
+INSERT INTO "public"."workspaces" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING "id"
+```
+
+### UpsertMany
+
+- Params: `inputs []*CreateWorkspaceInput`, `target WorkspaceConflictTarget`
+- Returns: `[]*Workspace`, `error`
+- Errors: `ErrNilInput`, `ErrConstraintViolation`
+- Notes: Batched in generation.batch_size chunks over the same WorkspaceConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.
+
+Generated SQL:
+
+postgres:
+
+```sql
+INSERT INTO "public"."workspaces" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>
+```
+
+### UpdateWithRelated
+
+- Params: `id uuid.UUID`, `input *UpdateWorkspaceWithRelatedInput`
+- Returns: `*Workspace`, `error`
+- Errors: `ErrNilInput`, `ErrNotFound`, `ErrConstraintViolation`
+- Notes: Writes the parent and its nested rows in one transaction — a SAVEPOINT when ctx already holds one. Issues no statement of its own: it composes Update and, per eligible relationship (APITokens, Activities, Attachments, Comments, Cycles, Invitations, Labels, Projects, SsoConnections, Tasks, Teams, TimeEntries), the target's and junction's own client methods, so no sql_bodies entry. Each inner call fires its own hooks, events and cache invalidation under its own op; the nested method has none.
+
 ### HardDelete
 
 - Params: `id uuid.UUID`
@@ -294,13 +301,6 @@ postgres:
 DELETE FROM "public"."workspaces" WHERE <filter> RETURNING "id"
 ```
 
-### UpdateWithRelated
-
-- Params: `id uuid.UUID`, `input *UpdateWorkspaceWithRelatedInput`
-- Returns: `*Workspace`, `error`
-- Errors: `ErrNilInput`, `ErrNotFound`, `ErrConstraintViolation`
-- Notes: Writes the parent and its nested rows in one transaction — a SAVEPOINT when ctx already holds one. Issues no statement of its own: it composes Update and, per eligible relationship (APITokens, Activities, Attachments, Comments, Cycles, Invitations, Labels, Projects, SsoConnections, Tasks, Teams, TimeEntries), the target's and junction's own client methods, so no sql_bodies entry. Each inner call fires its own hooks, events and cache invalidation under its own op; the nested method has none.
-
 ## Filter
 
 Type `WorkspaceFilter`.
@@ -320,3 +320,17 @@ Type `WorkspaceFilter`.
 Type `WorkspaceSort`.
 
 Fields: CreatedAt, ID, Name, Slug, UpdatedAt
+
+## Read examples
+
+```go
+row, err := client.Workspaces().Get(ctx, uuid.NewV4())
+rows, err := client.Workspaces().GetMany(ctx, &database.GetWorkspacesInput{Filter: &database.WorkspaceFilter{Name: &comparator.String{Eq: new("example")}}})
+```
+
+## Write examples
+
+```go
+created, err := client.Workspaces().Create(ctx, &database.CreateWorkspaceInput{Name: "example", Slug: "example"})
+updated, err := client.Workspaces().Update(ctx, uuid.NewV4(), &database.UpdateWorkspaceInput{Name: omittable.Set("example")})
+```

@@ -61,19 +61,6 @@ postgres:
 SELECT "created_at", "task_id", "user_id" FROM "public"."task_watchers" WHERE <filter> ORDER BY <sort> LIMIT <limit>
 ```
 
-### Count
-
-- Params: `filter *TaskWatcherFilter`
-- Returns: `int64`, `error`
-
-Generated SQL:
-
-postgres:
-
-```sql
-SELECT COUNT(*) FROM "public"."task_watchers" WHERE <filter>
-```
-
 ### Exists
 
 - Params: `pk TaskWatcherPK`
@@ -98,6 +85,19 @@ postgres:
 
 ```sql
 SELECT EXISTS(SELECT 1 FROM "public"."task_watchers" WHERE <filter>)
+```
+
+### Count
+
+- Params: `filter *TaskWatcherFilter`
+- Returns: `int64`, `error`
+
+Generated SQL:
+
+postgres:
+
+```sql
+SELECT COUNT(*) FROM "public"."task_watchers" WHERE <filter>
 ```
 
 ### Paginate
@@ -158,36 +158,6 @@ postgres:
 INSERT INTO "public"."task_watchers" (<columns>) VALUES <values>
 ```
 
-### Upsert
-
-- Params: `input *CreateTaskWatcherInput`, `target TaskWatcherConflictTarget`
-- Returns: `*TaskWatcher`, `error`
-- Errors: `ErrNilInput`, `ErrConstraintViolation`
-- Notes: One method over the generated TaskWatcherConflictTarget enum — the target argument selects the conflict columns at call time.
-
-Generated SQL:
-
-postgres:
-
-```sql
-INSERT INTO "public"."task_watchers" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>
-```
-
-### UpsertMany
-
-- Params: `inputs []*CreateTaskWatcherInput`, `target TaskWatcherConflictTarget`
-- Returns: `[]*TaskWatcher`, `error`
-- Errors: `ErrNilInput`, `ErrConstraintViolation`
-- Notes: Batched in generation.batch_size chunks over the same TaskWatcherConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.
-
-Generated SQL:
-
-postgres:
-
-```sql
-INSERT INTO "public"."task_watchers" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>
-```
-
 ### Update
 
 - Params: `pk TaskWatcherPK`, `input *UpdateTaskWatcherInput`
@@ -231,6 +201,36 @@ postgres:
 
 ```sql
 UPDATE "public"."task_watchers" SET <set> WHERE <filter> RETURNING "task_id", "user_id"
+```
+
+### Upsert
+
+- Params: `input *CreateTaskWatcherInput`, `target TaskWatcherConflictTarget`
+- Returns: `*TaskWatcher`, `error`
+- Errors: `ErrNilInput`, `ErrConstraintViolation`
+- Notes: One method over the generated TaskWatcherConflictTarget enum — the target argument selects the conflict columns at call time.
+
+Generated SQL:
+
+postgres:
+
+```sql
+INSERT INTO "public"."task_watchers" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>
+```
+
+### UpsertMany
+
+- Params: `inputs []*CreateTaskWatcherInput`, `target TaskWatcherConflictTarget`
+- Returns: `[]*TaskWatcher`, `error`
+- Errors: `ErrNilInput`, `ErrConstraintViolation`
+- Notes: Batched in generation.batch_size chunks over the same TaskWatcherConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.
+
+Generated SQL:
+
+postgres:
+
+```sql
+INSERT INTO "public"."task_watchers" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>
 ```
 
 ### HardDelete
@@ -293,3 +293,17 @@ Type `TaskWatcherFilter`.
 Type `TaskWatcherSort`.
 
 Fields: CreatedAt, TaskID, UserID
+
+## Read examples
+
+```go
+row, err := client.TaskWatchers().Get(ctx, database.TaskWatcherPK{TaskID: uuid.NewV4(), UserID: uuid.NewV4()})
+rows, err := client.TaskWatchers().GetMany(ctx, &database.GetTaskWatchersInput{Filter: &database.TaskWatcherFilter{CreatedAt: &comparator.Time{Eq: new(time.Now())}}})
+```
+
+## Write examples
+
+```go
+created, err := client.TaskWatchers().Create(ctx, &database.CreateTaskWatcherInput{TaskID: uuid.NewV4(), UserID: uuid.NewV4()})
+updated, err := client.TaskWatchers().Update(ctx, database.TaskWatcherPK{TaskID: uuid.NewV4(), UserID: uuid.NewV4()}, &database.UpdateTaskWatcherInput{CreatedAt: omittable.Set(time.Now())})
+```
