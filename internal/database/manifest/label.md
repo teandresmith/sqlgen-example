@@ -36,6 +36,7 @@ A workspace-scoped tag applied to tasks
 | Name | Kind | Target | FK | Filter |
 | --- | --- | --- | --- | --- |
 | tasks | m2m | Task | public.task_labels (label_id → task_id) |  |
+| workspace | o2o | Workspace | public.labels.workspace_id |  |
 
 ## Query methods
 

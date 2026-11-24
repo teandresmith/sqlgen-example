@@ -42,14 +42,24 @@ type Task {
   watchers: [User!]!
   "one-to-many relationship with the comments table."
   comments: [Comment!]!
+  "one-to-one relationship with the cycles table."
+  cycle: Cycle
   "many-to-many relationship with the tasks table."
   dependsOnTasks: [Task!]!
   "many-to-many relationship with the labels table."
   labels: [Label!]!
+  "one-to-one relationship with the tasks table."
+  parentTask: Task
+  "one-to-one relationship with the projects table."
+  project: Project
+  "one-to-one relationship with the users table."
+  reporter: User
   "many-to-many relationship with the tasks table."
   tasks: [Task!]!
   "one-to-many relationship with the time_entries table."
   timeEntries: [TimeEntry!]!
+  "one-to-one relationship with the workspaces table."
+  workspace: Workspace
 }
 
 type TaskConnection {
@@ -72,6 +82,7 @@ type TaskListResult {
 }
 
 input TaskFilter {
+  id: IDComparator
   workspaceID: IDComparator
   projectID: IDComparator
   parentTaskID: NullableIDComparator

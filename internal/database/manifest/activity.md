@@ -34,6 +34,13 @@ Append-only activity feed derived from mutation events
 | `activity_pkey` | id | yes | btree |  |
 | `idx_activity_workspace` | workspace_id, created_at |  | btree |  |
 
+## Relationships
+
+| Name | Kind | Target | FK | Filter |
+| --- | --- | --- | --- | --- |
+| actor | o2o | User | public.activity.actor_id |  |
+| workspace | o2o | Workspace | public.activity.workspace_id |  |
+
 ## Query methods
 
 ### Get

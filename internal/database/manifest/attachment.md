@@ -36,6 +36,13 @@ Files attached to a task or a comment (polymorphic)
 | `attachments_pkey` | id | yes | btree |  |
 | `idx_attachments_entity` | entity_type, entity_id |  | btree |  |
 
+## Relationships
+
+| Name | Kind | Target | FK | Filter |
+| --- | --- | --- | --- | --- |
+| user | o2o | User | public.attachments.uploaded_by |  |
+| workspace | o2o | Workspace | public.attachments.workspace_id |  |
+
 ## Query methods
 
 ### Get

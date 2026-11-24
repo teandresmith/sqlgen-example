@@ -56,6 +56,7 @@ type UserListResult {
 }
 
 input UserFilter {
+  id: IDComparator
   email: StringComparator
   displayName: StringComparator
   createdAt: TimeComparator

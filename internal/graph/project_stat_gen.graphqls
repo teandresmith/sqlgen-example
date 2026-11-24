@@ -34,6 +34,7 @@ type ProjectStatListResult {
 }
 
 input ProjectStatFilter {
+  projectID: IDComparator
   workspaceID: IDComparator
   totalTasks: NumericComparator
   doneTasks: NumericComparator

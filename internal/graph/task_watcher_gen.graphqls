@@ -30,6 +30,8 @@ type TaskWatcherListResult {
 }
 
 input TaskWatcherFilter {
+  taskID: IDComparator
+  userID: IDComparator
   createdAt: TimeComparator
   and: [TaskWatcherFilter!]
   or:  [TaskWatcherFilter!]

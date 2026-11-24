@@ -40,6 +40,8 @@ A container for tasks, owned by one workspace
 | Name | Kind | Target | FK | Filter |
 | --- | --- | --- | --- | --- |
 | tasks | o2m | Task | public.tasks.project_id |  |
+| team | o2o | Team | public.projects.(workspace_id, team_id) |  |
+| workspace | o2o | Workspace | public.projects.workspace_id |  |
 
 ## Query methods
 

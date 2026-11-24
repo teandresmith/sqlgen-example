@@ -36,6 +36,7 @@ type WorkspaceSettingListResult {
 }
 
 input WorkspaceSettingFilter {
+  id: IDComparator
   workspaceID: IDComparator
   settings: JSONBComparator
   createdAt: TimeComparator

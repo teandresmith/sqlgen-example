@@ -16,6 +16,8 @@ type SsoConnection {
   createdAt: Time!
   "Last modification timestamp"
   updatedAt: Time!
+  "one-to-one relationship with the workspaces table."
+  workspace: Workspace
 }
 
 type SsoConnectionConnection {
@@ -38,6 +40,7 @@ type SsoConnectionListResult {
 }
 
 input SsoConnectionFilter {
+  id: IDComparator
   workspaceID: IDComparator
   provider: SsoProviderComparator
   config: JSONBComparator

@@ -35,7 +35,7 @@ Per-workspace configuration (one row per workspace)
 
 | Name | Kind | Target | FK | Filter |
 | --- | --- | --- | --- | --- |
-| workspaces | o2o | Workspace | public.workspace_settings.workspace_id |  |
+| Workspaces | o2o | Workspace | public.workspace_settings.workspace_id |  |
 
 ## Query methods
 

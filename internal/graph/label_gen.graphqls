@@ -14,6 +14,8 @@ type Label {
   createdAt: Time!
   "many-to-many relationship with the tasks table."
   tasks: [Task!]!
+  "one-to-one relationship with the workspaces table."
+  workspace: Workspace
 }
 
 type LabelConnection {
@@ -36,6 +38,7 @@ type LabelListResult {
 }
 
 input LabelFilter {
+  id: IDComparator
   workspaceID: IDComparator
   name: StringComparator
   color: StringComparator

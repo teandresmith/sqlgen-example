@@ -22,6 +22,10 @@ type Cycle {
   updatedAt: Time!
   "one-to-many relationship with the tasks table."
   tasks: [Task!]!
+  "one-to-one relationship with the teams table."
+  team: Team
+  "one-to-one relationship with the workspaces table."
+  workspace: Workspace
 }
 
 type CycleConnection {
@@ -44,6 +48,7 @@ type CycleListResult {
 }
 
 input CycleFilter {
+  id: IDComparator
   workspaceID: IDComparator
   teamID: NullableIDComparator
   name: StringComparator

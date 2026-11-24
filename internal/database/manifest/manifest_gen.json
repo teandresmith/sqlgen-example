@@ -1,10 +1,10 @@
 {
-  "$schema": "https://raw.githubusercontent.com/teandresmith/sqlgen/v0.1.2/cmd/sqlgen/manifest/schema/v1.json",
+  "$schema": "https://raw.githubusercontent.com/teandresmith/sqlgen/v0.1.4/cmd/sqlgen/manifest/schema/v1.json",
   "schema_version": "0.2.0",
-  "generated_at": "2026-11-18T19:32:24Z",
+  "generated_at": "2026-11-24T19:18:30Z",
   "generator": {
     "name": "sqlgen",
-    "version": "0.1.2"
+    "version": "0.1.4"
   },
   "dialect": "postgres",
   "package": "database",
@@ -362,7 +362,40 @@
           "comment": "Row creation timestamp"
         }
       ],
-      "relationships": [],
+      "relationships": [
+        {
+          "name": "user",
+          "kind": "o2o",
+          "target_entity": "User",
+          "fk": {
+            "table": "api_tokens",
+            "schema": "public",
+            "columns": [
+              "user_id"
+            ],
+            "references": [
+              "id"
+            ],
+            "constraint": "api_tokens_user_id_fkey"
+          }
+        },
+        {
+          "name": "workspace",
+          "kind": "o2o",
+          "target_entity": "Workspace",
+          "fk": {
+            "table": "api_tokens",
+            "schema": "public",
+            "columns": [
+              "workspace_id"
+            ],
+            "references": [
+              "id"
+            ],
+            "constraint": "api_tokens_workspace_id_fkey"
+          }
+        }
+      ],
       "methods": {
         "query": [
           {
@@ -940,7 +973,40 @@
           "comment": "When the activity occurred"
         }
       ],
-      "relationships": [],
+      "relationships": [
+        {
+          "name": "actor",
+          "kind": "o2o",
+          "target_entity": "User",
+          "fk": {
+            "table": "activity",
+            "schema": "public",
+            "columns": [
+              "actor_id"
+            ],
+            "references": [
+              "id"
+            ],
+            "constraint": "activity_actor_id_fkey"
+          }
+        },
+        {
+          "name": "workspace",
+          "kind": "o2o",
+          "target_entity": "Workspace",
+          "fk": {
+            "table": "activity",
+            "schema": "public",
+            "columns": [
+              "workspace_id"
+            ],
+            "references": [
+              "id"
+            ],
+            "constraint": "activity_workspace_id_fkey"
+          }
+        }
+      ],
       "methods": {
         "query": [
           {
@@ -1542,7 +1608,40 @@
           "comment": "Row creation timestamp"
         }
       ],
-      "relationships": [],
+      "relationships": [
+        {
+          "name": "user",
+          "kind": "o2o",
+          "target_entity": "User",
+          "fk": {
+            "table": "attachments",
+            "schema": "public",
+            "columns": [
+              "uploaded_by"
+            ],
+            "references": [
+              "id"
+            ],
+            "constraint": "attachments_uploaded_by_fkey"
+          }
+        },
+        {
+          "name": "workspace",
+          "kind": "o2o",
+          "target_entity": "Workspace",
+          "fk": {
+            "table": "attachments",
+            "schema": "public",
+            "columns": [
+              "workspace_id"
+            ],
+            "references": [
+              "id"
+            ],
+            "constraint": "attachments_workspace_id_fkey"
+          }
+        }
+      ],
       "methods": {
         "query": [
           {
@@ -2162,6 +2261,54 @@
             ]
           },
           "filter": "entity_type = 'comment'"
+        },
+        {
+          "name": "author",
+          "kind": "o2o",
+          "target_entity": "User",
+          "fk": {
+            "table": "comments",
+            "schema": "public",
+            "columns": [
+              "author_id"
+            ],
+            "references": [
+              "id"
+            ],
+            "constraint": "comments_author_id_fkey"
+          }
+        },
+        {
+          "name": "task",
+          "kind": "o2o",
+          "target_entity": "Task",
+          "fk": {
+            "table": "comments",
+            "schema": "public",
+            "columns": [
+              "task_id"
+            ],
+            "references": [
+              "id"
+            ],
+            "constraint": "comments_task_id_fkey"
+          }
+        },
+        {
+          "name": "workspace",
+          "kind": "o2o",
+          "target_entity": "Workspace",
+          "fk": {
+            "table": "comments",
+            "schema": "public",
+            "columns": [
+              "workspace_id"
+            ],
+            "references": [
+              "id"
+            ],
+            "constraint": "comments_workspace_id_fkey"
+          }
         }
       ],
       "methods": {
@@ -2780,6 +2927,38 @@
               "id"
             ],
             "constraint": "tasks_cycle_same_ws"
+          }
+        },
+        {
+          "name": "team",
+          "kind": "o2o",
+          "target_entity": "Team",
+          "fk": {
+            "table": "cycles",
+            "schema": "public",
+            "columns": [
+              "team_id"
+            ],
+            "references": [
+              "id"
+            ],
+            "constraint": "cycles_team_id_fkey"
+          }
+        },
+        {
+          "name": "workspace",
+          "kind": "o2o",
+          "target_entity": "Workspace",
+          "fk": {
+            "table": "cycles",
+            "schema": "public",
+            "columns": [
+              "workspace_id"
+            ],
+            "references": [
+              "id"
+            ],
+            "constraint": "cycles_workspace_id_fkey"
           }
         }
       ],
@@ -3427,7 +3606,40 @@
           "comment": "Last modification timestamp"
         }
       ],
-      "relationships": [],
+      "relationships": [
+        {
+          "name": "user",
+          "kind": "o2o",
+          "target_entity": "User",
+          "fk": {
+            "table": "invitations",
+            "schema": "public",
+            "columns": [
+              "invited_by"
+            ],
+            "references": [
+              "id"
+            ],
+            "constraint": "invitations_invited_by_fkey"
+          }
+        },
+        {
+          "name": "workspace",
+          "kind": "o2o",
+          "target_entity": "Workspace",
+          "fk": {
+            "table": "invitations",
+            "schema": "public",
+            "columns": [
+              "workspace_id"
+            ],
+            "references": [
+              "id"
+            ],
+            "constraint": "invitations_workspace_id_fkey"
+          }
+        }
+      ],
       "methods": {
         "query": [
           {
@@ -4011,6 +4223,22 @@
               ],
               "constraint": "task_labels_task_id_fkey"
             }
+          }
+        },
+        {
+          "name": "workspace",
+          "kind": "o2o",
+          "target_entity": "Workspace",
+          "fk": {
+            "table": "labels",
+            "schema": "public",
+            "columns": [
+              "workspace_id"
+            ],
+            "references": [
+              "id"
+            ],
+            "constraint": "labels_workspace_id_fkey"
           }
         }
       ],
@@ -5176,6 +5404,40 @@
             ],
             "constraint": "tasks_project_id_fkey"
           }
+        },
+        {
+          "name": "team",
+          "kind": "o2o",
+          "target_entity": "Team",
+          "fk": {
+            "table": "projects",
+            "schema": "public",
+            "columns": [
+              "workspace_id",
+              "team_id"
+            ],
+            "references": [
+              "workspace_id",
+              "id"
+            ],
+            "constraint": "projects_team_same_ws"
+          }
+        },
+        {
+          "name": "workspace",
+          "kind": "o2o",
+          "target_entity": "Workspace",
+          "fk": {
+            "table": "projects",
+            "schema": "public",
+            "columns": [
+              "workspace_id"
+            ],
+            "references": [
+              "id"
+            ],
+            "constraint": "projects_workspace_id_fkey"
+          }
         }
       ],
       "methods": {
@@ -6104,7 +6366,24 @@
           "comment": "Last modification timestamp"
         }
       ],
-      "relationships": [],
+      "relationships": [
+        {
+          "name": "workspace",
+          "kind": "o2o",
+          "target_entity": "Workspace",
+          "fk": {
+            "table": "sso_connections",
+            "schema": "public",
+            "columns": [
+              "workspace_id"
+            ],
+            "references": [
+              "id"
+            ],
+            "constraint": "sso_connections_workspace_id_fkey"
+          }
+        }
+      ],
       "methods": {
         "query": [
           {
@@ -6815,7 +7094,8 @@
               ],
               "references": [
                 "id"
-              ]
+              ],
+              "constraint": "task_assignees_task_id_fkey"
             },
             "target_fk": {
               "columns": [
@@ -6823,7 +7103,8 @@
               ],
               "references": [
                 "id"
-              ]
+              ],
+              "constraint": "task_assignees_user_id_fkey"
             }
           }
         },
@@ -6855,7 +7136,8 @@
             ],
             "references": [
               "id"
-            ]
+            ],
+            "constraint": "tasks_parent_task_id_fkey"
           }
         },
         {
@@ -6871,7 +7153,8 @@
               ],
               "references": [
                 "id"
-              ]
+              ],
+              "constraint": "task_watchers_task_id_fkey"
             },
             "target_fk": {
               "columns": [
@@ -6879,7 +7162,8 @@
               ],
               "references": [
                 "id"
-              ]
+              ],
+              "constraint": "task_watchers_user_id_fkey"
             }
           }
         },
@@ -6897,6 +7181,24 @@
               "id"
             ],
             "constraint": "comments_task_id_fkey"
+          }
+        },
+        {
+          "name": "cycle",
+          "kind": "o2o",
+          "target_entity": "Cycle",
+          "fk": {
+            "table": "tasks",
+            "schema": "public",
+            "columns": [
+              "workspace_id",
+              "cycle_id"
+            ],
+            "references": [
+              "workspace_id",
+              "id"
+            ],
+            "constraint": "tasks_cycle_same_ws"
           }
         },
         {
@@ -6954,6 +7256,54 @@
           }
         },
         {
+          "name": "parent_task",
+          "kind": "o2o",
+          "target_entity": "Task",
+          "fk": {
+            "table": "tasks",
+            "schema": "public",
+            "columns": [
+              "parent_task_id"
+            ],
+            "references": [
+              "id"
+            ],
+            "constraint": "tasks_parent_task_id_fkey"
+          }
+        },
+        {
+          "name": "project",
+          "kind": "o2o",
+          "target_entity": "Project",
+          "fk": {
+            "table": "tasks",
+            "schema": "public",
+            "columns": [
+              "project_id"
+            ],
+            "references": [
+              "id"
+            ],
+            "constraint": "tasks_project_id_fkey"
+          }
+        },
+        {
+          "name": "reporter",
+          "kind": "o2o",
+          "target_entity": "User",
+          "fk": {
+            "table": "tasks",
+            "schema": "public",
+            "columns": [
+              "reporter_id"
+            ],
+            "references": [
+              "id"
+            ],
+            "constraint": "tasks_reporter_id_fkey"
+          }
+        },
+        {
           "name": "tasks",
           "kind": "m2m",
           "target_entity": "Task",
@@ -6994,6 +7344,22 @@
               "id"
             ],
             "constraint": "time_entries_task_id_fkey"
+          }
+        },
+        {
+          "name": "workspace",
+          "kind": "o2o",
+          "target_entity": "Workspace",
+          "fk": {
+            "table": "tasks",
+            "schema": "public",
+            "columns": [
+              "workspace_id"
+            ],
+            "references": [
+              "id"
+            ],
+            "constraint": "tasks_workspace_id_fkey"
           }
         }
       ],
@@ -9655,6 +10021,22 @@
               "constraint": "team_members_user_id_fkey"
             }
           }
+        },
+        {
+          "name": "workspace",
+          "kind": "o2o",
+          "target_entity": "Workspace",
+          "fk": {
+            "table": "teams",
+            "schema": "public",
+            "columns": [
+              "workspace_id"
+            ],
+            "references": [
+              "id"
+            ],
+            "constraint": "teams_workspace_id_fkey"
+          }
         }
       ],
       "methods": {
@@ -10740,7 +11122,56 @@
           "comment": "Row creation timestamp"
         }
       ],
-      "relationships": [],
+      "relationships": [
+        {
+          "name": "task",
+          "kind": "o2o",
+          "target_entity": "Task",
+          "fk": {
+            "table": "time_entries",
+            "schema": "public",
+            "columns": [
+              "task_id"
+            ],
+            "references": [
+              "id"
+            ],
+            "constraint": "time_entries_task_id_fkey"
+          }
+        },
+        {
+          "name": "user",
+          "kind": "o2o",
+          "target_entity": "User",
+          "fk": {
+            "table": "time_entries",
+            "schema": "public",
+            "columns": [
+              "user_id"
+            ],
+            "references": [
+              "id"
+            ],
+            "constraint": "time_entries_user_id_fkey"
+          }
+        },
+        {
+          "name": "workspace",
+          "kind": "o2o",
+          "target_entity": "Workspace",
+          "fk": {
+            "table": "time_entries",
+            "schema": "public",
+            "columns": [
+              "workspace_id"
+            ],
+            "references": [
+              "id"
+            ],
+            "constraint": "time_entries_workspace_id_fkey"
+          }
+        }
+      ],
       "methods": {
         "query": [
           {
@@ -12816,7 +13247,7 @@
       ],
       "relationships": [
         {
-          "name": "workspaces",
+          "name": "Workspaces",
           "kind": "o2o",
           "target_entity": "Workspace",
           "fk": {

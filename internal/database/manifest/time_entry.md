@@ -36,6 +36,14 @@ Logged time against a task
 | `idx_time_entries_workspace` | workspace_id, spent_on |  | btree |  |
 | `time_entries_pkey` | id | yes | btree |  |
 
+## Relationships
+
+| Name | Kind | Target | FK | Filter |
+| --- | --- | --- | --- | --- |
+| task | o2o | Task | public.time_entries.task_id |  |
+| user | o2o | User | public.time_entries.user_id |  |
+| workspace | o2o | Workspace | public.time_entries.workspace_id |  |
+
 ## Query methods
 
 ### Get

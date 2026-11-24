@@ -60,6 +60,7 @@ type WorkspaceListResult {
 }
 
 input WorkspaceFilter {
+  id: IDComparator
   name: StringComparator
   slug: StringComparator
   createdAt: TimeComparator

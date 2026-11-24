@@ -22,6 +22,10 @@ type Invitation {
   createdAt: Time!
   "Last modification timestamp"
   updatedAt: Time!
+  "one-to-one relationship with the users table."
+  user: User
+  "one-to-one relationship with the workspaces table."
+  workspace: Workspace
 }
 
 type InvitationConnection {
@@ -44,6 +48,7 @@ type InvitationListResult {
 }
 
 input InvitationFilter {
+  id: IDComparator
   workspaceID: IDComparator
   email: StringComparator
   role: MembershipRoleComparator

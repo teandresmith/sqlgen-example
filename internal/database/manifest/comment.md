@@ -38,6 +38,9 @@ A note left by a user on a task
 | Name | Kind | Target | FK | Filter |
 | --- | --- | --- | --- | --- |
 | Attachments | o2m | Attachment | public.attachments.entity_id | `entity_type = 'comment'` |
+| author | o2o | User | public.comments.author_id |  |
+| task | o2o | Task | public.comments.task_id |  |
+| workspace | o2o | Workspace | public.comments.workspace_id |  |
 
 ## Query methods
 

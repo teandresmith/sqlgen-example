@@ -9,10 +9,10 @@ require (
 	github.com/jackc/pgx/v5 v5.9.1
 	github.com/redis/go-redis/v9 v9.15.0
 	github.com/shopspring/decimal v1.4.0
-	github.com/teandresmith/sqlgen v0.1.2
-	github.com/teandresmith/sqlgen/cache/redis v0.1.2
-	github.com/teandresmith/sqlgen/event/natsbus v0.1.2
-	github.com/teandresmith/sqlgen/metrics/otel v0.1.2
+	github.com/teandresmith/sqlgen v0.1.4
+	github.com/teandresmith/sqlgen/cache/redis v0.1.4
+	github.com/teandresmith/sqlgen/event/natsbus v0.1.4
+	github.com/teandresmith/sqlgen/metrics/otel v0.1.4
 	github.com/testcontainers/testcontainers-go v0.42.0
 	github.com/testcontainers/testcontainers-go/modules/nats v0.41.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.41.0

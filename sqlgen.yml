@@ -118,6 +118,8 @@ api:
     max_complexity: 1000
     gqlgen_config: ./gqlgen.yml
     gqlgen_bin: go run github.com/99designs/gqlgen
+    # The app serves GraphQL from internal/server (own limits, auth, cache).
+    server_scaffold: false
 
 # ---------------------------------------------------------------------------
 # Per-table configuration. Most relationships are auto-detected from FKs:
@@ -128,6 +130,12 @@ api:
 # Only cursor keys, composite-PK ordering, and event opt-out need declaring.
 # ---------------------------------------------------------------------------
 tables:
+  workspace_settings:
+    relationships:
+      - name: Workspaces   # pins the pre-v0.1.3 name; drop to take `workspace`
+        type: o2o
+        table: workspaces
+        fk: workspace_id
   # Column access control (PRD §32): keep hashed credentials in the Go client
   # (the server reads/writes them) but off every external surface — GraphQL
   # output, filters, sort, and event payloads. `write_only` (not `internal`)
@@ -197,13 +205,8 @@ tables:
     # needed — kept here to showcase self-ref auto-detection working.
     # The polymorphic attachments relationship (no real FK) still needs an
     # explicit discriminator filter (sub-categorized polymorphism, PRD §13.7).
-    # exclude_relationships matches the parser's snake_case relationship name
-    # (junction base name for M2M; "<fk-stem>_<table>" for a disambiguated
-    # self-ref O2M).
-    exclude_relationships:
-      - task_assignees
-      - task_watchers
-      - parent_task_tasks
+    # A declared edge over exactly a detected edge's key takes its place, so no
+    # exclude_relationships entry is needed to rename one (sqlgen v0.1.3).
     relationships:
       - name: Subtasks
         type: o2m

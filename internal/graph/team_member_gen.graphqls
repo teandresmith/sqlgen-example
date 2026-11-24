@@ -30,6 +30,8 @@ type TeamMemberListResult {
 }
 
 input TeamMemberFilter {
+  teamID: IDComparator
+  userID: IDComparator
   addedAt: TimeComparator
   and: [TeamMemberFilter!]
   or:  [TeamMemberFilter!]

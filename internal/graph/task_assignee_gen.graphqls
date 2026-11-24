@@ -30,6 +30,8 @@ type TaskAssigneeListResult {
 }
 
 input TaskAssigneeFilter {
+  taskID: IDComparator
+  userID: IDComparator
   assignedAt: TimeComparator
   and: [TaskAssigneeFilter!]
   or:  [TaskAssigneeFilter!]

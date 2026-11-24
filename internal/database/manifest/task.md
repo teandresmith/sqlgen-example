@@ -53,10 +53,15 @@ The unit of work; belongs to a project, may have a parent task
 | Subtasks | o2m | Task | public.tasks.parent_task_id |  |
 | Watchers | m2m | User | public.task_watchers (task_id → user_id) |  |
 | comments | o2m | Comment | public.comments.task_id |  |
+| cycle | o2o | Cycle | public.tasks.(workspace_id, cycle_id) |  |
 | depends_on_tasks | m2m | Task | public.task_dependencies (task_id → depends_on_task_id) |  |
 | labels | m2m | Label | public.task_labels (task_id → label_id) |  |
+| parent_task | o2o | Task | public.tasks.parent_task_id |  |
+| project | o2o | Project | public.tasks.project_id |  |
+| reporter | o2o | User | public.tasks.reporter_id |  |
 | tasks | m2m | Task | public.task_dependencies (depends_on_task_id → task_id) |  |
 | time_entries | o2m | TimeEntry | public.time_entries.task_id |  |
+| workspace | o2o | Workspace | public.tasks.workspace_id |  |
 
 ## Query methods
 

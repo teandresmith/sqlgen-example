@@ -33,6 +33,12 @@ Per-workspace single sign-on configuration
 | `sso_connections_pkey` | id | yes | btree |  |
 | `sso_connections_workspace_id_provider_key` | workspace_id, provider | yes | btree |  |
 
+## Relationships
+
+| Name | Kind | Target | FK | Filter |
+| --- | --- | --- | --- | --- |
+| workspace | o2o | Workspace | public.sso_connections.workspace_id |  |
+
 ## Query methods
 
 ### Get

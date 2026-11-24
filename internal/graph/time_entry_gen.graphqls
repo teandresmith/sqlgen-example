@@ -20,6 +20,12 @@ type TimeEntry {
   spentOn: Time!
   "Row creation timestamp"
   createdAt: Time!
+  "one-to-one relationship with the tasks table."
+  task: Task
+  "one-to-one relationship with the users table."
+  user: User
+  "one-to-one relationship with the workspaces table."
+  workspace: Workspace
 }
 
 type TimeEntryConnection {
@@ -42,6 +48,7 @@ type TimeEntryListResult {
 }
 
 input TimeEntryFilter {
+  id: IDComparator
   workspaceID: IDComparator
   taskID: IDComparator
   userID: IDComparator

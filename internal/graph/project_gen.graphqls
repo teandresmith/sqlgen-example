@@ -20,6 +20,10 @@ type Project {
   teamID: UUID
   "one-to-many relationship with the tasks table."
   tasks: [Task!]!
+  "one-to-one relationship with the teams table."
+  team: Team
+  "one-to-one relationship with the workspaces table."
+  workspace: Workspace
 }
 
 type ProjectConnection {
@@ -42,6 +46,7 @@ type ProjectListResult {
 }
 
 input ProjectFilter {
+  id: IDComparator
   workspaceID: IDComparator
   name: StringComparator
   description: NullableStringComparator

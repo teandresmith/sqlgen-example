@@ -22,6 +22,8 @@ type Team {
   projects: [Project!]!
   "many-to-many relationship with the users table."
   users: [User!]!
+  "one-to-one relationship with the workspaces table."
+  workspace: Workspace
 }
 
 type TeamConnection {
@@ -44,6 +46,7 @@ type TeamListResult {
 }
 
 input TeamFilter {
+  id: IDComparator
   workspaceID: IDComparator
   name: StringComparator
   slug: StringComparator

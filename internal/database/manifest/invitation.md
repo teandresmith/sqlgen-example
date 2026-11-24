@@ -37,6 +37,13 @@ Pending invitations for users to join a workspace
 | `invitations_pkey` | id | yes | btree |  |
 | `invitations_token_key` | token | yes | btree |  |
 
+## Relationships
+
+| Name | Kind | Target | FK | Filter |
+| --- | --- | --- | --- | --- |
+| user | o2o | User | public.invitations.invited_by |  |
+| workspace | o2o | Workspace | public.invitations.workspace_id |  |
+
 ## Query methods
 
 ### Get

@@ -18,6 +18,10 @@ type Activity {
   payload: JSON!
   "When the activity occurred"
   createdAt: Time!
+  "one-to-one relationship with the users table."
+  actor: User
+  "one-to-one relationship with the workspaces table."
+  workspace: Workspace
 }
 
 type ActivityConnection {
@@ -40,6 +44,7 @@ type ActivityListResult {
 }
 
 input ActivityFilter {
+  id: IDComparator
   workspaceID: IDComparator
   actorID: NullableIDComparator
   entityTable: StringComparator

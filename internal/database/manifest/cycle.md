@@ -41,6 +41,8 @@ A time-boxed planning iteration (sprint)
 | Name | Kind | Target | FK | Filter |
 | --- | --- | --- | --- | --- |
 | tasks | o2m | Task | public.tasks.(workspace_id, cycle_id) |  |
+| team | o2o | Team | public.cycles.team_id |  |
+| workspace | o2o | Workspace | public.cycles.workspace_id |  |
 
 ## Query methods
 

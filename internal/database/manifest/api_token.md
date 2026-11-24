@@ -36,6 +36,13 @@ API access tokens, personal or service-account scoped
 | `api_tokens_token_hash_key` | token_hash | yes | btree |  |
 | `idx_api_tokens_workspace` | workspace_id |  | btree |  |
 
+## Relationships
+
+| Name | Kind | Target | FK | Filter |
+| --- | --- | --- | --- | --- |
+| user | o2o | User | public.api_tokens.user_id |  |
+| workspace | o2o | Workspace | public.api_tokens.workspace_id |  |
+
 ## Query methods
 
 ### Get

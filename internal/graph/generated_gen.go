@@ -49,7 +49,9 @@ type ComplexityRoot struct {
 		LastUsedAt  func(childComplexity int) int
 		Name        func(childComplexity int) int
 		Scopes      func(childComplexity int) int
+		User        func(childComplexity int) int
 		UserID      func(childComplexity int) int
+		Workspace   func(childComplexity int) int
 		WorkspaceID func(childComplexity int) int
 	}
 
@@ -74,12 +76,14 @@ type ComplexityRoot struct {
 
 	Activity struct {
 		Action      func(childComplexity int) int
+		Actor       func(childComplexity int) int
 		ActorID     func(childComplexity int) int
 		CreatedAt   func(childComplexity int) int
 		EntityID    func(childComplexity int) int
 		EntityTable func(childComplexity int) int
 		ID          func(childComplexity int) int
 		Payload     func(childComplexity int) int
+		Workspace   func(childComplexity int) int
 		WorkspaceID func(childComplexity int) int
 	}
 
@@ -112,6 +116,8 @@ type ComplexityRoot struct {
 		SizeBytes   func(childComplexity int) int
 		StorageURL  func(childComplexity int) int
 		UploadedBy  func(childComplexity int) int
+		User        func(childComplexity int) int
+		Workspace   func(childComplexity int) int
 		WorkspaceID func(childComplexity int) int
 	}
 
@@ -141,12 +147,15 @@ type ComplexityRoot struct {
 
 	Comment struct {
 		Attachments func(childComplexity int) int
+		Author      func(childComplexity int) int
 		AuthorID    func(childComplexity int) int
 		Body        func(childComplexity int) int
 		CreatedAt   func(childComplexity int) int
 		ID          func(childComplexity int) int
+		Task        func(childComplexity int) int
 		TaskID      func(childComplexity int) int
 		UpdatedAt   func(childComplexity int) int
+		Workspace   func(childComplexity int) int
 		WorkspaceID func(childComplexity int) int
 	}
 
@@ -182,8 +191,10 @@ type ComplexityRoot struct {
 		StartsOn    func(childComplexity int) int
 		Status      func(childComplexity int) int
 		Tasks       func(childComplexity int) int
+		Team        func(childComplexity int) int
 		TeamID      func(childComplexity int) int
 		UpdatedAt   func(childComplexity int) int
+		Workspace   func(childComplexity int) int
 		WorkspaceID func(childComplexity int) int
 	}
 
@@ -216,6 +227,8 @@ type ComplexityRoot struct {
 		Status      func(childComplexity int) int
 		Token       func(childComplexity int) int
 		UpdatedAt   func(childComplexity int) int
+		User        func(childComplexity int) int
+		Workspace   func(childComplexity int) int
 		WorkspaceID func(childComplexity int) int
 	}
 
@@ -244,6 +257,7 @@ type ComplexityRoot struct {
 		ID          func(childComplexity int) int
 		Name        func(childComplexity int) int
 		Tasks       func(childComplexity int) int
+		Workspace   func(childComplexity int) int
 		WorkspaceID func(childComplexity int) int
 	}
 
@@ -415,8 +429,10 @@ type ComplexityRoot struct {
 		ID          func(childComplexity int) int
 		Name        func(childComplexity int) int
 		Tasks       func(childComplexity int) int
+		Team        func(childComplexity int) int
 		TeamID      func(childComplexity int) int
 		UpdatedAt   func(childComplexity int) int
+		Workspace   func(childComplexity int) int
 		WorkspaceID func(childComplexity int) int
 	}
 
@@ -543,6 +559,7 @@ type ComplexityRoot struct {
 		ID          func(childComplexity int) int
 		Provider    func(childComplexity int) int
 		UpdatedAt   func(childComplexity int) int
+		Workspace   func(childComplexity int) int
 		WorkspaceID func(childComplexity int) int
 	}
 
@@ -571,6 +588,7 @@ type ComplexityRoot struct {
 		Comments       func(childComplexity int) int
 		CreatedAt      func(childComplexity int) int
 		CustomFields   func(childComplexity int) int
+		Cycle          func(childComplexity int) int
 		CycleID        func(childComplexity int) int
 		DeletedAt      func(childComplexity int) int
 		DependsOnTasks func(childComplexity int) int
@@ -578,9 +596,12 @@ type ComplexityRoot struct {
 		DueAt          func(childComplexity int) int
 		ID             func(childComplexity int) int
 		Labels         func(childComplexity int) int
+		ParentTask     func(childComplexity int) int
 		ParentTaskID   func(childComplexity int) int
 		Priority       func(childComplexity int) int
+		Project        func(childComplexity int) int
 		ProjectID      func(childComplexity int) int
+		Reporter       func(childComplexity int) int
 		ReporterID     func(childComplexity int) int
 		Status         func(childComplexity int) int
 		Subtasks       func(childComplexity int) int
@@ -589,6 +610,7 @@ type ComplexityRoot struct {
 		Title          func(childComplexity int) int
 		UpdatedAt      func(childComplexity int) int
 		Watchers       func(childComplexity int) int
+		Workspace      func(childComplexity int) int
 		WorkspaceID    func(childComplexity int) int
 	}
 
@@ -721,6 +743,7 @@ type ComplexityRoot struct {
 		Slug        func(childComplexity int) int
 		UpdatedAt   func(childComplexity int) int
 		Users       func(childComplexity int) int
+		Workspace   func(childComplexity int) int
 		WorkspaceID func(childComplexity int) int
 	}
 
@@ -775,8 +798,11 @@ type ComplexityRoot struct {
 		ID          func(childComplexity int) int
 		Notes       func(childComplexity int) int
 		SpentOn     func(childComplexity int) int
+		Task        func(childComplexity int) int
 		TaskID      func(childComplexity int) int
+		User        func(childComplexity int) int
 		UserID      func(childComplexity int) int
+		Workspace   func(childComplexity int) int
 		WorkspaceID func(childComplexity int) int
 	}
 
@@ -1141,12 +1167,24 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.APIToken.Scopes(childComplexity), true
+	case "APIToken.user":
+		if e.ComplexityRoot.APIToken.User == nil {
+			break
+		}
+
+		return e.ComplexityRoot.APIToken.User(childComplexity), true
 	case "APIToken.userID":
 		if e.ComplexityRoot.APIToken.UserID == nil {
 			break
 		}
 
 		return e.ComplexityRoot.APIToken.UserID(childComplexity), true
+	case "APIToken.workspace":
+		if e.ComplexityRoot.APIToken.Workspace == nil {
+			break
+		}
+
+		return e.ComplexityRoot.APIToken.Workspace(childComplexity), true
 	case "APIToken.workspaceID":
 		if e.ComplexityRoot.APIToken.WorkspaceID == nil {
 			break
@@ -1223,6 +1261,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Activity.Action(childComplexity), true
+	case "Activity.actor":
+		if e.ComplexityRoot.Activity.Actor == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Activity.Actor(childComplexity), true
 	case "Activity.actorID":
 		if e.ComplexityRoot.Activity.ActorID == nil {
 			break
@@ -1259,6 +1303,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Activity.Payload(childComplexity), true
+	case "Activity.workspace":
+		if e.ComplexityRoot.Activity.Workspace == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Activity.Workspace(childComplexity), true
 	case "Activity.workspaceID":
 		if e.ComplexityRoot.Activity.WorkspaceID == nil {
 			break
@@ -1383,6 +1433,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Attachment.UploadedBy(childComplexity), true
+	case "Attachment.user":
+		if e.ComplexityRoot.Attachment.User == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Attachment.User(childComplexity), true
+	case "Attachment.workspace":
+		if e.ComplexityRoot.Attachment.Workspace == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Attachment.Workspace(childComplexity), true
 	case "Attachment.workspaceID":
 		if e.ComplexityRoot.Attachment.WorkspaceID == nil {
 			break
@@ -1472,6 +1534,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Comment.Attachments(childComplexity), true
+	case "Comment.author":
+		if e.ComplexityRoot.Comment.Author == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Comment.Author(childComplexity), true
 	case "Comment.authorID":
 		if e.ComplexityRoot.Comment.AuthorID == nil {
 			break
@@ -1496,6 +1564,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Comment.ID(childComplexity), true
+	case "Comment.task":
+		if e.ComplexityRoot.Comment.Task == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Comment.Task(childComplexity), true
 	case "Comment.taskID":
 		if e.ComplexityRoot.Comment.TaskID == nil {
 			break
@@ -1508,6 +1582,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Comment.UpdatedAt(childComplexity), true
+	case "Comment.workspace":
+		if e.ComplexityRoot.Comment.Workspace == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Comment.Workspace(childComplexity), true
 	case "Comment.workspaceID":
 		if e.ComplexityRoot.Comment.WorkspaceID == nil {
 			break
@@ -1633,6 +1713,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Cycle.Tasks(childComplexity), true
+	case "Cycle.team":
+		if e.ComplexityRoot.Cycle.Team == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Cycle.Team(childComplexity), true
 	case "Cycle.teamID":
 		if e.ComplexityRoot.Cycle.TeamID == nil {
 			break
@@ -1645,6 +1731,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Cycle.UpdatedAt(childComplexity), true
+	case "Cycle.workspace":
+		if e.ComplexityRoot.Cycle.Workspace == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Cycle.Workspace(childComplexity), true
 	case "Cycle.workspaceID":
 		if e.ComplexityRoot.Cycle.WorkspaceID == nil {
 			break
@@ -1769,6 +1861,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Invitation.UpdatedAt(childComplexity), true
+	case "Invitation.user":
+		if e.ComplexityRoot.Invitation.User == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Invitation.User(childComplexity), true
+	case "Invitation.workspace":
+		if e.ComplexityRoot.Invitation.Workspace == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Invitation.Workspace(childComplexity), true
 	case "Invitation.workspaceID":
 		if e.ComplexityRoot.Invitation.WorkspaceID == nil {
 			break
@@ -1869,6 +1973,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Label.Tasks(childComplexity), true
+	case "Label.workspace":
+		if e.ComplexityRoot.Label.Workspace == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Label.Workspace(childComplexity), true
 	case "Label.workspaceID":
 		if e.ComplexityRoot.Label.WorkspaceID == nil {
 			break
@@ -3250,6 +3360,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Project.Tasks(childComplexity), true
+	case "Project.team":
+		if e.ComplexityRoot.Project.Team == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Project.Team(childComplexity), true
 	case "Project.teamID":
 		if e.ComplexityRoot.Project.TeamID == nil {
 			break
@@ -3262,6 +3378,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Project.UpdatedAt(childComplexity), true
+	case "Project.workspace":
+		if e.ComplexityRoot.Project.Workspace == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Project.Workspace(childComplexity), true
 	case "Project.workspaceID":
 		if e.ComplexityRoot.Project.WorkspaceID == nil {
 			break
@@ -4196,6 +4318,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.SsoConnection.UpdatedAt(childComplexity), true
+	case "SsoConnection.workspace":
+		if e.ComplexityRoot.SsoConnection.Workspace == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SsoConnection.Workspace(childComplexity), true
 	case "SsoConnection.workspaceID":
 		if e.ComplexityRoot.SsoConnection.WorkspaceID == nil {
 			break
@@ -4296,6 +4424,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Task.CustomFields(childComplexity), true
+	case "Task.cycle":
+		if e.ComplexityRoot.Task.Cycle == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Task.Cycle(childComplexity), true
 	case "Task.cycleID":
 		if e.ComplexityRoot.Task.CycleID == nil {
 			break
@@ -4338,6 +4472,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Task.Labels(childComplexity), true
+	case "Task.parentTask":
+		if e.ComplexityRoot.Task.ParentTask == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Task.ParentTask(childComplexity), true
 	case "Task.parentTaskID":
 		if e.ComplexityRoot.Task.ParentTaskID == nil {
 			break
@@ -4350,12 +4490,24 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Task.Priority(childComplexity), true
+	case "Task.project":
+		if e.ComplexityRoot.Task.Project == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Task.Project(childComplexity), true
 	case "Task.projectID":
 		if e.ComplexityRoot.Task.ProjectID == nil {
 			break
 		}
 
 		return e.ComplexityRoot.Task.ProjectID(childComplexity), true
+	case "Task.reporter":
+		if e.ComplexityRoot.Task.Reporter == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Task.Reporter(childComplexity), true
 	case "Task.reporterID":
 		if e.ComplexityRoot.Task.ReporterID == nil {
 			break
@@ -4404,6 +4556,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Task.Watchers(childComplexity), true
+	case "Task.workspace":
+		if e.ComplexityRoot.Task.Workspace == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Task.Workspace(childComplexity), true
 	case "Task.workspaceID":
 		if e.ComplexityRoot.Task.WorkspaceID == nil {
 			break
@@ -4856,6 +5014,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Team.Users(childComplexity), true
+	case "Team.workspace":
+		if e.ComplexityRoot.Team.Workspace == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Team.Workspace(childComplexity), true
 	case "Team.workspaceID":
 		if e.ComplexityRoot.Team.WorkspaceID == nil {
 			break
@@ -5044,18 +5208,36 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.TimeEntry.SpentOn(childComplexity), true
+	case "TimeEntry.task":
+		if e.ComplexityRoot.TimeEntry.Task == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TimeEntry.Task(childComplexity), true
 	case "TimeEntry.taskID":
 		if e.ComplexityRoot.TimeEntry.TaskID == nil {
 			break
 		}
 
 		return e.ComplexityRoot.TimeEntry.TaskID(childComplexity), true
+	case "TimeEntry.user":
+		if e.ComplexityRoot.TimeEntry.User == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TimeEntry.User(childComplexity), true
 	case "TimeEntry.userID":
 		if e.ComplexityRoot.TimeEntry.UserID == nil {
 			break
 		}
 
 		return e.ComplexityRoot.TimeEntry.UserID(childComplexity), true
+	case "TimeEntry.workspace":
+		if e.ComplexityRoot.TimeEntry.Workspace == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TimeEntry.Workspace(childComplexity), true
 	case "TimeEntry.workspaceID":
 		if e.ComplexityRoot.TimeEntry.WorkspaceID == nil {
 			break
@@ -5814,6 +5996,10 @@ func (ec *executionContext) childFields_APIToken(ctx context.Context, field grap
 		return ec.fieldContext_APIToken_expiresAt(ctx, field)
 	case "createdAt":
 		return ec.fieldContext_APIToken_createdAt(ctx, field)
+	case "user":
+		return ec.fieldContext_APIToken_user(ctx, field)
+	case "workspace":
+		return ec.fieldContext_APIToken_workspace(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type APIToken", field.Name)
 }
@@ -5874,6 +6060,10 @@ func (ec *executionContext) childFields_Activity(ctx context.Context, field grap
 		return ec.fieldContext_Activity_payload(ctx, field)
 	case "createdAt":
 		return ec.fieldContext_Activity_createdAt(ctx, field)
+	case "actor":
+		return ec.fieldContext_Activity_actor(ctx, field)
+	case "workspace":
+		return ec.fieldContext_Activity_workspace(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type Activity", field.Name)
 }
@@ -5938,6 +6128,10 @@ func (ec *executionContext) childFields_Attachment(ctx context.Context, field gr
 		return ec.fieldContext_Attachment_storageURL(ctx, field)
 	case "createdAt":
 		return ec.fieldContext_Attachment_createdAt(ctx, field)
+	case "user":
+		return ec.fieldContext_Attachment_user(ctx, field)
+	case "workspace":
+		return ec.fieldContext_Attachment_workspace(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type Attachment", field.Name)
 }
@@ -6008,6 +6202,12 @@ func (ec *executionContext) childFields_Comment(ctx context.Context, field graph
 		return ec.fieldContext_Comment_updatedAt(ctx, field)
 	case "attachments":
 		return ec.fieldContext_Comment_attachments(ctx, field)
+	case "author":
+		return ec.fieldContext_Comment_author(ctx, field)
+	case "task":
+		return ec.fieldContext_Comment_task(ctx, field)
+	case "workspace":
+		return ec.fieldContext_Comment_workspace(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type Comment", field.Name)
 }
@@ -6082,6 +6282,10 @@ func (ec *executionContext) childFields_Cycle(ctx context.Context, field graphql
 		return ec.fieldContext_Cycle_updatedAt(ctx, field)
 	case "tasks":
 		return ec.fieldContext_Cycle_tasks(ctx, field)
+	case "team":
+		return ec.fieldContext_Cycle_team(ctx, field)
+	case "workspace":
+		return ec.fieldContext_Cycle_workspace(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type Cycle", field.Name)
 }
@@ -6146,6 +6350,10 @@ func (ec *executionContext) childFields_Invitation(ctx context.Context, field gr
 		return ec.fieldContext_Invitation_createdAt(ctx, field)
 	case "updatedAt":
 		return ec.fieldContext_Invitation_updatedAt(ctx, field)
+	case "user":
+		return ec.fieldContext_Invitation_user(ctx, field)
+	case "workspace":
+		return ec.fieldContext_Invitation_workspace(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type Invitation", field.Name)
 }
@@ -6202,6 +6410,8 @@ func (ec *executionContext) childFields_Label(ctx context.Context, field graphql
 		return ec.fieldContext_Label_createdAt(ctx, field)
 	case "tasks":
 		return ec.fieldContext_Label_tasks(ctx, field)
+	case "workspace":
+		return ec.fieldContext_Label_workspace(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type Label", field.Name)
 }
@@ -6332,6 +6542,10 @@ func (ec *executionContext) childFields_Project(ctx context.Context, field graph
 		return ec.fieldContext_Project_teamID(ctx, field)
 	case "tasks":
 		return ec.fieldContext_Project_tasks(ctx, field)
+	case "team":
+		return ec.fieldContext_Project_team(ctx, field)
+	case "workspace":
+		return ec.fieldContext_Project_workspace(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 }
@@ -6444,6 +6658,8 @@ func (ec *executionContext) childFields_SsoConnection(ctx context.Context, field
 		return ec.fieldContext_SsoConnection_createdAt(ctx, field)
 	case "updatedAt":
 		return ec.fieldContext_SsoConnection_updatedAt(ctx, field)
+	case "workspace":
+		return ec.fieldContext_SsoConnection_workspace(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type SsoConnection", field.Name)
 }
@@ -6528,14 +6744,24 @@ func (ec *executionContext) childFields_Task(ctx context.Context, field graphql.
 		return ec.fieldContext_Task_watchers(ctx, field)
 	case "comments":
 		return ec.fieldContext_Task_comments(ctx, field)
+	case "cycle":
+		return ec.fieldContext_Task_cycle(ctx, field)
 	case "dependsOnTasks":
 		return ec.fieldContext_Task_dependsOnTasks(ctx, field)
 	case "labels":
 		return ec.fieldContext_Task_labels(ctx, field)
+	case "parentTask":
+		return ec.fieldContext_Task_parentTask(ctx, field)
+	case "project":
+		return ec.fieldContext_Task_project(ctx, field)
+	case "reporter":
+		return ec.fieldContext_Task_reporter(ctx, field)
 	case "tasks":
 		return ec.fieldContext_Task_tasks(ctx, field)
 	case "timeEntries":
 		return ec.fieldContext_Task_timeEntries(ctx, field)
+	case "workspace":
+		return ec.fieldContext_Task_workspace(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type Task", field.Name)
 }
@@ -6800,6 +7026,8 @@ func (ec *executionContext) childFields_Team(ctx context.Context, field graphql.
 		return ec.fieldContext_Team_projects(ctx, field)
 	case "users":
 		return ec.fieldContext_Team_users(ctx, field)
+	case "workspace":
+		return ec.fieldContext_Team_workspace(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type Team", field.Name)
 }
@@ -6912,6 +7140,12 @@ func (ec *executionContext) childFields_TimeEntry(ctx context.Context, field gra
 		return ec.fieldContext_TimeEntry_spentOn(ctx, field)
 	case "createdAt":
 		return ec.fieldContext_TimeEntry_createdAt(ctx, field)
+	case "task":
+		return ec.fieldContext_TimeEntry_task(ctx, field)
+	case "user":
+		return ec.fieldContext_TimeEntry_user(ctx, field)
+	case "workspace":
+		return ec.fieldContext_TimeEntry_workspace(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type TimeEntry", field.Name)
 }
@@ -11710,6 +11944,70 @@ func (ec *executionContext) fieldContext_APIToken_createdAt(_ context.Context, f
 	return graphql.NewScalarFieldContext("APIToken", field, false, false, errors.New("field of type Time does not have child fields"))
 }
 
+func (ec *executionContext) _APIToken_user(ctx context.Context, field graphql.CollectedField, obj *database.APIToken) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_APIToken_user(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.User, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *database.User) graphql.Marshaler {
+			return ec.marshalOUser2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋdatabaseᚐUser(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_APIToken_user(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "APIToken",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_User(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _APIToken_workspace(ctx context.Context, field graphql.CollectedField, obj *database.APIToken) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_APIToken_workspace(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Workspace, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *database.Workspace) graphql.Marshaler {
+			return ec.marshalOWorkspace2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋdatabaseᚐWorkspace(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_APIToken_workspace(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "APIToken",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Workspace(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _APITokenConnection_edges(ctx context.Context, field graphql.CollectedField, obj *database.Connection[database.APIToken]) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -12158,6 +12456,70 @@ func (ec *executionContext) _Activity_createdAt(ctx context.Context, field graph
 }
 func (ec *executionContext) fieldContext_Activity_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("Activity", field, false, false, errors.New("field of type Time does not have child fields"))
+}
+
+func (ec *executionContext) _Activity_actor(ctx context.Context, field graphql.CollectedField, obj *database.Activity) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Activity_actor(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Actor, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *database.User) graphql.Marshaler {
+			return ec.marshalOUser2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋdatabaseᚐUser(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Activity_actor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Activity",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_User(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Activity_workspace(ctx context.Context, field graphql.CollectedField, obj *database.Activity) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Activity_workspace(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Workspace, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *database.Workspace) graphql.Marshaler {
+			return ec.marshalOWorkspace2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋdatabaseᚐWorkspace(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Activity_workspace(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Activity",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Workspace(ctx, field)
+		},
+	}
+	return fc, nil
 }
 
 func (ec *executionContext) _ActivityConnection_edges(ctx context.Context, field graphql.CollectedField, obj *database.Connection[database.Activity]) (ret graphql.Marshaler) {
@@ -12654,6 +13016,70 @@ func (ec *executionContext) _Attachment_createdAt(ctx context.Context, field gra
 }
 func (ec *executionContext) fieldContext_Attachment_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("Attachment", field, false, false, errors.New("field of type Time does not have child fields"))
+}
+
+func (ec *executionContext) _Attachment_user(ctx context.Context, field graphql.CollectedField, obj *database.Attachment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Attachment_user(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.User, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *database.User) graphql.Marshaler {
+			return ec.marshalOUser2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋdatabaseᚐUser(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Attachment_user(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Attachment",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_User(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Attachment_workspace(ctx context.Context, field graphql.CollectedField, obj *database.Attachment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Attachment_workspace(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Workspace, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *database.Workspace) graphql.Marshaler {
+			return ec.marshalOWorkspace2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋdatabaseᚐWorkspace(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Attachment_workspace(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Attachment",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Workspace(ctx, field)
+		},
+	}
+	return fc, nil
 }
 
 func (ec *executionContext) _AttachmentConnection_edges(ctx context.Context, field graphql.CollectedField, obj *database.Connection[database.Attachment]) (ret graphql.Marshaler) {
@@ -13165,6 +13591,102 @@ func (ec *executionContext) fieldContext_Comment_attachments(_ context.Context, 
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return ec.childFields_Attachment(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Comment_author(ctx context.Context, field graphql.CollectedField, obj *database.Comment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Comment_author(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Author, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *database.User) graphql.Marshaler {
+			return ec.marshalOUser2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋdatabaseᚐUser(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Comment_author(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Comment",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_User(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Comment_task(ctx context.Context, field graphql.CollectedField, obj *database.Comment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Comment_task(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Task, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *database.Task) graphql.Marshaler {
+			return ec.marshalOTask2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋdatabaseᚐTask(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Comment_task(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Comment",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Task(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Comment_workspace(ctx context.Context, field graphql.CollectedField, obj *database.Comment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Comment_workspace(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Workspace, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *database.Workspace) graphql.Marshaler {
+			return ec.marshalOWorkspace2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋdatabaseᚐWorkspace(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Comment_workspace(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Comment",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Workspace(ctx, field)
 		},
 	}
 	return fc, nil
@@ -13730,6 +14252,70 @@ func (ec *executionContext) fieldContext_Cycle_tasks(_ context.Context, field gr
 	return fc, nil
 }
 
+func (ec *executionContext) _Cycle_team(ctx context.Context, field graphql.CollectedField, obj *database.Cycle) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Cycle_team(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Team, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *database.Team) graphql.Marshaler {
+			return ec.marshalOTeam2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋdatabaseᚐTeam(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Cycle_team(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Cycle",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Team(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Cycle_workspace(ctx context.Context, field graphql.CollectedField, obj *database.Cycle) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Cycle_workspace(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Workspace, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *database.Workspace) graphql.Marshaler {
+			return ec.marshalOWorkspace2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋdatabaseᚐWorkspace(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Cycle_workspace(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Cycle",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Workspace(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _CycleConnection_edges(ctx context.Context, field graphql.CollectedField, obj *database.Connection[database.Cycle]) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -14226,6 +14812,70 @@ func (ec *executionContext) fieldContext_Invitation_updatedAt(_ context.Context,
 	return graphql.NewScalarFieldContext("Invitation", field, false, false, errors.New("field of type Time does not have child fields"))
 }
 
+func (ec *executionContext) _Invitation_user(ctx context.Context, field graphql.CollectedField, obj *database.Invitation) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Invitation_user(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.User, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *database.User) graphql.Marshaler {
+			return ec.marshalOUser2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋdatabaseᚐUser(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Invitation_user(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Invitation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_User(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Invitation_workspace(ctx context.Context, field graphql.CollectedField, obj *database.Invitation) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Invitation_workspace(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Workspace, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *database.Workspace) graphql.Marshaler {
+			return ec.marshalOWorkspace2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋdatabaseᚐWorkspace(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Invitation_workspace(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Invitation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Workspace(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _InvitationConnection_edges(ctx context.Context, field graphql.CollectedField, obj *database.Connection[database.Invitation]) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -14634,6 +15284,38 @@ func (ec *executionContext) fieldContext_Label_tasks(_ context.Context, field gr
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return ec.childFields_Task(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Label_workspace(ctx context.Context, field graphql.CollectedField, obj *database.Label) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Label_workspace(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Workspace, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *database.Workspace) graphql.Marshaler {
+			return ec.marshalOWorkspace2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋdatabaseᚐWorkspace(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Label_workspace(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Label",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Workspace(ctx, field)
 		},
 	}
 	return fc, nil
@@ -20214,6 +20896,70 @@ func (ec *executionContext) fieldContext_Project_tasks(_ context.Context, field 
 	return fc, nil
 }
 
+func (ec *executionContext) _Project_team(ctx context.Context, field graphql.CollectedField, obj *database.Project) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Project_team(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Team, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *database.Team) graphql.Marshaler {
+			return ec.marshalOTeam2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋdatabaseᚐTeam(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Project_team(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Project",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Team(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Project_workspace(ctx context.Context, field graphql.CollectedField, obj *database.Project) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Project_workspace(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Workspace, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *database.Workspace) graphql.Marshaler {
+			return ec.marshalOWorkspace2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋdatabaseᚐWorkspace(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Project_workspace(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Project",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Workspace(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ProjectConnection_edges(ctx context.Context, field graphql.CollectedField, obj *database.Connection[database.Project]) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -24034,6 +24780,38 @@ func (ec *executionContext) fieldContext_SsoConnection_updatedAt(_ context.Conte
 	return graphql.NewScalarFieldContext("SsoConnection", field, false, false, errors.New("field of type Time does not have child fields"))
 }
 
+func (ec *executionContext) _SsoConnection_workspace(ctx context.Context, field graphql.CollectedField, obj *database.SsoConnection) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_SsoConnection_workspace(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Workspace, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *database.Workspace) graphql.Marshaler {
+			return ec.marshalOWorkspace2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋdatabaseᚐWorkspace(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_SsoConnection_workspace(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SsoConnection",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Workspace(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _SsoConnectionConnection_edges(ctx context.Context, field graphql.CollectedField, obj *database.Connection[database.SsoConnection]) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -24805,6 +25583,38 @@ func (ec *executionContext) fieldContext_Task_comments(_ context.Context, field 
 	return fc, nil
 }
 
+func (ec *executionContext) _Task_cycle(ctx context.Context, field graphql.CollectedField, obj *database.Task) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Task_cycle(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Cycle, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *database.Cycle) graphql.Marshaler {
+			return ec.marshalOCycle2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋdatabaseᚐCycle(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Task_cycle(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Task",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Cycle(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Task_dependsOnTasks(ctx context.Context, field graphql.CollectedField, obj *database.Task) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -24869,6 +25679,102 @@ func (ec *executionContext) fieldContext_Task_labels(_ context.Context, field gr
 	return fc, nil
 }
 
+func (ec *executionContext) _Task_parentTask(ctx context.Context, field graphql.CollectedField, obj *database.Task) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Task_parentTask(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ParentTask, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *database.Task) graphql.Marshaler {
+			return ec.marshalOTask2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋdatabaseᚐTask(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Task_parentTask(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Task",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Task(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Task_project(ctx context.Context, field graphql.CollectedField, obj *database.Task) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Task_project(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Project, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *database.Project) graphql.Marshaler {
+			return ec.marshalOProject2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋdatabaseᚐProject(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Task_project(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Task",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Project(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Task_reporter(ctx context.Context, field graphql.CollectedField, obj *database.Task) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Task_reporter(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Reporter, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *database.User) graphql.Marshaler {
+			return ec.marshalOUser2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋdatabaseᚐUser(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Task_reporter(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Task",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_User(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Task_tasks(ctx context.Context, field graphql.CollectedField, obj *database.Task) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -24928,6 +25834,38 @@ func (ec *executionContext) fieldContext_Task_timeEntries(_ context.Context, fie
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return ec.childFields_TimeEntry(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Task_workspace(ctx context.Context, field graphql.CollectedField, obj *database.Task) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Task_workspace(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Workspace, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *database.Workspace) graphql.Marshaler {
+			return ec.marshalOWorkspace2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋdatabaseᚐWorkspace(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Task_workspace(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Task",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Workspace(ctx, field)
 		},
 	}
 	return fc, nil
@@ -26796,6 +27734,38 @@ func (ec *executionContext) fieldContext_Team_users(_ context.Context, field gra
 	return fc, nil
 }
 
+func (ec *executionContext) _Team_workspace(ctx context.Context, field graphql.CollectedField, obj *database.Team) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Team_workspace(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Workspace, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *database.Workspace) graphql.Marshaler {
+			return ec.marshalOWorkspace2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋdatabaseᚐWorkspace(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Team_workspace(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Team",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Workspace(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _TeamConnection_edges(ctx context.Context, field graphql.CollectedField, obj *database.Connection[database.Team]) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -27602,6 +28572,102 @@ func (ec *executionContext) _TimeEntry_createdAt(ctx context.Context, field grap
 }
 func (ec *executionContext) fieldContext_TimeEntry_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("TimeEntry", field, false, false, errors.New("field of type Time does not have child fields"))
+}
+
+func (ec *executionContext) _TimeEntry_task(ctx context.Context, field graphql.CollectedField, obj *database.TimeEntry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TimeEntry_task(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Task, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *database.Task) graphql.Marshaler {
+			return ec.marshalOTask2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋdatabaseᚐTask(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_TimeEntry_task(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TimeEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Task(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TimeEntry_user(ctx context.Context, field graphql.CollectedField, obj *database.TimeEntry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TimeEntry_user(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.User, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *database.User) graphql.Marshaler {
+			return ec.marshalOUser2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋdatabaseᚐUser(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_TimeEntry_user(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TimeEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_User(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TimeEntry_workspace(ctx context.Context, field graphql.CollectedField, obj *database.TimeEntry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TimeEntry_workspace(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Workspace, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *database.Workspace) graphql.Marshaler {
+			return ec.marshalOWorkspace2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋdatabaseᚐWorkspace(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_TimeEntry_workspace(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TimeEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Workspace(ctx, field)
+		},
+	}
+	return fc, nil
 }
 
 func (ec *executionContext) _TimeEntryConnection_edges(ctx context.Context, field graphql.CollectedField, obj *database.Connection[database.TimeEntry]) (ret graphql.Marshaler) {
@@ -30883,13 +31949,20 @@ func (ec *executionContext) unmarshalInputAPITokenFilter(ctx context.Context, ob
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"workspaceID", "userID", "name", "scopes", "lastUsedAt", "expiresAt", "createdAt", "and", "or"}
+	fieldsInOrder := [...]string{"id", "workspaceID", "userID", "name", "scopes", "lastUsedAt", "expiresAt", "createdAt", "and", "or"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "id":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			data, err := ec.unmarshalOIDComparator2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋgraphᚋmodelᚐIDComparator(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ID = data
 		case "workspaceID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("workspaceID"))
 			data, err := ec.unmarshalOIDComparator2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋgraphᚋmodelᚐIDComparator(ctx, v)
@@ -31006,13 +32079,20 @@ func (ec *executionContext) unmarshalInputActivityFilter(ctx context.Context, ob
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"workspaceID", "actorID", "entityTable", "entityID", "action", "payload", "createdAt", "and", "or"}
+	fieldsInOrder := [...]string{"id", "workspaceID", "actorID", "entityTable", "entityID", "action", "payload", "createdAt", "and", "or"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "id":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			data, err := ec.unmarshalOIDComparator2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋgraphᚋmodelᚐIDComparator(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ID = data
 		case "workspaceID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("workspaceID"))
 			data, err := ec.unmarshalOIDComparator2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋgraphᚋmodelᚐIDComparator(ctx, v)
@@ -31180,13 +32260,20 @@ func (ec *executionContext) unmarshalInputAttachmentFilter(ctx context.Context, 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"workspaceID", "entityType", "entityID", "uploadedBy", "fileName", "contentType", "sizeBytes", "storageURL", "createdAt", "and", "or"}
+	fieldsInOrder := [...]string{"id", "workspaceID", "entityType", "entityID", "uploadedBy", "fileName", "contentType", "sizeBytes", "storageURL", "createdAt", "and", "or"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "id":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			data, err := ec.unmarshalOIDComparator2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋgraphᚋmodelᚐIDComparator(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ID = data
 		case "workspaceID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("workspaceID"))
 			data, err := ec.unmarshalOIDComparator2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋgraphᚋmodelᚐIDComparator(ctx, v)
@@ -31398,13 +32485,20 @@ func (ec *executionContext) unmarshalInputCommentFilter(ctx context.Context, obj
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"workspaceID", "taskID", "authorID", "body", "createdAt", "updatedAt", "attachments", "and", "or"}
+	fieldsInOrder := [...]string{"id", "workspaceID", "taskID", "authorID", "body", "createdAt", "updatedAt", "attachments", "and", "or"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "id":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			data, err := ec.unmarshalOIDComparator2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋgraphᚋmodelᚐIDComparator(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ID = data
 		case "workspaceID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("workspaceID"))
 			data, err := ec.unmarshalOIDComparator2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋgraphᚋmodelᚐIDComparator(ctx, v)
@@ -32294,13 +33388,20 @@ func (ec *executionContext) unmarshalInputCycleFilter(ctx context.Context, obj a
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"workspaceID", "teamID", "name", "status", "startsOn", "endsOn", "createdAt", "updatedAt", "tasks", "and", "or"}
+	fieldsInOrder := [...]string{"id", "workspaceID", "teamID", "name", "status", "startsOn", "endsOn", "createdAt", "updatedAt", "tasks", "and", "or"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "id":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			data, err := ec.unmarshalOIDComparator2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋgraphᚋmodelᚐIDComparator(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ID = data
 		case "workspaceID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("workspaceID"))
 			data, err := ec.unmarshalOIDComparator2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋgraphᚋmodelᚐIDComparator(ctx, v)
@@ -32849,13 +33950,20 @@ func (ec *executionContext) unmarshalInputInvitationFilter(ctx context.Context, 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"workspaceID", "email", "role", "token", "status", "invitedBy", "expiresAt", "createdAt", "updatedAt", "and", "or"}
+	fieldsInOrder := [...]string{"id", "workspaceID", "email", "role", "token", "status", "invitedBy", "expiresAt", "createdAt", "updatedAt", "and", "or"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "id":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			data, err := ec.unmarshalOIDComparator2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋgraphᚋmodelᚐIDComparator(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ID = data
 		case "workspaceID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("workspaceID"))
 			data, err := ec.unmarshalOIDComparator2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋgraphᚋmodelᚐIDComparator(ctx, v)
@@ -33139,13 +34247,20 @@ func (ec *executionContext) unmarshalInputLabelFilter(ctx context.Context, obj a
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"workspaceID", "name", "color", "createdAt", "tasks", "and", "or"}
+	fieldsInOrder := [...]string{"id", "workspaceID", "name", "color", "createdAt", "tasks", "and", "or"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "id":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			data, err := ec.unmarshalOIDComparator2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋgraphᚋmodelᚐIDComparator(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ID = data
 		case "workspaceID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("workspaceID"))
 			data, err := ec.unmarshalOIDComparator2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋgraphᚋmodelᚐIDComparator(ctx, v)
@@ -33285,13 +34400,27 @@ func (ec *executionContext) unmarshalInputMembershipFilter(ctx context.Context, 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"role", "createdAt", "updatedAt", "and", "or"}
+	fieldsInOrder := [...]string{"workspaceID", "userID", "role", "createdAt", "updatedAt", "and", "or"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "workspaceID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("workspaceID"))
+			data, err := ec.unmarshalOIDComparator2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋgraphᚋmodelᚐIDComparator(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.WorkspaceID = data
+		case "userID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("userID"))
+			data, err := ec.unmarshalOIDComparator2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋgraphᚋmodelᚐIDComparator(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UserID = data
 		case "role":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("role"))
 			data, err := ec.unmarshalOMembershipRoleComparator2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋgraphᚋmodelᚐMembershipRoleComparator(ctx, v)
@@ -33868,13 +34997,20 @@ func (ec *executionContext) unmarshalInputProjectFilter(ctx context.Context, obj
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"workspaceID", "name", "description", "createdAt", "updatedAt", "deletedAt", "teamID", "tasks", "and", "or"}
+	fieldsInOrder := [...]string{"id", "workspaceID", "name", "description", "createdAt", "updatedAt", "deletedAt", "teamID", "tasks", "and", "or"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "id":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			data, err := ec.unmarshalOIDComparator2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋgraphᚋmodelᚐIDComparator(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ID = data
 		case "workspaceID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("workspaceID"))
 			data, err := ec.unmarshalOIDComparator2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋgraphᚋmodelᚐIDComparator(ctx, v)
@@ -33998,13 +35134,20 @@ func (ec *executionContext) unmarshalInputProjectStatFilter(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"workspaceID", "totalTasks", "doneTasks", "openTasks", "and", "or"}
+	fieldsInOrder := [...]string{"projectID", "workspaceID", "totalTasks", "doneTasks", "openTasks", "and", "or"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "projectID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectID"))
+			data, err := ec.unmarshalOIDComparator2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋgraphᚋmodelᚐIDComparator(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ProjectID = data
 		case "workspaceID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("workspaceID"))
 			data, err := ec.unmarshalOIDComparator2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋgraphᚋmodelᚐIDComparator(ctx, v)
@@ -34144,13 +35287,20 @@ func (ec *executionContext) unmarshalInputSsoConnectionFilter(ctx context.Contex
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"workspaceID", "provider", "config", "enabled", "createdAt", "updatedAt", "and", "or"}
+	fieldsInOrder := [...]string{"id", "workspaceID", "provider", "config", "enabled", "createdAt", "updatedAt", "and", "or"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "id":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			data, err := ec.unmarshalOIDComparator2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋgraphᚋmodelᚐIDComparator(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ID = data
 		case "workspaceID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("workspaceID"))
 			data, err := ec.unmarshalOIDComparator2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋgraphᚋmodelᚐIDComparator(ctx, v)
@@ -34476,13 +35626,27 @@ func (ec *executionContext) unmarshalInputTaskAssigneeFilter(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"assignedAt", "and", "or"}
+	fieldsInOrder := [...]string{"taskID", "userID", "assignedAt", "and", "or"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "taskID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskID"))
+			data, err := ec.unmarshalOIDComparator2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋgraphᚋmodelᚐIDComparator(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TaskID = data
+		case "userID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("userID"))
+			data, err := ec.unmarshalOIDComparator2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋgraphᚋmodelᚐIDComparator(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UserID = data
 		case "assignedAt":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("assignedAt"))
 			data, err := ec.unmarshalOTimeComparator2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋgraphᚋmodelᚐTimeComparator(ctx, v)
@@ -34557,13 +35721,27 @@ func (ec *executionContext) unmarshalInputTaskDependencyFilter(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"type", "createdAt", "and", "or"}
+	fieldsInOrder := [...]string{"taskID", "dependsOnTaskID", "type", "createdAt", "and", "or"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "taskID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskID"))
+			data, err := ec.unmarshalOIDComparator2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋgraphᚋmodelᚐIDComparator(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TaskID = data
+		case "dependsOnTaskID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("dependsOnTaskID"))
+			data, err := ec.unmarshalOIDComparator2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋgraphᚋmodelᚐIDComparator(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DependsOnTaskID = data
 		case "type":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("type"))
 			data, err := ec.unmarshalODependencyTypeComparator2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋgraphᚋmodelᚐDependencyTypeComparator(ctx, v)
@@ -34645,13 +35823,20 @@ func (ec *executionContext) unmarshalInputTaskFilter(ctx context.Context, obj an
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"workspaceID", "projectID", "parentTaskID", "reporterID", "title", "description", "status", "priority", "customFields", "dueAt", "createdAt", "updatedAt", "deletedAt", "cycleID", "assignees", "attachments", "comments", "dependsOnTasks", "labels", "subtasks", "tasks", "timeEntries", "watchers", "and", "or"}
+	fieldsInOrder := [...]string{"id", "workspaceID", "projectID", "parentTaskID", "reporterID", "title", "description", "status", "priority", "customFields", "dueAt", "createdAt", "updatedAt", "deletedAt", "cycleID", "assignees", "attachments", "comments", "dependsOnTasks", "labels", "subtasks", "tasks", "timeEntries", "watchers", "and", "or"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "id":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			data, err := ec.unmarshalOIDComparator2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋgraphᚋmodelᚐIDComparator(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ID = data
 		case "workspaceID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("workspaceID"))
 			data, err := ec.unmarshalOIDComparator2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋgraphᚋmodelᚐIDComparator(ctx, v)
@@ -34843,13 +36028,27 @@ func (ec *executionContext) unmarshalInputTaskLabelFilter(ctx context.Context, o
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"and", "or"}
+	fieldsInOrder := [...]string{"taskID", "labelID", "and", "or"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "taskID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskID"))
+			data, err := ec.unmarshalOIDComparator2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋgraphᚋmodelᚐIDComparator(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TaskID = data
+		case "labelID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("labelID"))
+			data, err := ec.unmarshalOIDComparator2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋgraphᚋmodelᚐIDComparator(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.LabelID = data
 		case "and":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("and"))
 			data, err := ec.unmarshalOTaskLabelFilter2ᚕᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋgraphᚋmodelᚐTaskLabelFilterᚄ(ctx, v)
@@ -35107,13 +36306,27 @@ func (ec *executionContext) unmarshalInputTaskWatcherFilter(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"createdAt", "and", "or"}
+	fieldsInOrder := [...]string{"taskID", "userID", "createdAt", "and", "or"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "taskID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskID"))
+			data, err := ec.unmarshalOIDComparator2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋgraphᚋmodelᚐIDComparator(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TaskID = data
+		case "userID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("userID"))
+			data, err := ec.unmarshalOIDComparator2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋgraphᚋmodelᚐIDComparator(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UserID = data
 		case "createdAt":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("createdAt"))
 			data, err := ec.unmarshalOTimeComparator2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋgraphᚋmodelᚐTimeComparator(ctx, v)
@@ -35188,13 +36401,20 @@ func (ec *executionContext) unmarshalInputTeamFilter(ctx context.Context, obj an
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"workspaceID", "name", "slug", "description", "createdAt", "updatedAt", "cycles", "projects", "users", "and", "or"}
+	fieldsInOrder := [...]string{"id", "workspaceID", "name", "slug", "description", "createdAt", "updatedAt", "cycles", "projects", "users", "and", "or"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "id":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			data, err := ec.unmarshalOIDComparator2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋgraphᚋmodelᚐIDComparator(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ID = data
 		case "workspaceID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("workspaceID"))
 			data, err := ec.unmarshalOIDComparator2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋgraphᚋmodelᚐIDComparator(ctx, v)
@@ -35288,13 +36508,27 @@ func (ec *executionContext) unmarshalInputTeamMemberFilter(ctx context.Context, 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"addedAt", "and", "or"}
+	fieldsInOrder := [...]string{"teamID", "userID", "addedAt", "and", "or"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "teamID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("teamID"))
+			data, err := ec.unmarshalOIDComparator2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋgraphᚋmodelᚐIDComparator(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TeamID = data
+		case "userID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("userID"))
+			data, err := ec.unmarshalOIDComparator2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋgraphᚋmodelᚐIDComparator(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UserID = data
 		case "addedAt":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("addedAt"))
 			data, err := ec.unmarshalOTimeComparator2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋgraphᚋmodelᚐTimeComparator(ctx, v)
@@ -35608,13 +36842,20 @@ func (ec *executionContext) unmarshalInputTimeEntryFilter(ctx context.Context, o
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"workspaceID", "taskID", "userID", "hours", "billable", "notes", "spentOn", "createdAt", "and", "or"}
+	fieldsInOrder := [...]string{"id", "workspaceID", "taskID", "userID", "hours", "billable", "notes", "spentOn", "createdAt", "and", "or"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "id":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			data, err := ec.unmarshalOIDComparator2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋgraphᚋmodelᚐIDComparator(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ID = data
 		case "workspaceID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("workspaceID"))
 			data, err := ec.unmarshalOIDComparator2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋgraphᚋmodelᚐIDComparator(ctx, v)
@@ -36835,13 +38076,20 @@ func (ec *executionContext) unmarshalInputUserFilter(ctx context.Context, obj an
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"email", "displayName", "createdAt", "updatedAt", "apiTokens", "activities", "attachments", "comments", "invitations", "reporterTasks", "taskAssignees", "taskWatchers", "teams", "timeEntries", "workspaces", "and", "or"}
+	fieldsInOrder := [...]string{"id", "email", "displayName", "createdAt", "updatedAt", "apiTokens", "activities", "attachments", "comments", "invitations", "reporterTasks", "taskAssignees", "taskWatchers", "teams", "timeEntries", "workspaces", "and", "or"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "id":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			data, err := ec.unmarshalOIDComparator2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋgraphᚋmodelᚐIDComparator(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ID = data
 		case "email":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("email"))
 			data, err := ec.unmarshalOStringComparator2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋgraphᚋmodelᚐStringComparator(ctx, v)
@@ -37014,13 +38262,20 @@ func (ec *executionContext) unmarshalInputWorkspaceFilter(ctx context.Context, o
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"name", "slug", "createdAt", "updatedAt", "apiTokens", "activities", "attachments", "comments", "cycles", "invitations", "labels", "projects", "ssoConnections", "tasks", "teams", "timeEntries", "users", "and", "or"}
+	fieldsInOrder := [...]string{"id", "name", "slug", "createdAt", "updatedAt", "apiTokens", "activities", "attachments", "comments", "cycles", "invitations", "labels", "projects", "ssoConnections", "tasks", "teams", "timeEntries", "users", "and", "or"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "id":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			data, err := ec.unmarshalOIDComparator2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋgraphᚋmodelᚐIDComparator(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ID = data
 		case "name":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
 			data, err := ec.unmarshalOStringComparator2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋgraphᚋmodelᚐStringComparator(ctx, v)
@@ -37170,13 +38425,20 @@ func (ec *executionContext) unmarshalInputWorkspaceSettingFilter(ctx context.Con
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"workspaceID", "settings", "createdAt", "updatedAt", "and", "or"}
+	fieldsInOrder := [...]string{"id", "workspaceID", "settings", "createdAt", "updatedAt", "and", "or"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "id":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			data, err := ec.unmarshalOIDComparator2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋgraphᚋmodelᚐIDComparator(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ID = data
 		case "workspaceID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("workspaceID"))
 			data, err := ec.unmarshalOIDComparator2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋgraphᚋmodelᚐIDComparator(ctx, v)
@@ -37356,6 +38618,16 @@ func (ec *executionContext) _APIToken(ctx context.Context, sel ast.SelectionSet,
 		case "createdAt":
 			out.Values[i] = ec._APIToken_createdAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "user":
+			out.Values[i] = ec._APIToken_user(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "workspace":
+			out.Values[i] = ec._APIToken_workspace(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
 				out.Invalids++
 			}
 		default:
@@ -37578,6 +38850,16 @@ func (ec *executionContext) _Activity(ctx context.Context, sel ast.SelectionSet,
 		case "createdAt":
 			out.Values[i] = ec._Activity_createdAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "actor":
+			out.Values[i] = ec._Activity_actor(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "workspace":
+			out.Values[i] = ec._Activity_workspace(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
 				out.Invalids++
 			}
 		default:
@@ -37810,6 +39092,16 @@ func (ec *executionContext) _Attachment(ctx context.Context, sel ast.SelectionSe
 		case "createdAt":
 			out.Values[i] = ec._Attachment_createdAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "user":
+			out.Values[i] = ec._Attachment_user(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "workspace":
+			out.Values[i] = ec._Attachment_workspace(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
 				out.Invalids++
 			}
 		default:
@@ -38075,6 +39367,21 @@ func (ec *executionContext) _Comment(ctx context.Context, sel ast.SelectionSet, 
 		case "attachments":
 			out.Values[i] = ec._Comment_attachments(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "author":
+			out.Values[i] = ec._Comment_author(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "task":
+			out.Values[i] = ec._Comment_task(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "workspace":
+			out.Values[i] = ec._Comment_workspace(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
 				out.Invalids++
 			}
 		default:
@@ -38352,6 +39659,16 @@ func (ec *executionContext) _Cycle(ctx context.Context, sel ast.SelectionSet, ob
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "team":
+			out.Values[i] = ec._Cycle_team(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "workspace":
+			out.Values[i] = ec._Cycle_workspace(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -38584,6 +39901,16 @@ func (ec *executionContext) _Invitation(ctx context.Context, sel ast.SelectionSe
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "user":
+			out.Values[i] = ec._Invitation_user(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "workspace":
+			out.Values[i] = ec._Invitation_workspace(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -38794,6 +40121,11 @@ func (ec *executionContext) _Label(ctx context.Context, sel ast.SelectionSet, ob
 		case "tasks":
 			out.Values[i] = ec._Label_tasks(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "workspace":
+			out.Values[i] = ec._Label_workspace(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
 				out.Invalids++
 			}
 		default:
@@ -40057,6 +41389,16 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 		case "tasks":
 			out.Values[i] = ec._Project_tasks(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "team":
+			out.Values[i] = ec._Project_team(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "workspace":
+			out.Values[i] = ec._Project_workspace(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
 				out.Invalids++
 			}
 		default:
@@ -42012,6 +43354,11 @@ func (ec *executionContext) _SsoConnection(ctx context.Context, sel ast.Selectio
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "workspace":
+			out.Values[i] = ec._SsoConnection_workspace(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -42294,6 +43641,11 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "cycle":
+			out.Values[i] = ec._Task_cycle(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
 		case "dependsOnTasks":
 			out.Values[i] = ec._Task_dependsOnTasks(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -42304,6 +43656,21 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "parentTask":
+			out.Values[i] = ec._Task_parentTask(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "project":
+			out.Values[i] = ec._Task_project(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "reporter":
+			out.Values[i] = ec._Task_reporter(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
 		case "tasks":
 			out.Values[i] = ec._Task_tasks(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -42312,6 +43679,11 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 		case "timeEntries":
 			out.Values[i] = ec._Task_timeEntries(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "workspace":
+			out.Values[i] = ec._Task_workspace(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
 				out.Invalids++
 			}
 		default:
@@ -43334,6 +44706,11 @@ func (ec *executionContext) _Team(ctx context.Context, sel ast.SelectionSet, obj
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "workspace":
+			out.Values[i] = ec._Team_workspace(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -43756,6 +45133,21 @@ func (ec *executionContext) _TimeEntry(ctx context.Context, sel ast.SelectionSet
 		case "createdAt":
 			out.Values[i] = ec._TimeEntry_createdAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "task":
+			out.Values[i] = ec._TimeEntry_task(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "user":
+			out.Values[i] = ec._TimeEntry_user(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "workspace":
+			out.Values[i] = ec._TimeEntry_workspace(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
 				out.Invalids++
 			}
 		default:
