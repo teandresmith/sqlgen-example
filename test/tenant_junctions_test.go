@@ -1,6 +1,6 @@
 package test
 
-// Tenant junctions (migration 0006): task_assignees, task_watchers and
+// Tenant junctions (0001_init): task_assignees, task_watchers and
 // team_members carry workspace_id with a composite FK to their parent, so
 // sqlgen scopes the link and the database refuses a cross-workspace one. Each
 // junction is run as Workspace A, as Workspace B, and with SkipTenancy.

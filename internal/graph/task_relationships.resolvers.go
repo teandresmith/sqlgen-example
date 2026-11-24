@@ -18,7 +18,7 @@ import (
 
 // AssignUserToTask assigns a User to a Task within the Active Workspace (story
 // 25). task_assignees carries workspace_id with a composite FK to its Task
-// (migration 0006), so the database refuses a cross-workspace link; the Task is
+// (0001_init), so the database refuses a cross-workspace link; the Task is
 // still resolved tenant-scoped so another Workspace's Task answers "not found"
 // rather than a constraint error. The User is resolved so a dangling assignee is
 // rejected with a clear message before the FK check. assigned_at is left to its

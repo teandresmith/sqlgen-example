@@ -6,7 +6,7 @@
 --
 -- This is the CODEGEN source for the view (sqlgen parses it to derive the Go
 -- struct + read client). The identical SELECT is applied to Postgres by
--- migrations/0002_project_stats_view.up.sql — keep them in sync.
+-- migrations/0001_init.up.sql — keep them in sync.
 --
 -- Directives:
 --   @pk       marks the primary key so a Get(ctx, pk) method is generated.

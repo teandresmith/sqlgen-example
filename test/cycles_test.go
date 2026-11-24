@@ -61,7 +61,7 @@ func readTaskCycle(t *testing.T, token, wsID, taskID string) *string {
 }
 
 // updateTaskCycleMutation drives the RAW generated updateTask to set cycleID —
-// the path the composite FK (migration 0004) has to backstop, since updateTask
+// the path the composite FK (0001_init) has to backstop, since updateTask
 // is tenant-scoped only on the Task, not on the referenced Cycle.
 const updateTaskCycleMutation = `
 	mutation ($id: UUID!, $cycleID: UUID) {
@@ -290,7 +290,7 @@ func TestScheduleRejectsCrossWorkspaceCycle(t *testing.T) {
 }
 
 // TestRawUpdateTaskCannotScheduleCrossWorkspaceCycle proves the composite FK
-// (migration 0004, tasks_cycle_same_ws) closes the cross-tenant scheduling hole
+// (0001_init, tasks_cycle_same_ws) closes the cross-tenant scheduling hole
 // at the DATABASE, not only in the nested mutation. The generated updateTask is
 // tenant-scoped on the Task but places no Workspace constraint on the cycleID it
 // writes; the composite FK (workspace_id, cycle_id) -> cycles(workspace_id, id)

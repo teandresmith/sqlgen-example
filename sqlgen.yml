@@ -73,7 +73,7 @@ overrides:
 # workspace_id are auto-detected as tenanted (projects, tasks, labels,
 # comments, memberships, workspace_settings, activity). workspaces and users
 # are shared. task_assignees / task_watchers / team_members carry workspace_id
-# with a composite FK to their parent (migration 0006); task_labels and
+# with a composite FK to their parent (0001_init); task_labels and
 # task_dependencies are still reached via tenanted parents.
 # ---------------------------------------------------------------------------
 tenancy:
@@ -294,7 +294,7 @@ tables:
 
   # ---------------------------------------------------------------------------
   # Junction (M2M link) tables. task_assignees, task_watchers and team_members
-  # now carry workspace_id with a composite FK (migration 0006), so the database
+  # now carry workspace_id with a composite FK (0001_init), so the database
   # itself refuses a cross-Workspace link; task_labels and task_dependencies do
   # not, so a raw createTaskLabel(taskID, labelID) could link rows across
   # Workspaces. The API masks below are kept for all five (no public API change). The
@@ -319,7 +319,7 @@ tables:
     api:
       operations: { create: false, create_many: false, upsert: false }
   team_members:
-    # team_members is tenant-safe since migration 0006, but story 17's owner/admin
+    # team_members is tenant-safe in 0001_init, but story 17's owner/admin
     # guard and the user-is-a-member check live in the blessed resolvers, so the
     # raw write surface stays subtracted. Unlike the task_* junctions above (whose removal stays an
     # unguarded generated delete), Team membership management is owner/admin-only
@@ -345,7 +345,7 @@ tables:
   #
   # The parent is resolved tenant-scoped and each connected row is read through
   # its own tenant-scoped client first, so a Cycle/Team/Task/Project in another
-  # Workspace is NOT_FOUND (migrations 0004/0005 backstop it at the DB). The
+  # Workspace is NOT_FOUND (the composite FKs in 0001_init backstop it at the DB). The
   # nested-only call sets no Cycle/Team column, and the authz hook lets such an
   # empty update through (internal/authz), so a member can schedule and assign;
   # editing the Cycle or Team itself stays owner/admin-only.
