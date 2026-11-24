@@ -95,5 +95,5 @@ Not blocking: names are preserved with exclusions.
 `migrations/0001_init.{up,down}.sql` now holds the whole schema (previously
 0001-0006). The composite FKs and the `*_ws_key` UNIQUEs are inline in the
 tables they belong to, with no add-then-drop of the plain FKs. Verified: a
-`pg_dump -s` of the old chain and the new file match (apart from nothing), the
+`pg_dump -s` of the old chain and the new file match, the
 generated code is byte-identical, up/down/up round-trips, and all tests pass.
