@@ -34,3 +34,20 @@ Branch `chore/sqlgen-v0.1.4` (off `chore/sqlgen-v0.1.2`). Not pushed.
 ## Gates
 generate 0, `make diff` clean, build, vet, `go test ./...` all ok (including the
 18 composite-edge subtests), manifest-validate ok (0.2.0).
+
+## Task 2.3: compensating code review (v0.1.4)
+
+Nothing was removed. Each item is a candidate for you to decide.
+
+| Code | What it guards | Can sqlgen v0.1.4 replace it? | Verdict |
+|---|---|---|---|
+| `AddUserToTeam` / `RemoveUserFromTeam` team lookup (`team_management.resolvers.go`) | `team_members` has no `workspace_id`, so a raw create/delete is unscoped | Only with `workspace_id` + composite FKs on `team_members` (the tenant-junction shape in PRD 5.3). Not today | keep |
+| `AddUserToTeam` membership check | user must hold a Membership in the active workspace; `users` is global, so no FK can express it | No | keep |
+| `AssignUserToTask` / `WatchTask` task lookup (`task_relationships.resolvers.go`) | same junction gap (`task_assignees`, `task_watchers`) | Same as above. A nested `updateTaskWithRelated(assignees: connect)` would scope the parent, but changes the public mutation and I haven't verified it passes the authz hook | candidate after a schema change |
+| `AssignUserToTask` user lookup | friendlier error than a raw FK violation; does not check membership (open issue from the v0.1.2 report) | No | keep; decide on the membership gap |
+| Projector `tenantOfTask` / `tenantOfTeam` (`internal/events/projector.go`) | derives the activity workspace for junction events, which carry no tenant | Would go away with a `workspace_id` on the junctions | candidate after a schema change |
+| Migrations 0004/0005 composite FKs and the raw-update backstop tests | `updateTask.cycleID` raw writes still unscoped by sqlgen | No | keep |
+
+v0.1.4's belongs-to edges add no new removals: the app has no hand-written parent lookups beyond the above.
+Single follow-up that unlocks three candidates: add `workspace_id` and composite FKs to
+`task_assignees`, `task_watchers`, `team_members` (and optionally `task_labels`/`task_dependencies`).
