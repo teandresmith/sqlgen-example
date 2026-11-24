@@ -179,7 +179,7 @@ func isRelationshipField(typeName, field string) bool {
 		"Workspace.teams",
 		"Workspace.timeEntries",
 		"Workspace.users",
-		"WorkspaceSetting.workspaces":
+		"WorkspaceSetting.workspace":
 		return true
 	}
 	return false

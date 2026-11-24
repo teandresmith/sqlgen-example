@@ -20,7 +20,7 @@ Branch `chore/sqlgen-v0.1.4` (off `chore/sqlgen-v0.1.2`). Not pushed.
   changes nothing (only `generated_at`). The three declarations stay: removing
   them renames Subtasks/Assignees/Watchers back to the detected names.
 - `server_scaffold: false`; `internal/graph/server.go` removed.
-- Pinned `workspace_settings.Workspaces` (see below).
+- Took the `WorkspaceSetting.workspaces` -> `workspace` rename (approved).
 
 ## New behaviour that needs a decision
 1. Belongs-to detection (0.1.3): every FK now also gives a to-one field, so

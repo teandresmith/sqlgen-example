@@ -130,12 +130,6 @@ api:
 # Only cursor keys, composite-PK ordering, and event opt-out need declaring.
 # ---------------------------------------------------------------------------
 tables:
-  workspace_settings:
-    relationships:
-      - name: Workspaces   # pins the pre-v0.1.3 name; drop to take `workspace`
-        type: o2o
-        table: workspaces
-        fk: workspace_id
   # Column access control (PRD §32): keep hashed credentials in the Go client
   # (the server reads/writes them) but off every external surface — GraphQL
   # output, filters, sort, and event payloads. `write_only` (not `internal`)

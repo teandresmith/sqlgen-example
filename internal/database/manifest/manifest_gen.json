@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/teandresmith/sqlgen/v0.1.4/cmd/sqlgen/manifest/schema/v1.json",
   "schema_version": "0.2.0",
-  "generated_at": "2026-11-24T19:18:30Z",
+  "generated_at": "2026-11-24T19:31:54Z",
   "generator": {
     "name": "sqlgen",
     "version": "0.1.4"
@@ -13247,7 +13247,7 @@
       ],
       "relationships": [
         {
-          "name": "Workspaces",
+          "name": "workspace",
           "kind": "o2o",
           "target_entity": "Workspace",
           "fk": {

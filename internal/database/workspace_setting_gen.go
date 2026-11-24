@@ -34,8 +34,8 @@ type WorkspaceSetting struct {
 	// UpdatedAt - Last modification timestamp
 	UpdatedAt time.Time `db:"updated_at" json:"updated_at"`
 
-	// Workspaces - one-to-one relationship with the workspaces table.
-	Workspaces *Workspace `db:"-" json:"workspaces"`
+	// Workspace - one-to-one relationship with the workspaces table.
+	Workspace *Workspace `db:"-" json:"workspace"`
 }
 
 // WorkspaceSettingClient provides type-safe operations for the workspace_settings table.
@@ -2920,7 +2920,7 @@ type WorkspaceSettingFieldOptions struct {
 	Settings    bool                   `json:"settings"`
 	CreatedAt   bool                   `json:"created_at"`
 	UpdatedAt   bool                   `json:"updated_at"`
-	Workspaces  *WorkspaceFieldOptions `json:"workspaces"`
+	Workspace   *WorkspaceFieldOptions `json:"workspace"`
 }
 
 // Columns returns the SQL column names for all selected columns, sorted alphabetically
@@ -2974,7 +2974,7 @@ func (fo *WorkspaceSettingFieldOptions) HasSelectedColumns() bool {
 	if fo.UpdatedAt {
 		return true
 	}
-	if fo.Workspaces != nil {
+	if fo.Workspace != nil {
 		return true
 	}
 	return false
@@ -3030,7 +3030,7 @@ func (c *workspaceSettingClient) resolveO2OJoins(d sql.Dialect, fo *WorkspaceSet
 		return nil
 	}
 	var joins []sql.JoinClause
-	if fo.Workspaces != nil {
+	if fo.Workspace != nil {
 		joins = append(joins, sql.JoinClause{
 			Table: sql.Table{Schema: "public", Name: "workspaces"},
 			Alias: "w2",
@@ -3038,7 +3038,7 @@ func (c *workspaceSettingClient) resolveO2OJoins(d sql.Dialect, fo *WorkspaceSet
 			// The NULL-detection below reads the target's PK off the scanned
 			// row, so the join carries it even when FieldOptions did not ask
 			// for it — an unselected PK reads as a LEFT JOIN miss.
-			Columns: unionColumns(fo.Workspaces.Columns(), "id"),
+			Columns: unionColumns(fo.Workspace.Columns(), "id"),
 		})
 	}
 	return joins
@@ -3087,9 +3087,9 @@ func scanWorkspaceSettingsWithOneToOneJoins(rows database.Rows, columns []string
 
 		// NULL detection — assign deepest chain first, then parents
 		if w2HasData && w2.ID != (uuid.UUID{}) {
-			w.Workspaces = w2
+			w.Workspace = w2
 		} else {
-			w.Workspaces = nil
+			w.Workspace = nil
 		}
 
 		result = append(result, w)

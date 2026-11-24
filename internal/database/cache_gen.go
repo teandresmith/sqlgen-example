@@ -5925,7 +5925,7 @@ func hasAnyRelationshipWorkspaceSetting(fo any) bool {
 	if !ok || typed == nil {
 		return false
 	}
-	if typed.Workspaces != nil {
+	if typed.Workspace != nil {
 		return true
 	}
 	return false

@@ -1356,8 +1356,8 @@ func workspaceSettingFieldOptionsFromCollected(opCtx *graphql.OperationContext, 
 			fo.CreatedAt = true
 		case "updatedAt":
 			fo.UpdatedAt = true
-		case "workspaces":
-			fo.Workspaces = workspaceFieldOptionsFromCollected(opCtx, f.Sub)
+		case "workspace":
+			fo.Workspace = workspaceFieldOptionsFromCollected(opCtx, f.Sub)
 		}
 	}
 	if !fo.HasSelectedColumns() {

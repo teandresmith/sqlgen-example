@@ -13,7 +13,7 @@ type WorkspaceSetting {
   "Last modification timestamp"
   updatedAt: Time!
   "one-to-one relationship with the workspaces table."
-  workspaces: Workspace
+  workspace: Workspace
 }
 
 type WorkspaceSettingConnection {

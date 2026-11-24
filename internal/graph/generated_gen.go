@@ -908,8 +908,8 @@ type ComplexityRoot struct {
 		ID          func(childComplexity int) int
 		Settings    func(childComplexity int) int
 		UpdatedAt   func(childComplexity int) int
+		Workspace   func(childComplexity int) int
 		WorkspaceID func(childComplexity int) int
-		Workspaces  func(childComplexity int) int
 	}
 
 	WorkspaceSettingConnection struct {
@@ -5664,18 +5664,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.WorkspaceSetting.UpdatedAt(childComplexity), true
+	case "WorkspaceSetting.workspace":
+		if e.ComplexityRoot.WorkspaceSetting.Workspace == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WorkspaceSetting.Workspace(childComplexity), true
 	case "WorkspaceSetting.workspaceID":
 		if e.ComplexityRoot.WorkspaceSetting.WorkspaceID == nil {
 			break
 		}
 
 		return e.ComplexityRoot.WorkspaceSetting.WorkspaceID(childComplexity), true
-	case "WorkspaceSetting.workspaces":
-		if e.ComplexityRoot.WorkspaceSetting.Workspaces == nil {
-			break
-		}
-
-		return e.ComplexityRoot.WorkspaceSetting.Workspaces(childComplexity), true
 
 	case "WorkspaceSettingConnection.edges":
 		if e.ComplexityRoot.WorkspaceSettingConnection.Edges == nil {
@@ -7356,8 +7356,8 @@ func (ec *executionContext) childFields_WorkspaceSetting(ctx context.Context, fi
 		return ec.fieldContext_WorkspaceSetting_createdAt(ctx, field)
 	case "updatedAt":
 		return ec.fieldContext_WorkspaceSetting_updatedAt(ctx, field)
-	case "workspaces":
-		return ec.fieldContext_WorkspaceSetting_workspaces(ctx, field)
+	case "workspace":
+		return ec.fieldContext_WorkspaceSetting_workspace(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type WorkspaceSetting", field.Name)
 }
@@ -30581,16 +30581,16 @@ func (ec *executionContext) fieldContext_WorkspaceSetting_updatedAt(_ context.Co
 	return graphql.NewScalarFieldContext("WorkspaceSetting", field, false, false, errors.New("field of type Time does not have child fields"))
 }
 
-func (ec *executionContext) _WorkspaceSetting_workspaces(ctx context.Context, field graphql.CollectedField, obj *database.WorkspaceSetting) (ret graphql.Marshaler) {
+func (ec *executionContext) _WorkspaceSetting_workspace(ctx context.Context, field graphql.CollectedField, obj *database.WorkspaceSetting) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
 		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_WorkspaceSetting_workspaces(ctx, field)
+			return ec.fieldContext_WorkspaceSetting_workspace(ctx, field)
 		},
 		func(ctx context.Context) (any, error) {
-			return obj.Workspaces, nil
+			return obj.Workspace, nil
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v *database.Workspace) graphql.Marshaler {
@@ -30600,7 +30600,7 @@ func (ec *executionContext) _WorkspaceSetting_workspaces(ctx context.Context, fi
 		false,
 	)
 }
-func (ec *executionContext) fieldContext_WorkspaceSetting_workspaces(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_WorkspaceSetting_workspace(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "WorkspaceSetting",
 		Field:      field,
@@ -45891,8 +45891,8 @@ func (ec *executionContext) _WorkspaceSetting(ctx context.Context, sel ast.Selec
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "workspaces":
-			out.Values[i] = ec._WorkspaceSetting_workspaces(ctx, field, obj)
+		case "workspace":
+			out.Values[i] = ec._WorkspaceSetting_workspace(ctx, field, obj)
 			if out.Values[i] == graphql.RequiredNull {
 				out.Invalids++
 			}
