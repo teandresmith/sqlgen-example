@@ -816,6 +816,8 @@ func taskAssigneeFieldOptionsFromCollected(opCtx *graphql.OperationContext, fiel
 			fo.UserID = true
 		case "assignedAt":
 			fo.AssignedAt = true
+		case "workspaceID":
+			fo.WorkspaceID = true
 		}
 	}
 	if !fo.HasSelectedColumns() {
@@ -948,6 +950,8 @@ func taskWatcherFieldOptionsFromCollected(opCtx *graphql.OperationContext, field
 			fo.UserID = true
 		case "createdAt":
 			fo.CreatedAt = true
+		case "workspaceID":
+			fo.WorkspaceID = true
 		}
 	}
 	if !fo.HasSelectedColumns() {
@@ -1057,6 +1061,8 @@ func teamMemberFieldOptionsFromCollected(opCtx *graphql.OperationContext, fields
 			fo.UserID = true
 		case "addedAt":
 			fo.AddedAt = true
+		case "workspaceID":
+			fo.WorkspaceID = true
 		}
 	}
 	if !fo.HasSelectedColumns() {

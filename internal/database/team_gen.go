@@ -811,10 +811,14 @@ func (c *teamClient) loadRelationships(ctx context.Context, conn database.Querie
 
 	if fo.Users != nil {
 		g.Go(func() error {
-			// Collect parent IDs as strings
-			teamIDs := make([]string, len(teams))
-			for idx, t := range teams {
-				teamIDs[idx] = t.ID.String()
+			// Collect each parent's key. A parent whose key holds a NULL or a
+			// value too wide for the FK is referenced by nothing, so it stays out
+			// of the load.
+			teamKeyed := make([]*Team, 0, len(teams))
+			teamKeys := make([][]any, 0, len(teams))
+			for _, t := range teams {
+				teamKeyed = append(teamKeyed, t)
+				teamKeys = append(teamKeys, []any{t.WorkspaceID, t.ID})
 			}
 
 			sorts := fo.Users.Sorts
@@ -822,17 +826,17 @@ func (c *teamClient) loadRelationships(ctx context.Context, conn database.Querie
 				sorts = c.usersDefaultSort
 			}
 
-			// The three steps run once per chunk of 32767 parent keys:
-			// half the dialect's bind-parameter limit, leaving the rest for the
-			// relationship's filters.
-			for start := 0; start < len(teamIDs); start += 32767 {
-				chunk := teamIDs[start:min(start+32767, len(teamIDs))]
+			// The three steps run once per chunk of 4000 parent keys:
+			// within half the dialect's bind-parameter limit, leaving the rest for
+			// the relationship's filters.
+			for start := 0; start < len(teamKeys); start += 4000 {
+				chunk := teamKeys[start:min(start+4000, len(teamKeys))]
 
 				// Step 1: Query the junction joined to the target, so step 3 maps
 				// targets on the key as the target stores it, not the junction's
-				// spelling (a case-insensitive collation, CHAR padding). Key column
+				// spelling (a case-insensitive collation, CHAR padding). Key columns
 				// only; step 2 decides which targets load.
-				parentToTargetIDs := make(map[string][]string)
+				parentToTargetIDs := make(map[[2]string][][1]string)
 				if err := func() error {
 					junctionQuery, junctionArgs := sql.BuildSelectJoin(c.dialect, sql.Table{Schema: "public", Name: "team_members"}, []sql.JoinClause{{
 						Table:   sql.Table{Schema: "public", Name: "users"},
@@ -841,13 +845,13 @@ func (c *teamClient) loadRelationships(ctx context.Context, conn database.Querie
 						Columns: []string{"id"},
 					}}, sql.SelectOptions{
 						Alias:   "j",
-						Columns: []string{"team_id"},
-						Conditions: []sql.Condition{
-							sql.Where("j." + c.dialect.QuoteIdentifier("team_id")).In(toAnySlice(chunk)...),
-							// The builder's join is a LEFT JOIN: a junction row whose
-							// target is gone maps nothing.
-							sql.Where("t." + c.dialect.QuoteIdentifier("id")).IsNotNull(),
-						},
+						Columns: []string{"workspace_id", "team_id"},
+						// The builder's join is a LEFT JOIN: a junction row whose
+						// target is gone, or whose reference key holds a NULL, maps
+						// nothing.
+						Conditions: append(sql.PrefixConditions("j", []sql.Condition{
+							sql.BuildCompositePKBatchCondition(c.dialect, []string{"workspace_id", "team_id"}, chunk),
+						}), sql.Where("t."+c.dialect.QuoteIdentifier("id")).IsNotNull()),
 					})
 
 					junctionRows, err := conn.Query(ctx, junctionQuery, junctionArgs...)
@@ -862,25 +866,26 @@ func (c *teamClient) loadRelationships(ctx context.Context, conn database.Querie
 					if err != nil {
 						return fmt.Errorf("load team users junction columns: %w", err)
 					}
-					localIdx, refIdx := 0, 1
-					for i, col := range junctionCols {
-						switch col {
-						case "j.team_id":
-							localIdx = i
-						case "t.id":
-							refIdx = i
-						}
-					}
 
 					for junctionRows.Next() {
-						var localKey uuid.UUID
+						var key0 uuid.UUID
+						var key1 uuid.UUID
 						var target User
 						ptrs := make([]any, len(junctionCols))
-						ptrs[localIdx], ptrs[refIdx] = &localKey, &target.ID
+						for i, col := range junctionCols {
+							switch col {
+							case "j.workspace_id":
+								ptrs[i] = &key0
+							case "j.team_id":
+								ptrs[i] = &key1
+							case "t.id":
+								ptrs[i] = &target.ID
+							}
+						}
 						if err := junctionRows.Scan(ptrs...); err != nil {
 							return fmt.Errorf("scan team users junction: %w", err)
 						}
-						parentID, targetID := localKey.String(), target.ID.String()
+						parentID, targetID := [2]string{key0.String(), key1.String()}, [1]string{target.ID.String()}
 						parentToTargetIDs[parentID] = append(parentToTargetIDs[parentID], targetID)
 					}
 					if err := junctionRows.Err(); err != nil {
@@ -901,11 +906,11 @@ func (c *teamClient) loadRelationships(ctx context.Context, conn database.Querie
 				// targets they share, and each parent's targets come from one
 				// statement.
 				junctionWhere, junctionWhereArgs := sql.SubqueryWhere(c.dialect, "j", []sql.Condition{
-					sql.Where(c.dialect.QuoteIdentifier("team_id")).In(toAnySlice(chunk)...),
+					sql.BuildCompositePKBatchCondition(c.dialect, []string{"workspace_id", "team_id"}, chunk),
 				})
 				conditions := []sql.Condition{
-					sql.Where(c.dialect.QuoteIdentifier("id")).In(sql.Subquery{
-						SQL: "SELECT j." + c.dialect.QuoteIdentifier("user_id") +
+					sql.TupleInSubquery(c.dialect, []string{"id"}, sql.Subquery{
+						SQL: "SELECT j." + c.dialect.QuoteIdentifier("user_id") + "" +
 							" FROM " + c.dialect.FormatTable(sql.Table{Schema: "public", Name: "team_members"}) + " j WHERE " + junctionWhere,
 						Args: junctionWhereArgs,
 					}),
@@ -919,19 +924,14 @@ func (c *teamClient) loadRelationships(ctx context.Context, conn database.Querie
 					filter.And = append(filter.And, fo.Users.Filter)
 				}
 
-				// Self-referential relationships share the parent's entity type, so
-				// the loaded targets must use a name distinct from the parent slice
-				// (teams) to avoid shadowing it and mis-mapping the results
-				// onto the targets instead of the parents.
 				relatedUsers, err := c.userClient.GetMany(ctx, &GetUsersInput{
 					Filter:     filter,
 					Sorts:      sorts,
 					Limit:      new(0),
 					conditions: conditions,
-					// Step 3 keys every loaded target on its own PK, so the fetch
-					// declares that column rather than mutating the caller's
-					// FieldOptions — a narrowed selection that omits it would
-					// otherwise map every target onto the zero value.
+					// Step 3 keys every loaded target on its referenced columns, so
+					// the fetch declares them rather than mutating the caller's
+					// FieldOptions.
 					requiredColumns: []string{"id"},
 				}, func(co *CallOptions[UserFieldOptions]) {
 					co.FieldOptions = fo.Users.FieldOptions
@@ -946,20 +946,19 @@ func (c *teamClient) loadRelationships(ctx context.Context, conn database.Querie
 
 				// Step 3: Map back to this chunk's parents via junction mapping.
 				// The targets are walked in the order the fetch returned them, so
-				// the relationship's Sorts — the caller's, or the static `sort:` —
-				// order each parent's slice. Walking the
-				// junction rows instead would keep junction order and drop the sort.
+				// the relationship's Sorts order each parent's slice.
 				//
 				// The junction read matched its rows in the database, so a junction
-				// key no parent holds byte for byte is one the column's comparison
+				// key no parent holds byte for byte is one the columns' comparison
 				// calls equal: Go cannot apply that collation, and the row is not
 				// dropped silently. A target no junction row maps is skipped: the
 				// target read is a second statement, so a link written between the
 				// two reaches it alone.
-				parentsByTarget := make(map[string][]int, len(relatedUsers))
-				matched := make(map[string]struct{}, len(parentToTargetIDs))
+				parentsByTarget := make(map[[1]string][]int, len(relatedUsers))
+				matched := make(map[[2]string]struct{}, len(parentToTargetIDs))
 				for i := start; i < start+len(chunk); i++ {
-					key := teams[i].ID.String()
+					parent := teamKeyed[i]
+					key := [2]string{parent.WorkspaceID.String(), parent.ID.String()}
 					tIDs, ok := parentToTargetIDs[key]
 					if ok {
 						matched[key] = struct{}{}
@@ -972,8 +971,8 @@ func (c *teamClient) loadRelationships(ctx context.Context, conn database.Querie
 					return fmt.Errorf("load team users junction: %d of %d junction keys match no parent key byte for byte, though the database matched them: the column compares spellings Go cannot tell apart as equal (a case-insensitive collation, CHAR padding); store one spelling", len(parentToTargetIDs)-len(matched), len(parentToTargetIDs))
 				}
 				for _, t := range relatedUsers {
-					for _, i := range parentsByTarget[t.ID.String()] {
-						teams[i].Users = append(teams[i].Users, t)
+					for _, i := range parentsByTarget[[1]string{t.ID.String()}] {
+						teamKeyed[i].Users = append(teamKeyed[i].Users, t)
 					}
 				}
 			}
@@ -4136,7 +4135,8 @@ func teamUsersFilterExists(f *UserFilter, dialect sql.Dialect, opts []FilterOpti
 	subSQL := "SELECT 1 FROM " + dialect.FormatTable(sql.Table{Schema: "public", Name: "team_members"}) + " " + jn +
 		" JOIN " + dialect.FormatTable(sql.Table{Schema: "public", Name: "users"}) + " " + tgt +
 		" ON " + tgt + "." + dialect.QuoteIdentifier("id") + " = " + jn + "." + dialect.QuoteIdentifier("user_id") +
-		" WHERE " + jn + "." + dialect.QuoteIdentifier("team_id") + " = " + sql.CorrelationToken
+		" WHERE " + jn + "." + dialect.QuoteIdentifier("workspace_id") + " = " + sql.CorrelationTokenAt(0) +
+		" AND " + jn + "." + dialect.QuoteIdentifier("team_id") + " = " + sql.CorrelationTokenAt(1)
 	var subArgs []any
 
 	// The target's own ToConditions supplies the inner WHERE, so nesting and
@@ -4148,7 +4148,7 @@ func teamUsersFilterExists(f *UserFilter, dialect sql.Dialect, opts []FilterOpti
 		subArgs = append(subArgs, whereArgs...)
 	}
 
-	return sql.Exists("id", sql.Subquery{SQL: subSQL, Args: subArgs})
+	return sql.Exists([]string{"workspace_id", "id"}, sql.Subquery{SQL: subSQL, Args: subArgs})
 }
 
 // TeamFieldOptions controls column selection and relationship loading for teams queries.

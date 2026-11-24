@@ -4,7 +4,7 @@
 # create mutation is needed there.
 #
 # Managing a Team's membership (story 17) is the blessed half below. team_members
-# is a workspace_id-less junction with no generated create, so addUserToTeam /
+# is a tenant-scoped junction with no generated create, so addUserToTeam /
 # removeUserFromTeam are the only membership write path (the generated
 # team_member writes are subtracted in sqlgen.yml). They resolve the Team
 # tenant-scoped first, so a Team from another Workspace is invisible, and they run

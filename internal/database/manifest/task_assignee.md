@@ -23,12 +23,14 @@ Assigns users to tasks (M2M)
 | `task_id` | TaskID | `uuid.UUID` | `uuid` |  | yes |  |  | `comparator.ID` | Task side of the assignment |
 | `user_id` | UserID | `uuid.UUID` | `uuid` |  | yes |  |  | `comparator.ID` | Assigned user |
 | `assigned_at` | AssignedAt | `time.Time` | `timestamptz` |  |  |  | `now()` | `comparator.Time` | When the assignment was made |
+| `workspace_id` | WorkspaceID | `uuid.UUID` | `uuid` |  |  |  |  | `comparator.ID` | Owning workspace (tenant column); equals the task's |
 
 ## Indexes
 
 | Name | Columns | Unique | Method | Where |
 | --- | --- | --- | --- | --- |
 | `task_assignees_pkey` | task_id, user_id | yes | btree |  |
+| `task_assignees_ws_key` | workspace_id, task_id, user_id | yes | btree |  |
 
 ## Query methods
 
@@ -36,7 +38,7 @@ Assigns users to tasks (M2M)
 
 - Params: `pk TaskAssigneePK`
 - Returns: `*TaskAssignee`, `error`
-- Errors: `ErrNotFound`
+- Errors: `ErrNotFound`, `tenancy.ErrMissing`
 - Notes: Delegates to GetMany with a primary-key filter; returns ErrNotFound when no row matches.
 
 Generated SQL:
@@ -44,26 +46,28 @@ Generated SQL:
 postgres:
 
 ```sql
-SELECT "assigned_at", "task_id", "user_id" FROM "public"."task_assignees" WHERE "task_id" = $1 AND "user_id" = $2 LIMIT 1
+SELECT "assigned_at", "task_id", "user_id", "workspace_id" FROM "public"."task_assignees" WHERE "task_id" = $1 AND "user_id" = $2 LIMIT 1
 ```
 
 ### GetMany
 
 - Params: `input *GetTaskAssigneesInput`
 - Returns: `[]*TaskAssignee`, `error`
+- Errors: `tenancy.ErrMissing`
 
 Generated SQL:
 
 postgres:
 
 ```sql
-SELECT "assigned_at", "task_id", "user_id" FROM "public"."task_assignees" WHERE <filter> ORDER BY <sort> LIMIT <limit>
+SELECT "assigned_at", "task_id", "user_id", "workspace_id" FROM "public"."task_assignees" WHERE <filter> ORDER BY <sort> LIMIT <limit>
 ```
 
 ### Exists
 
 - Params: `pk TaskAssigneePK`
 - Returns: `bool`, `error`
+- Errors: `tenancy.ErrMissing`
 
 Generated SQL:
 
@@ -77,6 +81,7 @@ SELECT EXISTS(SELECT 1 FROM "public"."task_assignees" WHERE "task_id" = $1 AND "
 
 - Params: `filter *TaskAssigneeFilter`
 - Returns: `bool`, `error`
+- Errors: `tenancy.ErrMissing`
 
 Generated SQL:
 
@@ -90,6 +95,7 @@ SELECT EXISTS(SELECT 1 FROM "public"."task_assignees" WHERE <filter>)
 
 - Params: `filter *TaskAssigneeFilter`
 - Returns: `int64`, `error`
+- Errors: `tenancy.ErrMissing`
 
 Generated SQL:
 
@@ -103,19 +109,21 @@ SELECT COUNT(*) FROM "public"."task_assignees" WHERE <filter>
 
 - Params: `input PaginateInput[TaskAssigneeFilter]`
 - Returns: `*PaginateResult[TaskAssignee]`, `error`
+- Errors: `tenancy.ErrMissing`
 - Notes: Offset pagination. Issues no statement of its own — composes Count and GetMany, so no sql_bodies entry.
 
 ### Connection
 
 - Params: `input ConnectionInput[TaskAssigneeFilter]`
 - Returns: `*Connection[TaskAssignee]`, `error`
-- Errors: `ErrInvalidCursor`
+- Errors: `ErrInvalidCursor`, `tenancy.ErrMissing`
 - Notes: Relay cursor pagination. Issues no statement of its own — composes Count and GetMany, so no sql_bodies entry.
 
 ### Stream
 
 - Params: `input *StreamTaskAssigneesInput`
 - Returns: `iter.Seq2[*TaskAssignee, error]`, `error`
+- Errors: `tenancy.ErrMissing`
 - Notes: Scalars only — no relationship loading, cache always bypassed. Errors surface through the iterator's second value.
 
 Generated SQL:
@@ -123,7 +131,7 @@ Generated SQL:
 postgres:
 
 ```sql
-SELECT "assigned_at", "task_id", "user_id" FROM "public"."task_assignees" WHERE <filter> ORDER BY <sort>
+SELECT "assigned_at", "task_id", "user_id", "workspace_id" FROM "public"."task_assignees" WHERE <filter> ORDER BY <sort>
 ```
 
 ## Mutation methods
@@ -132,7 +140,7 @@ SELECT "assigned_at", "task_id", "user_id" FROM "public"."task_assignees" WHERE 
 
 - Params: `input *CreateTaskAssigneeInput`
 - Returns: `*TaskAssignee`, `error`
-- Errors: `ErrNilInput`, `ErrConstraintViolation`
+- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
 
 Generated SQL:
 
@@ -146,7 +154,7 @@ INSERT INTO "public"."task_assignees" (<columns>) VALUES (<values>)
 
 - Params: `inputs []*CreateTaskAssigneeInput`
 - Returns: `[]*TaskAssignee`, `error`
-- Errors: `ErrNilInput`, `ErrConstraintViolation`
+- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
 - Notes: Batched in generation.batch_size chunks. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.
 
 Generated SQL:
@@ -161,7 +169,7 @@ INSERT INTO "public"."task_assignees" (<columns>) VALUES <values>
 
 - Params: `pk TaskAssigneePK`, `input *UpdateTaskAssigneeInput`
 - Returns: `*TaskAssignee`, `error`
-- Errors: `ErrNotFound`, `ErrNilInput`, `ErrConstraintViolation`
+- Errors: `ErrNotFound`, `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
 - Notes: Only fields where IsSet() reports true reach the SET clause; an input with none set issues no UPDATE and returns the row unchanged.
 
 Generated SQL:
@@ -176,7 +184,7 @@ UPDATE "public"."task_assignees" SET <set> WHERE "task_id" = $1 AND "user_id" = 
 
 - Params: `items []UpdateTaskAssigneeItem`
 - Returns: `[]*TaskAssignee`, `error`
-- Errors: `ErrNilInput`, `ErrConstraintViolation`
+- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
 - Notes: Issues one statement per item. Batched like CreateMany — earlier items are not rolled back on a later failure. A primary key that does not exist is silently skipped, even under strict_updates.
 
 Generated SQL:
@@ -191,7 +199,7 @@ UPDATE "public"."task_assignees" SET <set> WHERE "task_id" = $1 AND "user_id" = 
 
 - Params: `filter *TaskAssigneeFilter`, `input *UpdateTaskAssigneeInput`
 - Returns: `[]*TaskAssignee`, `error`
-- Errors: `ErrNilInput`, `ErrEmptyFilter`, `ErrConstraintViolation`
+- Errors: `ErrNilInput`, `ErrEmptyFilter`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
 - Notes: Idempotent — returns an empty slice when no row matches. ErrEmptyFilter when the filter produces no conditions.
 
 Generated SQL:
@@ -206,7 +214,7 @@ UPDATE "public"."task_assignees" SET <set> WHERE <filter> RETURNING "task_id", "
 
 - Params: `input *CreateTaskAssigneeInput`, `target TaskAssigneeConflictTarget`
 - Returns: `*TaskAssignee`, `error`
-- Errors: `ErrNilInput`, `ErrConstraintViolation`
+- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
 - Notes: One method over the generated TaskAssigneeConflictTarget enum — the target argument selects the conflict columns at call time.
 
 Generated SQL:
@@ -221,7 +229,7 @@ INSERT INTO "public"."task_assignees" (<columns>) VALUES (<values>) ON CONFLICT 
 
 - Params: `inputs []*CreateTaskAssigneeInput`, `target TaskAssigneeConflictTarget`
 - Returns: `[]*TaskAssignee`, `error`
-- Errors: `ErrNilInput`, `ErrConstraintViolation`
+- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
 - Notes: Batched in generation.batch_size chunks over the same TaskAssigneeConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.
 
 Generated SQL:
@@ -236,6 +244,7 @@ INSERT INTO "public"."task_assignees" (<columns>) VALUES <values> ON CONFLICT (<
 
 - Params: `pk TaskAssigneePK`
 - Returns: `error`
+- Errors: `tenancy.ErrMissing`
 - Notes: Idempotent — a primary key that does not exist is not an error.
 
 Generated SQL:
@@ -250,6 +259,7 @@ DELETE FROM "public"."task_assignees" WHERE "task_id" = $1 AND "user_id" = $2
 
 - Params: `pks []TaskAssigneePK`
 - Returns: `error`
+- Errors: `tenancy.ErrMissing`
 - Notes: Idempotent — primary keys that do not exist are not an error.
 
 Generated SQL:
@@ -264,7 +274,7 @@ DELETE FROM "public"."task_assignees" WHERE ("task_id", "user_id") IN (<pks>)
 
 - Params: `filter *TaskAssigneeFilter`
 - Returns: `error`
-- Errors: `ErrEmptyFilter`
+- Errors: `ErrEmptyFilter`, `tenancy.ErrMissing`
 - Notes: Idempotent — no match is not an error. ErrEmptyFilter when the filter produces no conditions.
 
 Generated SQL:
@@ -284,6 +294,7 @@ Type `TaskAssigneeFilter`.
 | AssignedAt | `*comparator.Time` |
 | TaskID | `*comparator.ID` |
 | UserID | `*comparator.ID` |
+| WorkspaceID | `*comparator.ID` |
 | And | `[]*TaskAssigneeFilter` |
 | Or | `[]*TaskAssigneeFilter` |
 
@@ -291,7 +302,7 @@ Type `TaskAssigneeFilter`.
 
 Type `TaskAssigneeSort`.
 
-Fields: AssignedAt, TaskID, UserID
+Fields: AssignedAt, TaskID, UserID, WorkspaceID
 
 ## Read examples
 

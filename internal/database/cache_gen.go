@@ -30,12 +30,12 @@ const fingerprintMembership = "c4711ce3"
 const fingerprintProject = "17473fd6"
 const fingerprintSsoConnection = "7299ae59"
 const fingerprintTask = "711b7b3c"
-const fingerprintTaskAssignee = "79c31dad"
+const fingerprintTaskAssignee = "d90951f2"
 const fingerprintTaskDependency = "2f8bcec8"
 const fingerprintTaskLabel = "fb8e8c09"
-const fingerprintTaskWatcher = "c644860f"
+const fingerprintTaskWatcher = "75019877"
 const fingerprintTeam = "049da744"
-const fingerprintTeamMember = "25c68e56"
+const fingerprintTeamMember = "3747215f"
 const fingerprintTimeEntry = "5f920b18"
 const fingerprintUser = "ba29b683"
 const fingerprintWorkspace = "2d4cef94"
@@ -327,7 +327,55 @@ func (c *Cache) handleInvalidation(ctx context.Context, signal cache.Invalidatio
 			tenants[i] = signal.Tenant
 		}
 		return c.invalidateAffectedTenanted(ctx, signal.Table, tenants, signal.PKs)
+	case TableTaskAssignees:
+		// Rebuild the exact per-PK key from the signal's tenant stamp: the
+		// %v round-trip makes the string form byte-identical to the local
+		// key, and the fingerprint is this receiver's own
+		// codegen constant — a rolling deploy only ever evicts keys this
+		// instance itself wrote. A tenant-less signal (out-of-band or
+		// pre-stamp publisher) degrades to the full-table pattern instead
+		// of erroring or going stale.
+		if signal.Tenant == "" {
+			return c.invalidateTenantedFallback(ctx, signal.Table, "invalidation signal carries no tenant")
+		}
+		tenants := make([]any, len(signal.PKs))
+		for i := range tenants {
+			tenants[i] = signal.Tenant
+		}
+		return c.invalidateAffectedTenanted(ctx, signal.Table, tenants, signal.PKs)
+	case TableTaskWatchers:
+		// Rebuild the exact per-PK key from the signal's tenant stamp: the
+		// %v round-trip makes the string form byte-identical to the local
+		// key, and the fingerprint is this receiver's own
+		// codegen constant — a rolling deploy only ever evicts keys this
+		// instance itself wrote. A tenant-less signal (out-of-band or
+		// pre-stamp publisher) degrades to the full-table pattern instead
+		// of erroring or going stale.
+		if signal.Tenant == "" {
+			return c.invalidateTenantedFallback(ctx, signal.Table, "invalidation signal carries no tenant")
+		}
+		tenants := make([]any, len(signal.PKs))
+		for i := range tenants {
+			tenants[i] = signal.Tenant
+		}
+		return c.invalidateAffectedTenanted(ctx, signal.Table, tenants, signal.PKs)
 	case TableTeams:
+		// Rebuild the exact per-PK key from the signal's tenant stamp: the
+		// %v round-trip makes the string form byte-identical to the local
+		// key, and the fingerprint is this receiver's own
+		// codegen constant — a rolling deploy only ever evicts keys this
+		// instance itself wrote. A tenant-less signal (out-of-band or
+		// pre-stamp publisher) degrades to the full-table pattern instead
+		// of erroring or going stale.
+		if signal.Tenant == "" {
+			return c.invalidateTenantedFallback(ctx, signal.Table, "invalidation signal carries no tenant")
+		}
+		tenants := make([]any, len(signal.PKs))
+		for i := range tenants {
+			tenants[i] = signal.Tenant
+		}
+		return c.invalidateAffectedTenanted(ctx, signal.Table, tenants, signal.PKs)
+	case TableTeamMembers:
 		// Rebuild the exact per-PK key from the signal's tenant stamp: the
 		// %v round-trip makes the string form byte-identical to the local
 		// key, and the fingerprint is this receiver's own
@@ -3461,8 +3509,11 @@ func (c *Cache) hydrateTask(tenant uuid.UUID, pk uuid.UUID, next hook.QueryHandl
 // keyForTaskAssignee builds the cache key for TaskAssignee with composite PK.
 // The []any is constructed in DDL PRIMARY KEY column order inside this one
 // function — call sites never reorder (key-order invariant).
-func (c *Cache) keyForTaskAssignee(pk TaskAssigneePK) string {
-	return cache.BuildCompositeKey(c.prefix, "public", "task_assignees", fingerprintTaskAssignee, []any{
+// Tenanted form: tenant: segment is emitted before fingerprint:
+// so the per-tenant trailing-wildcard pattern (BuildTenantTablePattern)
+// matches every fingerprint generation in one pass.
+func (c *Cache) keyForTaskAssignee(tenant uuid.UUID, pk TaskAssigneePK) string {
+	return cache.BuildCompositeTenantKey(c.prefix, "public", "task_assignees", fingerprintTaskAssignee, tenant, []any{
 		pk.TaskID,
 		pk.UserID,
 	})
@@ -3493,9 +3544,10 @@ func hasAnyRelationshipTaskAssignee(fo any) bool {
 // elsewhere.
 func fullParentFieldOptionsTaskAssignee() *TaskAssigneeFieldOptions {
 	return &TaskAssigneeFieldOptions{
-		TaskID:     true,
-		UserID:     true,
-		AssignedAt: true,
+		TaskID:      true,
+		UserID:      true,
+		AssignedAt:  true,
+		WorkspaceID: true,
 	}
 }
 
@@ -3504,8 +3556,10 @@ func fullParentFieldOptionsTaskAssignee() *TaskAssigneeFieldOptions {
 // singleflight dedup and populates cache. Every backend call is breaker-gated;
 // errors are routed through cache.RouteError and fall through to the DB so
 // a cache outage never breaks the caller.
-func (c *Cache) readThroughTaskAssignee(ctx context.Context, pk TaskAssigneePK, q *hook.QueryContext, next hook.QueryHandler) (any, error) {
-	key := c.keyForTaskAssignee(pk)
+// Tenanted: tenant comes from q.Tenant — resolved once at the entity-method
+// boundary and reused here without re-invoking TenantResolver.
+func (c *Cache) readThroughTaskAssignee(ctx context.Context, tenant uuid.UUID, pk TaskAssigneePK, q *hook.QueryContext, next hook.QueryHandler) (any, error) {
+	key := c.keyForTaskAssignee(tenant, pk)
 	schema := "public"
 
 	if c.breaker == nil || c.breaker.Allow() {
@@ -3549,7 +3603,7 @@ func (c *Cache) readThroughTaskAssignee(ctx context.Context, pk TaskAssigneePK, 
 		if err != nil {
 			return nil, err
 		}
-		c.hydrateTaskAssignee(pk, next)
+		c.hydrateTaskAssignee(tenant, pk, next)
 		return result, nil
 	}
 
@@ -3612,14 +3666,18 @@ func (c *Cache) readThroughTaskAssignee(ctx context.Context, pk TaskAssigneePK, 
 // result order). Failures route through cache.RouteError and never surface to
 // the caller path; a cache outage can delay the next Get but never breaks a
 // mutation.
-func (c *Cache) setTaskAssignee(ctx context.Context, entity *TaskAssignee) {
+// Tenanted: tenant is supplied by the mutation hook from the row itself —
+// the PK struct when the tenant is part of the primary key, the structurally
+// captured m.AffectedTenants value otherwise — never the resolver, so
+// SkipTenancy creates write through under the correct key.
+func (c *Cache) setTaskAssignee(ctx context.Context, tenant uuid.UUID, entity *TaskAssignee) {
 	if entity == nil {
 		return
 	}
 	if c.breaker != nil && !c.breaker.Allow() {
 		return
 	}
-	key := c.keyForTaskAssignee(TaskAssigneePK{
+	key := c.keyForTaskAssignee(tenant, TaskAssigneePK{
 		TaskID: entity.TaskID,
 		UserID: entity.UserID,
 	})
@@ -3649,11 +3707,14 @@ func (c *Cache) setTaskAssignee(ctx context.Context, entity *TaskAssignee) {
 // then serializes and populates the cache under the full-entity key. Errors
 // surface via metrics.HydrationComplete + cache.RouteError; the caller path
 // is never affected.
-func (c *Cache) hydrateTaskAssignee(pk TaskAssigneePK, next hook.QueryHandler) {
+// Tenanted: tenant comes from the readThrough caller — resolved once at the
+// entity-method boundary, threaded through both the cache key and the
+// hydration QueryContext.Tenant.
+func (c *Cache) hydrateTaskAssignee(tenant uuid.UUID, pk TaskAssigneePK, next hook.QueryHandler) {
 	if !c.hydrationEnabled {
 		return
 	}
-	key := c.keyForTaskAssignee(pk)
+	key := c.keyForTaskAssignee(tenant, pk)
 	if _, loaded := c.hydrating.LoadOrStore(key, struct{}{}); loaded {
 		return
 	}
@@ -3671,6 +3732,7 @@ func (c *Cache) hydrateTaskAssignee(pk TaskAssigneePK, next hook.QueryHandler) {
 			Table:  TableTaskAssignees,
 			Schema: schema,
 			PK:     pk,
+			Tenant: tenant,
 			CallOptions: CallOptions[TaskAssigneeFieldOptions]{
 				FieldOptions: fullParentFieldOptionsTaskAssignee(),
 				SkipHooks:    true,
@@ -4244,8 +4306,11 @@ func (c *Cache) hydrateTaskLabel(pk TaskLabelPK, next hook.QueryHandler) {
 // keyForTaskWatcher builds the cache key for TaskWatcher with composite PK.
 // The []any is constructed in DDL PRIMARY KEY column order inside this one
 // function — call sites never reorder (key-order invariant).
-func (c *Cache) keyForTaskWatcher(pk TaskWatcherPK) string {
-	return cache.BuildCompositeKey(c.prefix, "public", "task_watchers", fingerprintTaskWatcher, []any{
+// Tenanted form: tenant: segment is emitted before fingerprint:
+// so the per-tenant trailing-wildcard pattern (BuildTenantTablePattern)
+// matches every fingerprint generation in one pass.
+func (c *Cache) keyForTaskWatcher(tenant uuid.UUID, pk TaskWatcherPK) string {
+	return cache.BuildCompositeTenantKey(c.prefix, "public", "task_watchers", fingerprintTaskWatcher, tenant, []any{
 		pk.TaskID,
 		pk.UserID,
 	})
@@ -4276,9 +4341,10 @@ func hasAnyRelationshipTaskWatcher(fo any) bool {
 // elsewhere.
 func fullParentFieldOptionsTaskWatcher() *TaskWatcherFieldOptions {
 	return &TaskWatcherFieldOptions{
-		TaskID:    true,
-		UserID:    true,
-		CreatedAt: true,
+		TaskID:      true,
+		UserID:      true,
+		CreatedAt:   true,
+		WorkspaceID: true,
 	}
 }
 
@@ -4287,8 +4353,10 @@ func fullParentFieldOptionsTaskWatcher() *TaskWatcherFieldOptions {
 // singleflight dedup and populates cache. Every backend call is breaker-gated;
 // errors are routed through cache.RouteError and fall through to the DB so
 // a cache outage never breaks the caller.
-func (c *Cache) readThroughTaskWatcher(ctx context.Context, pk TaskWatcherPK, q *hook.QueryContext, next hook.QueryHandler) (any, error) {
-	key := c.keyForTaskWatcher(pk)
+// Tenanted: tenant comes from q.Tenant — resolved once at the entity-method
+// boundary and reused here without re-invoking TenantResolver.
+func (c *Cache) readThroughTaskWatcher(ctx context.Context, tenant uuid.UUID, pk TaskWatcherPK, q *hook.QueryContext, next hook.QueryHandler) (any, error) {
+	key := c.keyForTaskWatcher(tenant, pk)
 	schema := "public"
 
 	if c.breaker == nil || c.breaker.Allow() {
@@ -4332,7 +4400,7 @@ func (c *Cache) readThroughTaskWatcher(ctx context.Context, pk TaskWatcherPK, q 
 		if err != nil {
 			return nil, err
 		}
-		c.hydrateTaskWatcher(pk, next)
+		c.hydrateTaskWatcher(tenant, pk, next)
 		return result, nil
 	}
 
@@ -4395,14 +4463,18 @@ func (c *Cache) readThroughTaskWatcher(ctx context.Context, pk TaskWatcherPK, q 
 // result order). Failures route through cache.RouteError and never surface to
 // the caller path; a cache outage can delay the next Get but never breaks a
 // mutation.
-func (c *Cache) setTaskWatcher(ctx context.Context, entity *TaskWatcher) {
+// Tenanted: tenant is supplied by the mutation hook from the row itself —
+// the PK struct when the tenant is part of the primary key, the structurally
+// captured m.AffectedTenants value otherwise — never the resolver, so
+// SkipTenancy creates write through under the correct key.
+func (c *Cache) setTaskWatcher(ctx context.Context, tenant uuid.UUID, entity *TaskWatcher) {
 	if entity == nil {
 		return
 	}
 	if c.breaker != nil && !c.breaker.Allow() {
 		return
 	}
-	key := c.keyForTaskWatcher(TaskWatcherPK{
+	key := c.keyForTaskWatcher(tenant, TaskWatcherPK{
 		TaskID: entity.TaskID,
 		UserID: entity.UserID,
 	})
@@ -4432,11 +4504,14 @@ func (c *Cache) setTaskWatcher(ctx context.Context, entity *TaskWatcher) {
 // then serializes and populates the cache under the full-entity key. Errors
 // surface via metrics.HydrationComplete + cache.RouteError; the caller path
 // is never affected.
-func (c *Cache) hydrateTaskWatcher(pk TaskWatcherPK, next hook.QueryHandler) {
+// Tenanted: tenant comes from the readThrough caller — resolved once at the
+// entity-method boundary, threaded through both the cache key and the
+// hydration QueryContext.Tenant.
+func (c *Cache) hydrateTaskWatcher(tenant uuid.UUID, pk TaskWatcherPK, next hook.QueryHandler) {
 	if !c.hydrationEnabled {
 		return
 	}
-	key := c.keyForTaskWatcher(pk)
+	key := c.keyForTaskWatcher(tenant, pk)
 	if _, loaded := c.hydrating.LoadOrStore(key, struct{}{}); loaded {
 		return
 	}
@@ -4454,6 +4529,7 @@ func (c *Cache) hydrateTaskWatcher(pk TaskWatcherPK, next hook.QueryHandler) {
 			Table:  TableTaskWatchers,
 			Schema: schema,
 			PK:     pk,
+			Tenant: tenant,
 			CallOptions: CallOptions[TaskWatcherFieldOptions]{
 				FieldOptions: fullParentFieldOptionsTaskWatcher(),
 				SkipHooks:    true,
@@ -4785,8 +4861,11 @@ func (c *Cache) hydrateTeam(tenant uuid.UUID, pk uuid.UUID, next hook.QueryHandl
 // keyForTeamMember builds the cache key for TeamMember with composite PK.
 // The []any is constructed in DDL PRIMARY KEY column order inside this one
 // function — call sites never reorder (key-order invariant).
-func (c *Cache) keyForTeamMember(pk TeamMemberPK) string {
-	return cache.BuildCompositeKey(c.prefix, "public", "team_members", fingerprintTeamMember, []any{
+// Tenanted form: tenant: segment is emitted before fingerprint:
+// so the per-tenant trailing-wildcard pattern (BuildTenantTablePattern)
+// matches every fingerprint generation in one pass.
+func (c *Cache) keyForTeamMember(tenant uuid.UUID, pk TeamMemberPK) string {
+	return cache.BuildCompositeTenantKey(c.prefix, "public", "team_members", fingerprintTeamMember, tenant, []any{
 		pk.TeamID,
 		pk.UserID,
 	})
@@ -4817,9 +4896,10 @@ func hasAnyRelationshipTeamMember(fo any) bool {
 // elsewhere.
 func fullParentFieldOptionsTeamMember() *TeamMemberFieldOptions {
 	return &TeamMemberFieldOptions{
-		TeamID:  true,
-		UserID:  true,
-		AddedAt: true,
+		TeamID:      true,
+		UserID:      true,
+		AddedAt:     true,
+		WorkspaceID: true,
 	}
 }
 
@@ -4828,8 +4908,10 @@ func fullParentFieldOptionsTeamMember() *TeamMemberFieldOptions {
 // singleflight dedup and populates cache. Every backend call is breaker-gated;
 // errors are routed through cache.RouteError and fall through to the DB so
 // a cache outage never breaks the caller.
-func (c *Cache) readThroughTeamMember(ctx context.Context, pk TeamMemberPK, q *hook.QueryContext, next hook.QueryHandler) (any, error) {
-	key := c.keyForTeamMember(pk)
+// Tenanted: tenant comes from q.Tenant — resolved once at the entity-method
+// boundary and reused here without re-invoking TenantResolver.
+func (c *Cache) readThroughTeamMember(ctx context.Context, tenant uuid.UUID, pk TeamMemberPK, q *hook.QueryContext, next hook.QueryHandler) (any, error) {
+	key := c.keyForTeamMember(tenant, pk)
 	schema := "public"
 
 	if c.breaker == nil || c.breaker.Allow() {
@@ -4873,7 +4955,7 @@ func (c *Cache) readThroughTeamMember(ctx context.Context, pk TeamMemberPK, q *h
 		if err != nil {
 			return nil, err
 		}
-		c.hydrateTeamMember(pk, next)
+		c.hydrateTeamMember(tenant, pk, next)
 		return result, nil
 	}
 
@@ -4936,14 +5018,18 @@ func (c *Cache) readThroughTeamMember(ctx context.Context, pk TeamMemberPK, q *h
 // result order). Failures route through cache.RouteError and never surface to
 // the caller path; a cache outage can delay the next Get but never breaks a
 // mutation.
-func (c *Cache) setTeamMember(ctx context.Context, entity *TeamMember) {
+// Tenanted: tenant is supplied by the mutation hook from the row itself —
+// the PK struct when the tenant is part of the primary key, the structurally
+// captured m.AffectedTenants value otherwise — never the resolver, so
+// SkipTenancy creates write through under the correct key.
+func (c *Cache) setTeamMember(ctx context.Context, tenant uuid.UUID, entity *TeamMember) {
 	if entity == nil {
 		return
 	}
 	if c.breaker != nil && !c.breaker.Allow() {
 		return
 	}
-	key := c.keyForTeamMember(TeamMemberPK{
+	key := c.keyForTeamMember(tenant, TeamMemberPK{
 		TeamID: entity.TeamID,
 		UserID: entity.UserID,
 	})
@@ -4973,11 +5059,14 @@ func (c *Cache) setTeamMember(ctx context.Context, entity *TeamMember) {
 // then serializes and populates the cache under the full-entity key. Errors
 // surface via metrics.HydrationComplete + cache.RouteError; the caller path
 // is never affected.
-func (c *Cache) hydrateTeamMember(pk TeamMemberPK, next hook.QueryHandler) {
+// Tenanted: tenant comes from the readThrough caller — resolved once at the
+// entity-method boundary, threaded through both the cache key and the
+// hydration QueryContext.Tenant.
+func (c *Cache) hydrateTeamMember(tenant uuid.UUID, pk TeamMemberPK, next hook.QueryHandler) {
 	if !c.hydrationEnabled {
 		return
 	}
-	key := c.keyForTeamMember(pk)
+	key := c.keyForTeamMember(tenant, pk)
 	if _, loaded := c.hydrating.LoadOrStore(key, struct{}{}); loaded {
 		return
 	}
@@ -4995,6 +5084,7 @@ func (c *Cache) hydrateTeamMember(pk TeamMemberPK, next hook.QueryHandler) {
 			Table:  TableTeamMembers,
 			Schema: schema,
 			PK:     pk,
+			Tenant: tenant,
 			CallOptions: CallOptions[TeamMemberFieldOptions]{
 				FieldOptions: fullParentFieldOptionsTeamMember(),
 				SkipHooks:    true,
@@ -6207,12 +6297,6 @@ func (c *Cache) InvalidateMany(ctx context.Context, table hook.TableName, pks []
 // touches no backend, so its errors are the caller's to report.
 func (c *Cache) keysFor(table hook.TableName, pks []any) ([]string, error) {
 	switch table {
-	case TableTaskAssignees:
-		keys, err := cache.KeysFromAny(pks, c.keyForTaskAssignee)
-		if err != nil {
-			return nil, fmt.Errorf("cache: InvalidateMany(%q): %w", table, err)
-		}
-		return keys, nil
 	case TableTaskDependencies:
 		keys, err := cache.KeysFromAny(pks, c.keyForTaskDependency)
 		if err != nil {
@@ -6221,18 +6305,6 @@ func (c *Cache) keysFor(table hook.TableName, pks []any) ([]string, error) {
 		return keys, nil
 	case TableTaskLabels:
 		keys, err := cache.KeysFromAny(pks, c.keyForTaskLabel)
-		if err != nil {
-			return nil, fmt.Errorf("cache: InvalidateMany(%q): %w", table, err)
-		}
-		return keys, nil
-	case TableTaskWatchers:
-		keys, err := cache.KeysFromAny(pks, c.keyForTaskWatcher)
-		if err != nil {
-			return nil, fmt.Errorf("cache: InvalidateMany(%q): %w", table, err)
-		}
-		return keys, nil
-	case TableTeamMembers:
-		keys, err := cache.KeysFromAny(pks, c.keyForTeamMember)
 		if err != nil {
 			return nil, fmt.Errorf("cache: InvalidateMany(%q): %w", table, err)
 		}
@@ -6271,7 +6343,13 @@ func (c *Cache) keysFor(table hook.TableName, pks []any) ([]string, error) {
 		return nil, fmt.Errorf("cache: InvalidateMany(%q): table is tenanted; use cache hook auto-invalidation or InvalidateTable / BuildTenantTablePattern", table)
 	case TableTasks:
 		return nil, fmt.Errorf("cache: InvalidateMany(%q): table is tenanted; use cache hook auto-invalidation or InvalidateTable / BuildTenantTablePattern", table)
+	case TableTaskAssignees:
+		return nil, fmt.Errorf("cache: InvalidateMany(%q): table is tenanted; use cache hook auto-invalidation or InvalidateTable / BuildTenantTablePattern", table)
+	case TableTaskWatchers:
+		return nil, fmt.Errorf("cache: InvalidateMany(%q): table is tenanted; use cache hook auto-invalidation or InvalidateTable / BuildTenantTablePattern", table)
 	case TableTeams:
+		return nil, fmt.Errorf("cache: InvalidateMany(%q): table is tenanted; use cache hook auto-invalidation or InvalidateTable / BuildTenantTablePattern", table)
+	case TableTeamMembers:
 		return nil, fmt.Errorf("cache: InvalidateMany(%q): table is tenanted; use cache hook auto-invalidation or InvalidateTable / BuildTenantTablePattern", table)
 	case TableTimeEntries:
 		return nil, fmt.Errorf("cache: InvalidateMany(%q): table is tenanted; use cache hook auto-invalidation or InvalidateTable / BuildTenantTablePattern", table)
@@ -6432,6 +6510,44 @@ func (c *Cache) invalidateAffectedTenanted(ctx context.Context, table hook.Table
 			}
 			keys = append(keys, cache.BuildTenantKey(c.prefix, "public", "tasks", fingerprintTask, tenants[i], pk))
 		}
+	case TableTaskAssignees:
+		if len(tenants) < len(pks) {
+			return c.invalidateTenantedFallback(ctx, table, "captured tenant carrier missing")
+		}
+		for i, pk := range pks {
+			if tenants[i] == nil {
+				// Row not materialized by the mutation — nothing cached
+				// changed for this PK; skip (hook.AffectedTenants contract).
+				continue
+			}
+			compositePK, ok := pk.(TaskAssigneePK)
+			if !ok {
+				return c.invalidateTenantedFallback(ctx, table, fmt.Sprintf("unexpected PK type %T", pk))
+			}
+			keys = append(keys, cache.BuildCompositeTenantKey(c.prefix, "public", "task_assignees", fingerprintTaskAssignee, tenants[i], []any{
+				compositePK.TaskID,
+				compositePK.UserID,
+			}))
+		}
+	case TableTaskWatchers:
+		if len(tenants) < len(pks) {
+			return c.invalidateTenantedFallback(ctx, table, "captured tenant carrier missing")
+		}
+		for i, pk := range pks {
+			if tenants[i] == nil {
+				// Row not materialized by the mutation — nothing cached
+				// changed for this PK; skip (hook.AffectedTenants contract).
+				continue
+			}
+			compositePK, ok := pk.(TaskWatcherPK)
+			if !ok {
+				return c.invalidateTenantedFallback(ctx, table, fmt.Sprintf("unexpected PK type %T", pk))
+			}
+			keys = append(keys, cache.BuildCompositeTenantKey(c.prefix, "public", "task_watchers", fingerprintTaskWatcher, tenants[i], []any{
+				compositePK.TaskID,
+				compositePK.UserID,
+			}))
+		}
 	case TableTeams:
 		if len(tenants) < len(pks) {
 			return c.invalidateTenantedFallback(ctx, table, "captured tenant carrier missing")
@@ -6443,6 +6559,25 @@ func (c *Cache) invalidateAffectedTenanted(ctx context.Context, table hook.Table
 				continue
 			}
 			keys = append(keys, cache.BuildTenantKey(c.prefix, "public", "teams", fingerprintTeam, tenants[i], pk))
+		}
+	case TableTeamMembers:
+		if len(tenants) < len(pks) {
+			return c.invalidateTenantedFallback(ctx, table, "captured tenant carrier missing")
+		}
+		for i, pk := range pks {
+			if tenants[i] == nil {
+				// Row not materialized by the mutation — nothing cached
+				// changed for this PK; skip (hook.AffectedTenants contract).
+				continue
+			}
+			compositePK, ok := pk.(TeamMemberPK)
+			if !ok {
+				return c.invalidateTenantedFallback(ctx, table, fmt.Sprintf("unexpected PK type %T", pk))
+			}
+			keys = append(keys, cache.BuildCompositeTenantKey(c.prefix, "public", "team_members", fingerprintTeamMember, tenants[i], []any{
+				compositePK.TeamID,
+				compositePK.UserID,
+			}))
 		}
 	case TableTimeEntries:
 		if len(tenants) < len(pks) {
@@ -6833,7 +6968,16 @@ func (c *Cache) QueryHook() hook.QueryHook {
 				if !ok {
 					return next(ctx, q)
 				}
-				return c.readThroughTaskAssignee(ctx, pk, q, next)
+				// Tenanted table: tenant must be resolved by the entity
+				// method and threaded via q.Tenant. A nil/wrong-type
+				// Tenant means the caller bypassed tenant resolution
+				// (e.g. SkipTenancy = true) — fall through to the DB
+				// rather than risking a cross-tenant cache hit.
+				tenant, ok := q.Tenant.(uuid.UUID)
+				if !ok {
+					return next(ctx, q)
+				}
+				return c.readThroughTaskAssignee(ctx, tenant, pk, q, next)
 			case TableTaskDependencies:
 				pk, ok := q.PK.(TaskDependencyPK)
 				if !ok {
@@ -6851,7 +6995,16 @@ func (c *Cache) QueryHook() hook.QueryHook {
 				if !ok {
 					return next(ctx, q)
 				}
-				return c.readThroughTaskWatcher(ctx, pk, q, next)
+				// Tenanted table: tenant must be resolved by the entity
+				// method and threaded via q.Tenant. A nil/wrong-type
+				// Tenant means the caller bypassed tenant resolution
+				// (e.g. SkipTenancy = true) — fall through to the DB
+				// rather than risking a cross-tenant cache hit.
+				tenant, ok := q.Tenant.(uuid.UUID)
+				if !ok {
+					return next(ctx, q)
+				}
+				return c.readThroughTaskWatcher(ctx, tenant, pk, q, next)
 			case TableTeams:
 				pk, ok := q.PK.(uuid.UUID)
 				if !ok {
@@ -6872,7 +7025,16 @@ func (c *Cache) QueryHook() hook.QueryHook {
 				if !ok {
 					return next(ctx, q)
 				}
-				return c.readThroughTeamMember(ctx, pk, q, next)
+				// Tenanted table: tenant must be resolved by the entity
+				// method and threaded via q.Tenant. A nil/wrong-type
+				// Tenant means the caller bypassed tenant resolution
+				// (e.g. SkipTenancy = true) — fall through to the DB
+				// rather than risking a cross-tenant cache hit.
+				tenant, ok := q.Tenant.(uuid.UUID)
+				if !ok {
+					return next(ctx, q)
+				}
+				return c.readThroughTeamMember(ctx, tenant, pk, q, next)
 			case TableTimeEntries:
 				pk, ok := q.PK.(uuid.UUID)
 				if !ok {
@@ -7115,7 +7277,17 @@ func (c *Cache) dispatchMutation(ctx context.Context, m *hook.MutationContext, r
 				}
 			case TableTaskAssignees:
 				if entity, ok := result.(*TaskAssignee); ok {
-					c.setTaskAssignee(ctx, entity)
+					// Tenant sourced from the structural capture —
+					// never the resolver — so a
+					// SkipTenancy create writes through under the correct
+					// tenant-scoped key. A nil capture (no tenant value
+					// reached the INSERT) skips the write-through:
+					// safe-lossy, the next read hydrates the cache.
+					if len(affectedTenants) > 0 {
+						if tenant, ok := affectedTenants[0].(uuid.UUID); ok {
+							c.setTaskAssignee(ctx, tenant, entity)
+						}
+					}
 				}
 			case TableTaskDependencies:
 				if entity, ok := result.(*TaskDependency); ok {
@@ -7127,7 +7299,17 @@ func (c *Cache) dispatchMutation(ctx context.Context, m *hook.MutationContext, r
 				}
 			case TableTaskWatchers:
 				if entity, ok := result.(*TaskWatcher); ok {
-					c.setTaskWatcher(ctx, entity)
+					// Tenant sourced from the structural capture —
+					// never the resolver — so a
+					// SkipTenancy create writes through under the correct
+					// tenant-scoped key. A nil capture (no tenant value
+					// reached the INSERT) skips the write-through:
+					// safe-lossy, the next read hydrates the cache.
+					if len(affectedTenants) > 0 {
+						if tenant, ok := affectedTenants[0].(uuid.UUID); ok {
+							c.setTaskWatcher(ctx, tenant, entity)
+						}
+					}
 				}
 			case TableTeams:
 				if entity, ok := result.(*Team); ok {
@@ -7145,7 +7327,17 @@ func (c *Cache) dispatchMutation(ctx context.Context, m *hook.MutationContext, r
 				}
 			case TableTeamMembers:
 				if entity, ok := result.(*TeamMember); ok {
-					c.setTeamMember(ctx, entity)
+					// Tenant sourced from the structural capture —
+					// never the resolver — so a
+					// SkipTenancy create writes through under the correct
+					// tenant-scoped key. A nil capture (no tenant value
+					// reached the INSERT) skips the write-through:
+					// safe-lossy, the next read hydrates the cache.
+					if len(affectedTenants) > 0 {
+						if tenant, ok := affectedTenants[0].(uuid.UUID); ok {
+							c.setTeamMember(ctx, tenant, entity)
+						}
+					}
 				}
 			case TableTimeEntries:
 				if entity, ok := result.(*TimeEntry); ok {
@@ -7410,8 +7602,23 @@ func (c *Cache) dispatchMutation(ctx context.Context, m *hook.MutationContext, r
 				}
 			case TableTaskAssignees:
 				if entities, ok := result.([]*TaskAssignee); ok {
+					// GetMany result order is not guaranteed to match
+					// AffectedPKs, so the captured tenants are re-aligned to
+					// entities via their PK — the same reason setTaskAssignee
+					// reads the PK off the entity.
+					tenantByPK := make(map[TaskAssigneePK]any, len(affected))
+					for i, rawPK := range affected {
+						if i >= len(affectedTenants) {
+							break
+						}
+						if pk, ok := rawPK.(TaskAssigneePK); ok {
+							tenantByPK[pk] = affectedTenants[i]
+						}
+					}
 					for _, entity := range entities {
-						c.setTaskAssignee(ctx, entity)
+						if tenant, ok := tenantByPK[TaskAssigneePK{TaskID: entity.TaskID, UserID: entity.UserID}].(uuid.UUID); ok {
+							c.setTaskAssignee(ctx, tenant, entity)
+						}
 					}
 				}
 			case TableTaskDependencies:
@@ -7428,8 +7635,23 @@ func (c *Cache) dispatchMutation(ctx context.Context, m *hook.MutationContext, r
 				}
 			case TableTaskWatchers:
 				if entities, ok := result.([]*TaskWatcher); ok {
+					// GetMany result order is not guaranteed to match
+					// AffectedPKs, so the captured tenants are re-aligned to
+					// entities via their PK — the same reason setTaskWatcher
+					// reads the PK off the entity.
+					tenantByPK := make(map[TaskWatcherPK]any, len(affected))
+					for i, rawPK := range affected {
+						if i >= len(affectedTenants) {
+							break
+						}
+						if pk, ok := rawPK.(TaskWatcherPK); ok {
+							tenantByPK[pk] = affectedTenants[i]
+						}
+					}
 					for _, entity := range entities {
-						c.setTaskWatcher(ctx, entity)
+						if tenant, ok := tenantByPK[TaskWatcherPK{TaskID: entity.TaskID, UserID: entity.UserID}].(uuid.UUID); ok {
+							c.setTaskWatcher(ctx, tenant, entity)
+						}
 					}
 				}
 			case TableTeams:
@@ -7455,8 +7677,23 @@ func (c *Cache) dispatchMutation(ctx context.Context, m *hook.MutationContext, r
 				}
 			case TableTeamMembers:
 				if entities, ok := result.([]*TeamMember); ok {
+					// GetMany result order is not guaranteed to match
+					// AffectedPKs, so the captured tenants are re-aligned to
+					// entities via their PK — the same reason setTeamMember
+					// reads the PK off the entity.
+					tenantByPK := make(map[TeamMemberPK]any, len(affected))
+					for i, rawPK := range affected {
+						if i >= len(affectedTenants) {
+							break
+						}
+						if pk, ok := rawPK.(TeamMemberPK); ok {
+							tenantByPK[pk] = affectedTenants[i]
+						}
+					}
 					for _, entity := range entities {
-						c.setTeamMember(ctx, entity)
+						if tenant, ok := tenantByPK[TeamMemberPK{TeamID: entity.TeamID, UserID: entity.UserID}].(uuid.UUID); ok {
+							c.setTeamMember(ctx, tenant, entity)
+						}
 					}
 				}
 			case TableTimeEntries:
@@ -7586,7 +7823,19 @@ func (c *Cache) dispatchMutation(ctx context.Context, m *hook.MutationContext, r
 				// Tenanted tables rebuild each key from the row's own
 				// captured tenant — never a cross-tenant clear.
 				return c.invalidateAffectedTenanted(ctx, table, affectedTenants, affected)
+			case TableTaskAssignees:
+				// Tenanted tables rebuild each key from the row's own
+				// captured tenant — never a cross-tenant clear.
+				return c.invalidateAffectedTenanted(ctx, table, affectedTenants, affected)
+			case TableTaskWatchers:
+				// Tenanted tables rebuild each key from the row's own
+				// captured tenant — never a cross-tenant clear.
+				return c.invalidateAffectedTenanted(ctx, table, affectedTenants, affected)
 			case TableTeams:
+				// Tenanted tables rebuild each key from the row's own
+				// captured tenant — never a cross-tenant clear.
+				return c.invalidateAffectedTenanted(ctx, table, affectedTenants, affected)
+			case TableTeamMembers:
 				// Tenanted tables rebuild each key from the row's own
 				// captured tenant — never a cross-tenant clear.
 				return c.invalidateAffectedTenanted(ctx, table, affectedTenants, affected)

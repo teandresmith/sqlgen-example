@@ -196,7 +196,10 @@ func New(querier database.Querier, opts ...ClientOption) *Client {
 	c.projectStat.tenantResolver = options.tenantResolver
 	c.ssoConnection.tenantResolver = options.tenantResolver
 	c.task.tenantResolver = options.tenantResolver
+	c.taskAssignee.tenantResolver = options.tenantResolver
+	c.taskWatcher.tenantResolver = options.tenantResolver
 	c.team.tenantResolver = options.tenantResolver
+	c.teamMember.tenantResolver = options.tenantResolver
 	c.timeEntry.tenantResolver = options.tenantResolver
 	c.user.tenantResolver = options.tenantResolver
 	c.workspace.tenantResolver = options.tenantResolver

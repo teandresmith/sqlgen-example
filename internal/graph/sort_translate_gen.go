@@ -615,6 +615,8 @@ func taskAssigneeSortFieldToColumn(f gqlmodel.TaskAssigneeSortField) string {
 		return "user_id"
 	case "ASSIGNED_AT":
 		return "assigned_at"
+	case "WORKSPACE_ID":
+		return "workspace_id"
 	}
 	return ""
 }
@@ -723,6 +725,8 @@ func taskWatcherSortFieldToColumn(f gqlmodel.TaskWatcherSortField) string {
 		return "user_id"
 	case "CREATED_AT":
 		return "created_at"
+	case "WORKSPACE_ID":
+		return "workspace_id"
 	}
 	return ""
 }
@@ -803,6 +807,8 @@ func teamMemberSortFieldToColumn(f gqlmodel.TeamMemberSortField) string {
 		return "user_id"
 	case "ADDED_AT":
 		return "added_at"
+	case "WORKSPACE_ID":
+		return "workspace_id"
 	}
 	return ""
 }

@@ -41,7 +41,7 @@ A group of users within a workspace that owns projects
 | --- | --- | --- | --- | --- |
 | cycles | o2m | Cycle | public.cycles.team_id |  |
 | projects | o2m | Project | public.projects.(workspace_id, team_id) |  |
-| users | m2m | User | public.team_members (team_id → user_id) |  |
+| users | m2m | User | public.team_members ((workspace_id, team_id) → user_id) |  |
 | workspace | o2o | Workspace | public.teams.workspace_id |  |
 
 ## Query methods

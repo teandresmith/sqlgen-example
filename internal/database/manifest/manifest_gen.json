@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/teandresmith/sqlgen/v0.1.4/cmd/sqlgen/manifest/schema/v1.json",
   "schema_version": "0.2.0",
-  "generated_at": "2026-11-24T19:31:54Z",
+  "generated_at": "2026-11-24T19:38:26Z",
   "generator": {
     "name": "sqlgen",
     "version": "0.1.4"
@@ -6842,6 +6842,15 @@
           ],
           "unique": true,
           "method": "btree"
+        },
+        {
+          "name": "tasks_ws_id_key",
+          "columns": [
+            "workspace_id",
+            "id"
+          ],
+          "unique": true,
+          "method": "btree"
         }
       ],
       "pk": {
@@ -7094,8 +7103,7 @@
               ],
               "references": [
                 "id"
-              ],
-              "constraint": "task_assignees_task_id_fkey"
+              ]
             },
             "target_fk": {
               "columns": [
@@ -7153,8 +7161,7 @@
               ],
               "references": [
                 "id"
-              ],
-              "constraint": "task_watchers_task_id_fkey"
+              ]
             },
             "target_fk": {
               "columns": [
@@ -7956,6 +7963,16 @@
           ],
           "unique": true,
           "method": "btree"
+        },
+        {
+          "name": "task_assignees_ws_key",
+          "columns": [
+            "workspace_id",
+            "task_id",
+            "user_id"
+          ],
+          "unique": true,
+          "method": "btree"
         }
       ],
       "pk": {
@@ -8000,7 +8017,12 @@
           ],
           "payload_shape": "database.TaskAssigneeEvent"
         },
-        "tenancy": null
+        "tenancy": {
+          "column": "workspace_id",
+          "mode": "auto-filter",
+          "missing_resolver_error": "tenancy.ErrMissing",
+          "mismatch_error": "tenancy.ErrMismatch"
+        }
       },
       "columns": [
         {
@@ -8037,6 +8059,17 @@
           "default_kind": "function",
           "comparator": "comparator.Time",
           "comment": "When the assignment was made"
+        },
+        {
+          "name": "workspace_id",
+          "go_field": "WorkspaceID",
+          "go_type": "uuid.UUID",
+          "db_type": "uuid",
+          "nullable": false,
+          "pk": false,
+          "unique": false,
+          "comparator": "comparator.ID",
+          "comment": "Owning workspace (tenant column); equals the task's"
         }
       ],
       "relationships": [],
@@ -8052,11 +8085,12 @@
             ],
             "returns": "*TaskAssignee",
             "errors": [
-              "ErrNotFound"
+              "ErrNotFound",
+              "tenancy.ErrMissing"
             ],
             "notes": "Delegates to GetMany with a primary-key filter; returns ErrNotFound when no row matches.",
             "sql_bodies": {
-              "postgres": "SELECT \"assigned_at\", \"task_id\", \"user_id\" FROM \"public\".\"task_assignees\" WHERE \"task_id\" = $1 AND \"user_id\" = $2 LIMIT 1"
+              "postgres": "SELECT \"assigned_at\", \"task_id\", \"user_id\", \"workspace_id\" FROM \"public\".\"task_assignees\" WHERE \"task_id\" = $1 AND \"user_id\" = $2 LIMIT 1"
             }
           },
           {
@@ -8068,9 +8102,11 @@
               }
             ],
             "returns": "[]*TaskAssignee",
-            "errors": [],
+            "errors": [
+              "tenancy.ErrMissing"
+            ],
             "sql_bodies": {
-              "postgres": "SELECT \"assigned_at\", \"task_id\", \"user_id\" FROM \"public\".\"task_assignees\" WHERE <filter> ORDER BY <sort> LIMIT <limit>"
+              "postgres": "SELECT \"assigned_at\", \"task_id\", \"user_id\", \"workspace_id\" FROM \"public\".\"task_assignees\" WHERE <filter> ORDER BY <sort> LIMIT <limit>"
             }
           },
           {
@@ -8082,7 +8118,9 @@
               }
             ],
             "returns": "bool",
-            "errors": [],
+            "errors": [
+              "tenancy.ErrMissing"
+            ],
             "sql_bodies": {
               "postgres": "SELECT EXISTS(SELECT 1 FROM \"public\".\"task_assignees\" WHERE \"task_id\" = $1 AND \"user_id\" = $2)"
             }
@@ -8096,7 +8134,9 @@
               }
             ],
             "returns": "bool",
-            "errors": [],
+            "errors": [
+              "tenancy.ErrMissing"
+            ],
             "sql_bodies": {
               "postgres": "SELECT EXISTS(SELECT 1 FROM \"public\".\"task_assignees\" WHERE <filter>)"
             }
@@ -8110,7 +8150,9 @@
               }
             ],
             "returns": "int64",
-            "errors": [],
+            "errors": [
+              "tenancy.ErrMissing"
+            ],
             "sql_bodies": {
               "postgres": "SELECT COUNT(*) FROM \"public\".\"task_assignees\" WHERE <filter>"
             }
@@ -8124,7 +8166,9 @@
               }
             ],
             "returns": "*PaginateResult[TaskAssignee]",
-            "errors": [],
+            "errors": [
+              "tenancy.ErrMissing"
+            ],
             "notes": "Offset pagination. Issues no statement of its own — composes Count and GetMany, so no sql_bodies entry."
           },
           {
@@ -8137,7 +8181,8 @@
             ],
             "returns": "*Connection[TaskAssignee]",
             "errors": [
-              "ErrInvalidCursor"
+              "ErrInvalidCursor",
+              "tenancy.ErrMissing"
             ],
             "notes": "Relay cursor pagination. Issues no statement of its own — composes Count and GetMany, so no sql_bodies entry."
           },
@@ -8150,10 +8195,12 @@
               }
             ],
             "returns": "iter.Seq2[*TaskAssignee, error]",
-            "errors": [],
+            "errors": [
+              "tenancy.ErrMissing"
+            ],
             "notes": "Scalars only — no relationship loading, cache always bypassed. Errors surface through the iterator's second value.",
             "sql_bodies": {
-              "postgres": "SELECT \"assigned_at\", \"task_id\", \"user_id\" FROM \"public\".\"task_assignees\" WHERE <filter> ORDER BY <sort>"
+              "postgres": "SELECT \"assigned_at\", \"task_id\", \"user_id\", \"workspace_id\" FROM \"public\".\"task_assignees\" WHERE <filter> ORDER BY <sort>"
             }
           }
         ],
@@ -8169,7 +8216,9 @@
             "returns": "*TaskAssignee",
             "errors": [
               "ErrNilInput",
-              "ErrConstraintViolation"
+              "ErrConstraintViolation",
+              "tenancy.ErrMissing",
+              "tenancy.ErrMismatch"
             ],
             "sql_bodies": {
               "postgres": "INSERT INTO \"public\".\"task_assignees\" (<columns>) VALUES (<values>)"
@@ -8186,7 +8235,9 @@
             "returns": "[]*TaskAssignee",
             "errors": [
               "ErrNilInput",
-              "ErrConstraintViolation"
+              "ErrConstraintViolation",
+              "tenancy.ErrMissing",
+              "tenancy.ErrMismatch"
             ],
             "notes": "Batched in generation.batch_size chunks. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.",
             "sql_bodies": {
@@ -8209,7 +8260,9 @@
             "errors": [
               "ErrNotFound",
               "ErrNilInput",
-              "ErrConstraintViolation"
+              "ErrConstraintViolation",
+              "tenancy.ErrMissing",
+              "tenancy.ErrMismatch"
             ],
             "notes": "Only fields where IsSet() reports true reach the SET clause; an input with none set issues no UPDATE and returns the row unchanged.",
             "sql_bodies": {
@@ -8227,7 +8280,9 @@
             "returns": "[]*TaskAssignee",
             "errors": [
               "ErrNilInput",
-              "ErrConstraintViolation"
+              "ErrConstraintViolation",
+              "tenancy.ErrMissing",
+              "tenancy.ErrMismatch"
             ],
             "notes": "Issues one statement per item. Batched like CreateMany — earlier items are not rolled back on a later failure. A primary key that does not exist is silently skipped, even under strict_updates.",
             "sql_bodies": {
@@ -8250,7 +8305,9 @@
             "errors": [
               "ErrNilInput",
               "ErrEmptyFilter",
-              "ErrConstraintViolation"
+              "ErrConstraintViolation",
+              "tenancy.ErrMissing",
+              "tenancy.ErrMismatch"
             ],
             "notes": "Idempotent — returns an empty slice when no row matches. ErrEmptyFilter when the filter produces no conditions.",
             "sql_bodies": {
@@ -8272,7 +8329,9 @@
             "returns": "*TaskAssignee",
             "errors": [
               "ErrNilInput",
-              "ErrConstraintViolation"
+              "ErrConstraintViolation",
+              "tenancy.ErrMissing",
+              "tenancy.ErrMismatch"
             ],
             "notes": "One method over the generated TaskAssigneeConflictTarget enum — the target argument selects the conflict columns at call time.",
             "sql_bodies": {
@@ -8294,7 +8353,9 @@
             "returns": "[]*TaskAssignee",
             "errors": [
               "ErrNilInput",
-              "ErrConstraintViolation"
+              "ErrConstraintViolation",
+              "tenancy.ErrMissing",
+              "tenancy.ErrMismatch"
             ],
             "notes": "Batched in generation.batch_size chunks over the same TaskAssigneeConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.",
             "sql_bodies": {
@@ -8310,7 +8371,9 @@
               }
             ],
             "returns": "",
-            "errors": [],
+            "errors": [
+              "tenancy.ErrMissing"
+            ],
             "notes": "Idempotent — a primary key that does not exist is not an error.",
             "sql_bodies": {
               "postgres": "DELETE FROM \"public\".\"task_assignees\" WHERE \"task_id\" = $1 AND \"user_id\" = $2"
@@ -8325,7 +8388,9 @@
               }
             ],
             "returns": "",
-            "errors": [],
+            "errors": [
+              "tenancy.ErrMissing"
+            ],
             "notes": "Idempotent — primary keys that do not exist are not an error.",
             "sql_bodies": {
               "postgres": "DELETE FROM \"public\".\"task_assignees\" WHERE (\"task_id\", \"user_id\") IN (<pks>)"
@@ -8341,7 +8406,8 @@
             ],
             "returns": "",
             "errors": [
-              "ErrEmptyFilter"
+              "ErrEmptyFilter",
+              "tenancy.ErrMissing"
             ],
             "notes": "Idempotent — no match is not an error. ErrEmptyFilter when the filter produces no conditions.",
             "sql_bodies": {
@@ -8366,6 +8432,10 @@
             "type": "*comparator.ID"
           },
           {
+            "name": "WorkspaceID",
+            "type": "*comparator.ID"
+          },
+          {
             "name": "And",
             "type": "[]*TaskAssigneeFilter"
           },
@@ -8380,7 +8450,8 @@
         "fields": [
           "AssignedAt",
           "TaskID",
-          "UserID"
+          "UserID",
+          "WorkspaceID"
         ]
       },
       "examples": {
@@ -9345,6 +9416,16 @@
           ],
           "unique": true,
           "method": "btree"
+        },
+        {
+          "name": "task_watchers_ws_key",
+          "columns": [
+            "workspace_id",
+            "task_id",
+            "user_id"
+          ],
+          "unique": true,
+          "method": "btree"
         }
       ],
       "pk": {
@@ -9389,7 +9470,12 @@
           ],
           "payload_shape": "database.TaskWatcherEvent"
         },
-        "tenancy": null
+        "tenancy": {
+          "column": "workspace_id",
+          "mode": "auto-filter",
+          "missing_resolver_error": "tenancy.ErrMissing",
+          "mismatch_error": "tenancy.ErrMismatch"
+        }
       },
       "columns": [
         {
@@ -9426,6 +9512,17 @@
           "default_kind": "function",
           "comparator": "comparator.Time",
           "comment": "When the user started watching"
+        },
+        {
+          "name": "workspace_id",
+          "go_field": "WorkspaceID",
+          "go_type": "uuid.UUID",
+          "db_type": "uuid",
+          "nullable": false,
+          "pk": false,
+          "unique": false,
+          "comparator": "comparator.ID",
+          "comment": "Owning workspace (tenant column); equals the task's"
         }
       ],
       "relationships": [],
@@ -9441,11 +9538,12 @@
             ],
             "returns": "*TaskWatcher",
             "errors": [
-              "ErrNotFound"
+              "ErrNotFound",
+              "tenancy.ErrMissing"
             ],
             "notes": "Delegates to GetMany with a primary-key filter; returns ErrNotFound when no row matches.",
             "sql_bodies": {
-              "postgres": "SELECT \"created_at\", \"task_id\", \"user_id\" FROM \"public\".\"task_watchers\" WHERE \"task_id\" = $1 AND \"user_id\" = $2 LIMIT 1"
+              "postgres": "SELECT \"created_at\", \"task_id\", \"user_id\", \"workspace_id\" FROM \"public\".\"task_watchers\" WHERE \"task_id\" = $1 AND \"user_id\" = $2 LIMIT 1"
             }
           },
           {
@@ -9457,9 +9555,11 @@
               }
             ],
             "returns": "[]*TaskWatcher",
-            "errors": [],
+            "errors": [
+              "tenancy.ErrMissing"
+            ],
             "sql_bodies": {
-              "postgres": "SELECT \"created_at\", \"task_id\", \"user_id\" FROM \"public\".\"task_watchers\" WHERE <filter> ORDER BY <sort> LIMIT <limit>"
+              "postgres": "SELECT \"created_at\", \"task_id\", \"user_id\", \"workspace_id\" FROM \"public\".\"task_watchers\" WHERE <filter> ORDER BY <sort> LIMIT <limit>"
             }
           },
           {
@@ -9471,7 +9571,9 @@
               }
             ],
             "returns": "bool",
-            "errors": [],
+            "errors": [
+              "tenancy.ErrMissing"
+            ],
             "sql_bodies": {
               "postgres": "SELECT EXISTS(SELECT 1 FROM \"public\".\"task_watchers\" WHERE \"task_id\" = $1 AND \"user_id\" = $2)"
             }
@@ -9485,7 +9587,9 @@
               }
             ],
             "returns": "bool",
-            "errors": [],
+            "errors": [
+              "tenancy.ErrMissing"
+            ],
             "sql_bodies": {
               "postgres": "SELECT EXISTS(SELECT 1 FROM \"public\".\"task_watchers\" WHERE <filter>)"
             }
@@ -9499,7 +9603,9 @@
               }
             ],
             "returns": "int64",
-            "errors": [],
+            "errors": [
+              "tenancy.ErrMissing"
+            ],
             "sql_bodies": {
               "postgres": "SELECT COUNT(*) FROM \"public\".\"task_watchers\" WHERE <filter>"
             }
@@ -9513,7 +9619,9 @@
               }
             ],
             "returns": "*PaginateResult[TaskWatcher]",
-            "errors": [],
+            "errors": [
+              "tenancy.ErrMissing"
+            ],
             "notes": "Offset pagination. Issues no statement of its own — composes Count and GetMany, so no sql_bodies entry."
           },
           {
@@ -9526,7 +9634,8 @@
             ],
             "returns": "*Connection[TaskWatcher]",
             "errors": [
-              "ErrInvalidCursor"
+              "ErrInvalidCursor",
+              "tenancy.ErrMissing"
             ],
             "notes": "Relay cursor pagination. Issues no statement of its own — composes Count and GetMany, so no sql_bodies entry."
           },
@@ -9539,10 +9648,12 @@
               }
             ],
             "returns": "iter.Seq2[*TaskWatcher, error]",
-            "errors": [],
+            "errors": [
+              "tenancy.ErrMissing"
+            ],
             "notes": "Scalars only — no relationship loading, cache always bypassed. Errors surface through the iterator's second value.",
             "sql_bodies": {
-              "postgres": "SELECT \"created_at\", \"task_id\", \"user_id\" FROM \"public\".\"task_watchers\" WHERE <filter> ORDER BY <sort>"
+              "postgres": "SELECT \"created_at\", \"task_id\", \"user_id\", \"workspace_id\" FROM \"public\".\"task_watchers\" WHERE <filter> ORDER BY <sort>"
             }
           }
         ],
@@ -9558,7 +9669,9 @@
             "returns": "*TaskWatcher",
             "errors": [
               "ErrNilInput",
-              "ErrConstraintViolation"
+              "ErrConstraintViolation",
+              "tenancy.ErrMissing",
+              "tenancy.ErrMismatch"
             ],
             "sql_bodies": {
               "postgres": "INSERT INTO \"public\".\"task_watchers\" (<columns>) VALUES (<values>)"
@@ -9575,7 +9688,9 @@
             "returns": "[]*TaskWatcher",
             "errors": [
               "ErrNilInput",
-              "ErrConstraintViolation"
+              "ErrConstraintViolation",
+              "tenancy.ErrMissing",
+              "tenancy.ErrMismatch"
             ],
             "notes": "Batched in generation.batch_size chunks. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.",
             "sql_bodies": {
@@ -9598,7 +9713,9 @@
             "errors": [
               "ErrNotFound",
               "ErrNilInput",
-              "ErrConstraintViolation"
+              "ErrConstraintViolation",
+              "tenancy.ErrMissing",
+              "tenancy.ErrMismatch"
             ],
             "notes": "Only fields where IsSet() reports true reach the SET clause; an input with none set issues no UPDATE and returns the row unchanged.",
             "sql_bodies": {
@@ -9616,7 +9733,9 @@
             "returns": "[]*TaskWatcher",
             "errors": [
               "ErrNilInput",
-              "ErrConstraintViolation"
+              "ErrConstraintViolation",
+              "tenancy.ErrMissing",
+              "tenancy.ErrMismatch"
             ],
             "notes": "Issues one statement per item. Batched like CreateMany — earlier items are not rolled back on a later failure. A primary key that does not exist is silently skipped, even under strict_updates.",
             "sql_bodies": {
@@ -9639,7 +9758,9 @@
             "errors": [
               "ErrNilInput",
               "ErrEmptyFilter",
-              "ErrConstraintViolation"
+              "ErrConstraintViolation",
+              "tenancy.ErrMissing",
+              "tenancy.ErrMismatch"
             ],
             "notes": "Idempotent — returns an empty slice when no row matches. ErrEmptyFilter when the filter produces no conditions.",
             "sql_bodies": {
@@ -9661,7 +9782,9 @@
             "returns": "*TaskWatcher",
             "errors": [
               "ErrNilInput",
-              "ErrConstraintViolation"
+              "ErrConstraintViolation",
+              "tenancy.ErrMissing",
+              "tenancy.ErrMismatch"
             ],
             "notes": "One method over the generated TaskWatcherConflictTarget enum — the target argument selects the conflict columns at call time.",
             "sql_bodies": {
@@ -9683,7 +9806,9 @@
             "returns": "[]*TaskWatcher",
             "errors": [
               "ErrNilInput",
-              "ErrConstraintViolation"
+              "ErrConstraintViolation",
+              "tenancy.ErrMissing",
+              "tenancy.ErrMismatch"
             ],
             "notes": "Batched in generation.batch_size chunks over the same TaskWatcherConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.",
             "sql_bodies": {
@@ -9699,7 +9824,9 @@
               }
             ],
             "returns": "",
-            "errors": [],
+            "errors": [
+              "tenancy.ErrMissing"
+            ],
             "notes": "Idempotent — a primary key that does not exist is not an error.",
             "sql_bodies": {
               "postgres": "DELETE FROM \"public\".\"task_watchers\" WHERE \"task_id\" = $1 AND \"user_id\" = $2"
@@ -9714,7 +9841,9 @@
               }
             ],
             "returns": "",
-            "errors": [],
+            "errors": [
+              "tenancy.ErrMissing"
+            ],
             "notes": "Idempotent — primary keys that do not exist are not an error.",
             "sql_bodies": {
               "postgres": "DELETE FROM \"public\".\"task_watchers\" WHERE (\"task_id\", \"user_id\") IN (<pks>)"
@@ -9730,7 +9859,8 @@
             ],
             "returns": "",
             "errors": [
-              "ErrEmptyFilter"
+              "ErrEmptyFilter",
+              "tenancy.ErrMissing"
             ],
             "notes": "Idempotent — no match is not an error. ErrEmptyFilter when the filter produces no conditions.",
             "sql_bodies": {
@@ -9755,6 +9885,10 @@
             "type": "*comparator.ID"
           },
           {
+            "name": "WorkspaceID",
+            "type": "*comparator.ID"
+          },
+          {
             "name": "And",
             "type": "[]*TaskWatcherFilter"
           },
@@ -9769,7 +9903,8 @@
         "fields": [
           "CreatedAt",
           "TaskID",
-          "UserID"
+          "UserID",
+          "WorkspaceID"
         ]
       },
       "examples": {
@@ -10004,12 +10139,14 @@
             "schema": "public",
             "local_fk": {
               "columns": [
+                "workspace_id",
                 "team_id"
               ],
               "references": [
+                "workspace_id",
                 "id"
               ],
-              "constraint": "team_members_team_id_fkey"
+              "constraint": "team_members_team_same_ws"
             },
             "target_fk": {
               "columns": [
@@ -10496,6 +10633,16 @@
           ],
           "unique": true,
           "method": "btree"
+        },
+        {
+          "name": "team_members_ws_key",
+          "columns": [
+            "workspace_id",
+            "team_id",
+            "user_id"
+          ],
+          "unique": true,
+          "method": "btree"
         }
       ],
       "pk": {
@@ -10540,7 +10687,12 @@
           ],
           "payload_shape": "database.TeamMemberEvent"
         },
-        "tenancy": null
+        "tenancy": {
+          "column": "workspace_id",
+          "mode": "auto-filter",
+          "missing_resolver_error": "tenancy.ErrMissing",
+          "mismatch_error": "tenancy.ErrMismatch"
+        }
       },
       "columns": [
         {
@@ -10577,6 +10729,17 @@
           "default_kind": "function",
           "comparator": "comparator.Time",
           "comment": "When the user joined the team"
+        },
+        {
+          "name": "workspace_id",
+          "go_field": "WorkspaceID",
+          "go_type": "uuid.UUID",
+          "db_type": "uuid",
+          "nullable": false,
+          "pk": false,
+          "unique": false,
+          "comparator": "comparator.ID",
+          "comment": "Owning workspace (tenant column); equals the team's"
         }
       ],
       "relationships": [],
@@ -10592,11 +10755,12 @@
             ],
             "returns": "*TeamMember",
             "errors": [
-              "ErrNotFound"
+              "ErrNotFound",
+              "tenancy.ErrMissing"
             ],
             "notes": "Delegates to GetMany with a primary-key filter; returns ErrNotFound when no row matches.",
             "sql_bodies": {
-              "postgres": "SELECT \"added_at\", \"team_id\", \"user_id\" FROM \"public\".\"team_members\" WHERE \"team_id\" = $1 AND \"user_id\" = $2 LIMIT 1"
+              "postgres": "SELECT \"added_at\", \"team_id\", \"user_id\", \"workspace_id\" FROM \"public\".\"team_members\" WHERE \"team_id\" = $1 AND \"user_id\" = $2 LIMIT 1"
             }
           },
           {
@@ -10608,9 +10772,11 @@
               }
             ],
             "returns": "[]*TeamMember",
-            "errors": [],
+            "errors": [
+              "tenancy.ErrMissing"
+            ],
             "sql_bodies": {
-              "postgres": "SELECT \"added_at\", \"team_id\", \"user_id\" FROM \"public\".\"team_members\" WHERE <filter> ORDER BY <sort> LIMIT <limit>"
+              "postgres": "SELECT \"added_at\", \"team_id\", \"user_id\", \"workspace_id\" FROM \"public\".\"team_members\" WHERE <filter> ORDER BY <sort> LIMIT <limit>"
             }
           },
           {
@@ -10622,7 +10788,9 @@
               }
             ],
             "returns": "bool",
-            "errors": [],
+            "errors": [
+              "tenancy.ErrMissing"
+            ],
             "sql_bodies": {
               "postgres": "SELECT EXISTS(SELECT 1 FROM \"public\".\"team_members\" WHERE \"team_id\" = $1 AND \"user_id\" = $2)"
             }
@@ -10636,7 +10804,9 @@
               }
             ],
             "returns": "bool",
-            "errors": [],
+            "errors": [
+              "tenancy.ErrMissing"
+            ],
             "sql_bodies": {
               "postgres": "SELECT EXISTS(SELECT 1 FROM \"public\".\"team_members\" WHERE <filter>)"
             }
@@ -10650,7 +10820,9 @@
               }
             ],
             "returns": "int64",
-            "errors": [],
+            "errors": [
+              "tenancy.ErrMissing"
+            ],
             "sql_bodies": {
               "postgres": "SELECT COUNT(*) FROM \"public\".\"team_members\" WHERE <filter>"
             }
@@ -10664,7 +10836,9 @@
               }
             ],
             "returns": "*PaginateResult[TeamMember]",
-            "errors": [],
+            "errors": [
+              "tenancy.ErrMissing"
+            ],
             "notes": "Offset pagination. Issues no statement of its own — composes Count and GetMany, so no sql_bodies entry."
           },
           {
@@ -10677,7 +10851,8 @@
             ],
             "returns": "*Connection[TeamMember]",
             "errors": [
-              "ErrInvalidCursor"
+              "ErrInvalidCursor",
+              "tenancy.ErrMissing"
             ],
             "notes": "Relay cursor pagination. Issues no statement of its own — composes Count and GetMany, so no sql_bodies entry."
           },
@@ -10690,10 +10865,12 @@
               }
             ],
             "returns": "iter.Seq2[*TeamMember, error]",
-            "errors": [],
+            "errors": [
+              "tenancy.ErrMissing"
+            ],
             "notes": "Scalars only — no relationship loading, cache always bypassed. Errors surface through the iterator's second value.",
             "sql_bodies": {
-              "postgres": "SELECT \"added_at\", \"team_id\", \"user_id\" FROM \"public\".\"team_members\" WHERE <filter> ORDER BY <sort>"
+              "postgres": "SELECT \"added_at\", \"team_id\", \"user_id\", \"workspace_id\" FROM \"public\".\"team_members\" WHERE <filter> ORDER BY <sort>"
             }
           }
         ],
@@ -10709,7 +10886,9 @@
             "returns": "*TeamMember",
             "errors": [
               "ErrNilInput",
-              "ErrConstraintViolation"
+              "ErrConstraintViolation",
+              "tenancy.ErrMissing",
+              "tenancy.ErrMismatch"
             ],
             "sql_bodies": {
               "postgres": "INSERT INTO \"public\".\"team_members\" (<columns>) VALUES (<values>)"
@@ -10726,7 +10905,9 @@
             "returns": "[]*TeamMember",
             "errors": [
               "ErrNilInput",
-              "ErrConstraintViolation"
+              "ErrConstraintViolation",
+              "tenancy.ErrMissing",
+              "tenancy.ErrMismatch"
             ],
             "notes": "Batched in generation.batch_size chunks. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.",
             "sql_bodies": {
@@ -10749,7 +10930,9 @@
             "errors": [
               "ErrNotFound",
               "ErrNilInput",
-              "ErrConstraintViolation"
+              "ErrConstraintViolation",
+              "tenancy.ErrMissing",
+              "tenancy.ErrMismatch"
             ],
             "notes": "Only fields where IsSet() reports true reach the SET clause; an input with none set issues no UPDATE and returns the row unchanged.",
             "sql_bodies": {
@@ -10767,7 +10950,9 @@
             "returns": "[]*TeamMember",
             "errors": [
               "ErrNilInput",
-              "ErrConstraintViolation"
+              "ErrConstraintViolation",
+              "tenancy.ErrMissing",
+              "tenancy.ErrMismatch"
             ],
             "notes": "Issues one statement per item. Batched like CreateMany — earlier items are not rolled back on a later failure. A primary key that does not exist is silently skipped, even under strict_updates.",
             "sql_bodies": {
@@ -10790,7 +10975,9 @@
             "errors": [
               "ErrNilInput",
               "ErrEmptyFilter",
-              "ErrConstraintViolation"
+              "ErrConstraintViolation",
+              "tenancy.ErrMissing",
+              "tenancy.ErrMismatch"
             ],
             "notes": "Idempotent — returns an empty slice when no row matches. ErrEmptyFilter when the filter produces no conditions.",
             "sql_bodies": {
@@ -10812,7 +10999,9 @@
             "returns": "*TeamMember",
             "errors": [
               "ErrNilInput",
-              "ErrConstraintViolation"
+              "ErrConstraintViolation",
+              "tenancy.ErrMissing",
+              "tenancy.ErrMismatch"
             ],
             "notes": "One method over the generated TeamMemberConflictTarget enum — the target argument selects the conflict columns at call time.",
             "sql_bodies": {
@@ -10834,7 +11023,9 @@
             "returns": "[]*TeamMember",
             "errors": [
               "ErrNilInput",
-              "ErrConstraintViolation"
+              "ErrConstraintViolation",
+              "tenancy.ErrMissing",
+              "tenancy.ErrMismatch"
             ],
             "notes": "Batched in generation.batch_size chunks over the same TeamMemberConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.",
             "sql_bodies": {
@@ -10850,7 +11041,9 @@
               }
             ],
             "returns": "",
-            "errors": [],
+            "errors": [
+              "tenancy.ErrMissing"
+            ],
             "notes": "Idempotent — a primary key that does not exist is not an error.",
             "sql_bodies": {
               "postgres": "DELETE FROM \"public\".\"team_members\" WHERE \"team_id\" = $1 AND \"user_id\" = $2"
@@ -10865,7 +11058,9 @@
               }
             ],
             "returns": "",
-            "errors": [],
+            "errors": [
+              "tenancy.ErrMissing"
+            ],
             "notes": "Idempotent — primary keys that do not exist are not an error.",
             "sql_bodies": {
               "postgres": "DELETE FROM \"public\".\"team_members\" WHERE (\"team_id\", \"user_id\") IN (<pks>)"
@@ -10881,7 +11076,8 @@
             ],
             "returns": "",
             "errors": [
-              "ErrEmptyFilter"
+              "ErrEmptyFilter",
+              "tenancy.ErrMissing"
             ],
             "notes": "Idempotent — no match is not an error. ErrEmptyFilter when the filter produces no conditions.",
             "sql_bodies": {
@@ -10906,6 +11102,10 @@
             "type": "*comparator.ID"
           },
           {
+            "name": "WorkspaceID",
+            "type": "*comparator.ID"
+          },
+          {
             "name": "And",
             "type": "[]*TeamMemberFilter"
           },
@@ -10920,7 +11120,8 @@
         "fields": [
           "AddedAt",
           "TeamID",
-          "UserID"
+          "UserID",
+          "WorkspaceID"
         ]
       },
       "examples": {
@@ -11871,12 +12072,14 @@
             },
             "target_fk": {
               "columns": [
+                "workspace_id",
                 "task_id"
               ],
               "references": [
+                "workspace_id",
                 "id"
               ],
-              "constraint": "task_assignees_task_id_fkey"
+              "constraint": "task_assignees_task_same_ws"
             }
           }
         },
@@ -11898,12 +12101,14 @@
             },
             "target_fk": {
               "columns": [
+                "workspace_id",
                 "task_id"
               ],
               "references": [
+                "workspace_id",
                 "id"
               ],
-              "constraint": "task_watchers_task_id_fkey"
+              "constraint": "task_watchers_task_same_ws"
             }
           }
         },
@@ -11925,12 +12130,14 @@
             },
             "target_fk": {
               "columns": [
+                "workspace_id",
                 "team_id"
               ],
               "references": [
+                "workspace_id",
                 "id"
               ],
-              "constraint": "team_members_team_id_fkey"
+              "constraint": "team_members_team_same_ws"
             }
           }
         },

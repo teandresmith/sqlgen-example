@@ -51,3 +51,42 @@ Nothing was removed. Each item is a candidate for you to decide.
 v0.1.4's belongs-to edges add no new removals: the app has no hand-written parent lookups beyond the above.
 Single follow-up that unlocks three candidates: add `workspace_id` and composite FKs to
 `task_assignees`, `task_watchers`, `team_members` (and optionally `task_labels`/`task_dependencies`).
+
+## Trial: tenant junctions (branch `feat/tenant-junctions`)
+
+Migration 0006 adds `workspace_id` + composite FKs to `task_assignees`,
+`task_watchers`, `team_members` (public API change: only an added `workspaceID`
+field/filter/sort on the three link types; no renames).
+
+What worked: sqlgen scopes and stamps the tenant on the three tables; the DB
+refuses a cross-workspace link for every writer. `test/tenant_junctions_test.go`
+runs 12 subtests (load, cross-workspace create via client/skip/raw SQL,
+delete) as A, as B and with SkipTenancy. All pass.
+
+Removed: the Team lookup in `RemoveUserFromTeam` (the delete is tenant-scoped).
+Kept as error-message UX only, comments updated: the Team/Task lookups in
+`AddUserToTeam`, `AssignUserToTask`, `WatchTask`. Not removed: projector
+`tenantOfTask`/`tenantOfTeam` (task_labels and task_dependencies still need
+them; the three converted tables already carry a tenant stamp on the event).
+
+Needed: junction detection requires a UNIQUE/PK containing both FKs' columns
+plus workspace_id (PRD 5.3 rule 4), so each table got `UNIQUE (workspace_id,
+task_id, user_id)`.
+
+### Finding 9 (sqlgen limitation, medium): a declared edge can't take over a composite-key M2M
+`junction_local_fk: [workspace_id, task_id]` is rejected: "has 2 columns, but it
+references the primary key of "tasks", which has 1 column". A declared key maps
+onto the target's primary key only (DETECTED_EDGE_RENAME.md non-goal: no
+non-PK UNIQUE targets). So `Assignees`/`Watchers` can't take the detected edge's
+place, and the exclusions are needed again; the declared edges then have a
+manifest `local_fk` with no workspace_id and no constraint. Repro: any
+tenant junction `j(workspace_id, a_id, b_id)` with `(workspace_id,a_id) → a
+(workspace_id,id)` and a rename of the detected M2M. Classification: sqlgen
+limitation / feature request (declared keys should accept a UNIQUE target).
+Not blocking: names are preserved with exclusions.
+
+### Still to decide
+- Same change for `task_labels` and `task_dependencies` would let the projector
+  tenant lookups go.
+- The API masks on the three tables could be relaxed (raw writes are now
+  tenant-safe) but that changes the public API.

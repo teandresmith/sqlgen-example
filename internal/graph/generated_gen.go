@@ -615,9 +615,10 @@ type ComplexityRoot struct {
 	}
 
 	TaskAssignee struct {
-		AssignedAt func(childComplexity int) int
-		TaskID     func(childComplexity int) int
-		UserID     func(childComplexity int) int
+		AssignedAt  func(childComplexity int) int
+		TaskID      func(childComplexity int) int
+		UserID      func(childComplexity int) int
+		WorkspaceID func(childComplexity int) int
 	}
 
 	TaskAssigneeConnection struct {
@@ -709,9 +710,10 @@ type ComplexityRoot struct {
 	}
 
 	TaskWatcher struct {
-		CreatedAt func(childComplexity int) int
-		TaskID    func(childComplexity int) int
-		UserID    func(childComplexity int) int
+		CreatedAt   func(childComplexity int) int
+		TaskID      func(childComplexity int) int
+		UserID      func(childComplexity int) int
+		WorkspaceID func(childComplexity int) int
 	}
 
 	TaskWatcherConnection struct {
@@ -767,9 +769,10 @@ type ComplexityRoot struct {
 	}
 
 	TeamMember struct {
-		AddedAt func(childComplexity int) int
-		TeamID  func(childComplexity int) int
-		UserID  func(childComplexity int) int
+		AddedAt     func(childComplexity int) int
+		TeamID      func(childComplexity int) int
+		UserID      func(childComplexity int) int
+		WorkspaceID func(childComplexity int) int
 	}
 
 	TeamMemberConnection struct {
@@ -4587,6 +4590,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.TaskAssignee.UserID(childComplexity), true
+	case "TaskAssignee.workspaceID":
+		if e.ComplexityRoot.TaskAssignee.WorkspaceID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TaskAssignee.WorkspaceID(childComplexity), true
 
 	case "TaskAssigneeConnection.edges":
 		if e.ComplexityRoot.TaskAssigneeConnection.Edges == nil {
@@ -4896,6 +4905,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.TaskWatcher.UserID(childComplexity), true
+	case "TaskWatcher.workspaceID":
+		if e.ComplexityRoot.TaskWatcher.WorkspaceID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TaskWatcher.WorkspaceID(childComplexity), true
 
 	case "TaskWatcherConnection.edges":
 		if e.ComplexityRoot.TaskWatcherConnection.Edges == nil {
@@ -5108,6 +5123,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.TeamMember.UserID(childComplexity), true
+	case "TeamMember.workspaceID":
+		if e.ComplexityRoot.TeamMember.WorkspaceID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TeamMember.WorkspaceID(childComplexity), true
 
 	case "TeamMemberConnection.edges":
 		if e.ComplexityRoot.TeamMemberConnection.Edges == nil {
@@ -6774,6 +6795,8 @@ func (ec *executionContext) childFields_TaskAssignee(ctx context.Context, field 
 		return ec.fieldContext_TaskAssignee_userID(ctx, field)
 	case "assignedAt":
 		return ec.fieldContext_TaskAssignee_assignedAt(ctx, field)
+	case "workspaceID":
+		return ec.fieldContext_TaskAssignee_workspaceID(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type TaskAssignee", field.Name)
 }
@@ -6962,6 +6985,8 @@ func (ec *executionContext) childFields_TaskWatcher(ctx context.Context, field g
 		return ec.fieldContext_TaskWatcher_userID(ctx, field)
 	case "createdAt":
 		return ec.fieldContext_TaskWatcher_createdAt(ctx, field)
+	case "workspaceID":
+		return ec.fieldContext_TaskWatcher_workspaceID(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type TaskWatcher", field.Name)
 }
@@ -7078,6 +7103,8 @@ func (ec *executionContext) childFields_TeamMember(ctx context.Context, field gr
 		return ec.fieldContext_TeamMember_userID(ctx, field)
 	case "addedAt":
 		return ec.fieldContext_TeamMember_addedAt(ctx, field)
+	case "workspaceID":
+		return ec.fieldContext_TeamMember_workspaceID(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type TeamMember", field.Name)
 }
@@ -25940,6 +25967,29 @@ func (ec *executionContext) fieldContext_TaskAssignee_assignedAt(_ context.Conte
 	return graphql.NewScalarFieldContext("TaskAssignee", field, false, false, errors.New("field of type Time does not have child fields"))
 }
 
+func (ec *executionContext) _TaskAssignee_workspaceID(ctx context.Context, field graphql.CollectedField, obj *database.TaskAssignee) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TaskAssignee_workspaceID(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.WorkspaceID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v uuid.UUID) graphql.Marshaler {
+			return ec.marshalNUUID2uuidᚐUUID(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_TaskAssignee_workspaceID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TaskAssignee", field, false, false, errors.New("field of type UUID does not have child fields"))
+}
+
 func (ec *executionContext) _TaskAssigneeConnection_edges(ctx context.Context, field graphql.CollectedField, obj *database.Connection[database.TaskAssignee]) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -27211,6 +27261,29 @@ func (ec *executionContext) fieldContext_TaskWatcher_createdAt(_ context.Context
 	return graphql.NewScalarFieldContext("TaskWatcher", field, false, false, errors.New("field of type Time does not have child fields"))
 }
 
+func (ec *executionContext) _TaskWatcher_workspaceID(ctx context.Context, field graphql.CollectedField, obj *database.TaskWatcher) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TaskWatcher_workspaceID(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.WorkspaceID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v uuid.UUID) graphql.Marshaler {
+			return ec.marshalNUUID2uuidᚐUUID(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_TaskWatcher_workspaceID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TaskWatcher", field, false, false, errors.New("field of type UUID does not have child fields"))
+}
+
 func (ec *executionContext) _TaskWatcherConnection_edges(ctx context.Context, field graphql.CollectedField, obj *database.Connection[database.TaskWatcher]) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -28099,6 +28172,29 @@ func (ec *executionContext) _TeamMember_addedAt(ctx context.Context, field graph
 }
 func (ec *executionContext) fieldContext_TeamMember_addedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("TeamMember", field, false, false, errors.New("field of type Time does not have child fields"))
+}
+
+func (ec *executionContext) _TeamMember_workspaceID(ctx context.Context, field graphql.CollectedField, obj *database.TeamMember) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TeamMember_workspaceID(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.WorkspaceID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v uuid.UUID) graphql.Marshaler {
+			return ec.marshalNUUID2uuidᚐUUID(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_TeamMember_workspaceID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TeamMember", field, false, false, errors.New("field of type UUID does not have child fields"))
 }
 
 func (ec *executionContext) _TeamMemberConnection_edges(ctx context.Context, field graphql.CollectedField, obj *database.Connection[database.TeamMember]) (ret graphql.Marshaler) {
@@ -35626,7 +35722,7 @@ func (ec *executionContext) unmarshalInputTaskAssigneeFilter(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"taskID", "userID", "assignedAt", "and", "or"}
+	fieldsInOrder := [...]string{"taskID", "userID", "assignedAt", "workspaceID", "and", "or"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -35654,6 +35750,13 @@ func (ec *executionContext) unmarshalInputTaskAssigneeFilter(ctx context.Context
 				return it, err
 			}
 			it.AssignedAt = data
+		case "workspaceID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("workspaceID"))
+			data, err := ec.unmarshalOIDComparator2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋgraphᚋmodelᚐIDComparator(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.WorkspaceID = data
 		case "and":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("and"))
 			data, err := ec.unmarshalOTaskAssigneeFilter2ᚕᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋgraphᚋmodelᚐTaskAssigneeFilterᚄ(ctx, v)
@@ -36306,7 +36409,7 @@ func (ec *executionContext) unmarshalInputTaskWatcherFilter(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"taskID", "userID", "createdAt", "and", "or"}
+	fieldsInOrder := [...]string{"taskID", "userID", "createdAt", "workspaceID", "and", "or"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -36334,6 +36437,13 @@ func (ec *executionContext) unmarshalInputTaskWatcherFilter(ctx context.Context,
 				return it, err
 			}
 			it.CreatedAt = data
+		case "workspaceID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("workspaceID"))
+			data, err := ec.unmarshalOIDComparator2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋgraphᚋmodelᚐIDComparator(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.WorkspaceID = data
 		case "and":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("and"))
 			data, err := ec.unmarshalOTaskWatcherFilter2ᚕᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋgraphᚋmodelᚐTaskWatcherFilterᚄ(ctx, v)
@@ -36508,7 +36618,7 @@ func (ec *executionContext) unmarshalInputTeamMemberFilter(ctx context.Context, 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"teamID", "userID", "addedAt", "and", "or"}
+	fieldsInOrder := [...]string{"teamID", "userID", "addedAt", "workspaceID", "and", "or"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -36536,6 +36646,13 @@ func (ec *executionContext) unmarshalInputTeamMemberFilter(ctx context.Context, 
 				return it, err
 			}
 			it.AddedAt = data
+		case "workspaceID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("workspaceID"))
+			data, err := ec.unmarshalOIDComparator2ᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋgraphᚋmodelᚐIDComparator(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.WorkspaceID = data
 		case "and":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("and"))
 			data, err := ec.unmarshalOTeamMemberFilter2ᚕᚖgithubᚗcomᚋteandresmithᚋsqlgenᚑexampleᚋinternalᚋgraphᚋmodelᚐTeamMemberFilterᚄ(ctx, v)
@@ -43734,6 +43851,11 @@ func (ec *executionContext) _TaskAssignee(ctx context.Context, sel ast.Selection
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "workspaceID":
+			out.Values[i] = ec._TaskAssignee_workspaceID(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -44474,6 +44596,11 @@ func (ec *executionContext) _TaskWatcher(ctx context.Context, sel ast.SelectionS
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "workspaceID":
+			out.Values[i] = ec._TaskWatcher_workspaceID(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -44905,6 +45032,11 @@ func (ec *executionContext) _TeamMember(ctx context.Context, sel ast.SelectionSe
 			}
 		case "addedAt":
 			out.Values[i] = ec._TeamMember_addedAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "workspaceID":
+			out.Values[i] = ec._TeamMember_workspaceID(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

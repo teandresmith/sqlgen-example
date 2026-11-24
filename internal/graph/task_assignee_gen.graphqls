@@ -8,6 +8,8 @@ type TaskAssignee {
   userID: UUID!
   "When the assignment was made"
   assignedAt: Time!
+  "Owning workspace (tenant column); equals the task's"
+  workspaceID: UUID!
 }
 
 type TaskAssigneeConnection {
@@ -33,6 +35,7 @@ input TaskAssigneeFilter {
   taskID: IDComparator
   userID: IDComparator
   assignedAt: TimeComparator
+  workspaceID: IDComparator
   and: [TaskAssigneeFilter!]
   or:  [TaskAssigneeFilter!]
 }
@@ -41,6 +44,7 @@ enum TaskAssigneeSortField {
   TASK_ID
   USER_ID
   ASSIGNED_AT
+  WORKSPACE_ID
 }
 
 input TaskAssigneeSort {

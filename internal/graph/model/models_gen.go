@@ -585,11 +585,12 @@ type StringSliceComparator struct {
 }
 
 type TaskAssigneeFilter struct {
-	TaskID     *IDComparator         `json:"taskID,omitempty"`
-	UserID     *IDComparator         `json:"userID,omitempty"`
-	AssignedAt *TimeComparator       `json:"assignedAt,omitempty"`
-	And        []*TaskAssigneeFilter `json:"and,omitempty"`
-	Or         []*TaskAssigneeFilter `json:"or,omitempty"`
+	TaskID      *IDComparator         `json:"taskID,omitempty"`
+	UserID      *IDComparator         `json:"userID,omitempty"`
+	AssignedAt  *TimeComparator       `json:"assignedAt,omitempty"`
+	WorkspaceID *IDComparator         `json:"workspaceID,omitempty"`
+	And         []*TaskAssigneeFilter `json:"and,omitempty"`
+	Or          []*TaskAssigneeFilter `json:"or,omitempty"`
 }
 
 type TaskAssigneeSort struct {
@@ -679,11 +680,12 @@ type TaskStatusComparator struct {
 }
 
 type TaskWatcherFilter struct {
-	TaskID    *IDComparator        `json:"taskID,omitempty"`
-	UserID    *IDComparator        `json:"userID,omitempty"`
-	CreatedAt *TimeComparator      `json:"createdAt,omitempty"`
-	And       []*TaskWatcherFilter `json:"and,omitempty"`
-	Or        []*TaskWatcherFilter `json:"or,omitempty"`
+	TaskID      *IDComparator        `json:"taskID,omitempty"`
+	UserID      *IDComparator        `json:"userID,omitempty"`
+	CreatedAt   *TimeComparator      `json:"createdAt,omitempty"`
+	WorkspaceID *IDComparator        `json:"workspaceID,omitempty"`
+	And         []*TaskWatcherFilter `json:"and,omitempty"`
+	Or          []*TaskWatcherFilter `json:"or,omitempty"`
 }
 
 type TaskWatcherSort struct {
@@ -707,11 +709,12 @@ type TeamFilter struct {
 }
 
 type TeamMemberFilter struct {
-	TeamID  *IDComparator       `json:"teamID,omitempty"`
-	UserID  *IDComparator       `json:"userID,omitempty"`
-	AddedAt *TimeComparator     `json:"addedAt,omitempty"`
-	And     []*TeamMemberFilter `json:"and,omitempty"`
-	Or      []*TeamMemberFilter `json:"or,omitempty"`
+	TeamID      *IDComparator       `json:"teamID,omitempty"`
+	UserID      *IDComparator       `json:"userID,omitempty"`
+	AddedAt     *TimeComparator     `json:"addedAt,omitempty"`
+	WorkspaceID *IDComparator       `json:"workspaceID,omitempty"`
+	And         []*TeamMemberFilter `json:"and,omitempty"`
+	Or          []*TeamMemberFilter `json:"or,omitempty"`
 }
 
 type TeamMemberSort struct {
@@ -1774,20 +1777,22 @@ func (e SsoConnectionSortField) MarshalJSON() ([]byte, error) {
 type TaskAssigneeSortField string
 
 const (
-	TaskAssigneeSortFieldTaskID     TaskAssigneeSortField = "TASK_ID"
-	TaskAssigneeSortFieldUserID     TaskAssigneeSortField = "USER_ID"
-	TaskAssigneeSortFieldAssignedAt TaskAssigneeSortField = "ASSIGNED_AT"
+	TaskAssigneeSortFieldTaskID      TaskAssigneeSortField = "TASK_ID"
+	TaskAssigneeSortFieldUserID      TaskAssigneeSortField = "USER_ID"
+	TaskAssigneeSortFieldAssignedAt  TaskAssigneeSortField = "ASSIGNED_AT"
+	TaskAssigneeSortFieldWorkspaceID TaskAssigneeSortField = "WORKSPACE_ID"
 )
 
 var AllTaskAssigneeSortField = []TaskAssigneeSortField{
 	TaskAssigneeSortFieldTaskID,
 	TaskAssigneeSortFieldUserID,
 	TaskAssigneeSortFieldAssignedAt,
+	TaskAssigneeSortFieldWorkspaceID,
 }
 
 func (e TaskAssigneeSortField) IsValid() bool {
 	switch e {
-	case TaskAssigneeSortFieldTaskID, TaskAssigneeSortFieldUserID, TaskAssigneeSortFieldAssignedAt:
+	case TaskAssigneeSortFieldTaskID, TaskAssigneeSortFieldUserID, TaskAssigneeSortFieldAssignedAt, TaskAssigneeSortFieldWorkspaceID:
 		return true
 	}
 	return false
@@ -2026,20 +2031,22 @@ func (e TaskSortField) MarshalJSON() ([]byte, error) {
 type TaskWatcherSortField string
 
 const (
-	TaskWatcherSortFieldTaskID    TaskWatcherSortField = "TASK_ID"
-	TaskWatcherSortFieldUserID    TaskWatcherSortField = "USER_ID"
-	TaskWatcherSortFieldCreatedAt TaskWatcherSortField = "CREATED_AT"
+	TaskWatcherSortFieldTaskID      TaskWatcherSortField = "TASK_ID"
+	TaskWatcherSortFieldUserID      TaskWatcherSortField = "USER_ID"
+	TaskWatcherSortFieldCreatedAt   TaskWatcherSortField = "CREATED_AT"
+	TaskWatcherSortFieldWorkspaceID TaskWatcherSortField = "WORKSPACE_ID"
 )
 
 var AllTaskWatcherSortField = []TaskWatcherSortField{
 	TaskWatcherSortFieldTaskID,
 	TaskWatcherSortFieldUserID,
 	TaskWatcherSortFieldCreatedAt,
+	TaskWatcherSortFieldWorkspaceID,
 }
 
 func (e TaskWatcherSortField) IsValid() bool {
 	switch e {
-	case TaskWatcherSortFieldTaskID, TaskWatcherSortFieldUserID, TaskWatcherSortFieldCreatedAt:
+	case TaskWatcherSortFieldTaskID, TaskWatcherSortFieldUserID, TaskWatcherSortFieldCreatedAt, TaskWatcherSortFieldWorkspaceID:
 		return true
 	}
 	return false
@@ -2083,20 +2090,22 @@ func (e TaskWatcherSortField) MarshalJSON() ([]byte, error) {
 type TeamMemberSortField string
 
 const (
-	TeamMemberSortFieldTeamID  TeamMemberSortField = "TEAM_ID"
-	TeamMemberSortFieldUserID  TeamMemberSortField = "USER_ID"
-	TeamMemberSortFieldAddedAt TeamMemberSortField = "ADDED_AT"
+	TeamMemberSortFieldTeamID      TeamMemberSortField = "TEAM_ID"
+	TeamMemberSortFieldUserID      TeamMemberSortField = "USER_ID"
+	TeamMemberSortFieldAddedAt     TeamMemberSortField = "ADDED_AT"
+	TeamMemberSortFieldWorkspaceID TeamMemberSortField = "WORKSPACE_ID"
 )
 
 var AllTeamMemberSortField = []TeamMemberSortField{
 	TeamMemberSortFieldTeamID,
 	TeamMemberSortFieldUserID,
 	TeamMemberSortFieldAddedAt,
+	TeamMemberSortFieldWorkspaceID,
 }
 
 func (e TeamMemberSortField) IsValid() bool {
 	switch e {
-	case TeamMemberSortFieldTeamID, TeamMemberSortFieldUserID, TeamMemberSortFieldAddedAt:
+	case TeamMemberSortFieldTeamID, TeamMemberSortFieldUserID, TeamMemberSortFieldAddedAt, TeamMemberSortFieldWorkspaceID:
 		return true
 	}
 	return false

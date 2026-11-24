@@ -730,6 +730,9 @@ func translateTaskAssigneeFilter(in *gqlmodel.TaskAssigneeFilter) *database.Task
 	if in.UserID != nil {
 		out.UserID = translateIDComparator(in.UserID)
 	}
+	if in.WorkspaceID != nil {
+		out.WorkspaceID = translateIDComparator(in.WorkspaceID)
+	}
 	if len(in.And) > 0 {
 		out.And = make([]*database.TaskAssigneeFilter, 0, len(in.And))
 		for _, sub := range in.And {
@@ -847,6 +850,9 @@ func translateTaskWatcherFilter(in *gqlmodel.TaskWatcherFilter) *database.TaskWa
 	if in.UserID != nil {
 		out.UserID = translateIDComparator(in.UserID)
 	}
+	if in.WorkspaceID != nil {
+		out.WorkspaceID = translateIDComparator(in.WorkspaceID)
+	}
 	if len(in.And) > 0 {
 		out.And = make([]*database.TaskWatcherFilter, 0, len(in.And))
 		for _, sub := range in.And {
@@ -945,6 +951,9 @@ func translateTeamMemberFilter(in *gqlmodel.TeamMemberFilter) *database.TeamMemb
 	}
 	if in.UserID != nil {
 		out.UserID = translateIDComparator(in.UserID)
+	}
+	if in.WorkspaceID != nil {
+		out.WorkspaceID = translateIDComparator(in.WorkspaceID)
 	}
 	if len(in.And) > 0 {
 		out.And = make([]*database.TeamMemberFilter, 0, len(in.And))

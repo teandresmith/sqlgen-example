@@ -4057,12 +4057,14 @@ func (c *taskClient) recordWrittenTenants(tenantByPK map[uuid.UUID]any, listed [
 type TaskConflictTarget int
 
 const (
-	TaskConflictPK TaskConflictTarget = iota // PRIMARY KEY (id)
+	TaskConflictPK            TaskConflictTarget = iota // PRIMARY KEY (id)
+	TaskConflictWorkspaceIDID                           // UNIQUE (workspace_id, id)
 )
 
 // taskConflictColumns maps each conflict target to its column set.
 var taskConflictColumns = map[TaskConflictTarget][]string{
-	TaskConflictPK: {"id"},
+	TaskConflictPK:            {"id"},
+	TaskConflictWorkspaceIDID: {"workspace_id", "id"},
 }
 
 // Upsert inserts a task or updates it if a row matching the conflict target already

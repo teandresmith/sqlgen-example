@@ -42,9 +42,9 @@ Global user identity, spanning workspaces
 | comments | o2m | Comment | public.comments.author_id |  |
 | invitations | o2m | Invitation | public.invitations.invited_by |  |
 | reporter_tasks | o2m | Task | public.tasks.reporter_id |  |
-| task_assignees | m2m | Task | public.task_assignees (user_id → task_id) |  |
-| task_watchers | m2m | Task | public.task_watchers (user_id → task_id) |  |
-| teams | m2m | Team | public.team_members (user_id → team_id) |  |
+| task_assignees | m2m | Task | public.task_assignees (user_id → (workspace_id, task_id)) |  |
+| task_watchers | m2m | Task | public.task_watchers (user_id → (workspace_id, task_id)) |  |
+| teams | m2m | Team | public.team_members (user_id → (workspace_id, team_id)) |  |
 | time_entries | o2m | TimeEntry | public.time_entries.user_id |  |
 | workspaces | m2m | Workspace | public.memberships (user_id → workspace_id) |  |
 

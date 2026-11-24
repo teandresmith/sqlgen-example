@@ -8,6 +8,8 @@ type TeamMember {
   userID: UUID!
   "When the user joined the team"
   addedAt: Time!
+  "Owning workspace (tenant column); equals the team's"
+  workspaceID: UUID!
 }
 
 type TeamMemberConnection {
@@ -33,6 +35,7 @@ input TeamMemberFilter {
   teamID: IDComparator
   userID: IDComparator
   addedAt: TimeComparator
+  workspaceID: IDComparator
   and: [TeamMemberFilter!]
   or:  [TeamMemberFilter!]
 }
@@ -41,6 +44,7 @@ enum TeamMemberSortField {
   TEAM_ID
   USER_ID
   ADDED_AT
+  WORKSPACE_ID
 }
 
 input TeamMemberSort {

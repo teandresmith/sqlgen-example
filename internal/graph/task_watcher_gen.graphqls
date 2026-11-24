@@ -8,6 +8,8 @@ type TaskWatcher {
   userID: UUID!
   "When the user started watching"
   createdAt: Time!
+  "Owning workspace (tenant column); equals the task's"
+  workspaceID: UUID!
 }
 
 type TaskWatcherConnection {
@@ -33,6 +35,7 @@ input TaskWatcherFilter {
   taskID: IDComparator
   userID: IDComparator
   createdAt: TimeComparator
+  workspaceID: IDComparator
   and: [TaskWatcherFilter!]
   or:  [TaskWatcherFilter!]
 }
@@ -41,6 +44,7 @@ enum TaskWatcherSortField {
   TASK_ID
   USER_ID
   CREATED_AT
+  WORKSPACE_ID
 }
 
 input TaskWatcherSort {

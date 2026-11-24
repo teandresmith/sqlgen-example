@@ -23,6 +23,7 @@ Membership of users in teams (M2M)
 | `team_id` | TeamID | `uuid.UUID` | `uuid` |  | yes |  |  | `comparator.ID` | Team side of the membership |
 | `user_id` | UserID | `uuid.UUID` | `uuid` |  | yes |  |  | `comparator.ID` | User side of the membership |
 | `added_at` | AddedAt | `time.Time` | `timestamptz` |  |  |  | `now()` | `comparator.Time` | When the user joined the team |
+| `workspace_id` | WorkspaceID | `uuid.UUID` | `uuid` |  |  |  |  | `comparator.ID` | Owning workspace (tenant column); equals the team's |
 
 ## Indexes
 
@@ -30,6 +31,7 @@ Membership of users in teams (M2M)
 | --- | --- | --- | --- | --- |
 | `idx_team_members_user` | user_id |  | btree |  |
 | `team_members_pkey` | team_id, user_id | yes | btree |  |
+| `team_members_ws_key` | workspace_id, team_id, user_id | yes | btree |  |
 
 ## Query methods
 
@@ -37,7 +39,7 @@ Membership of users in teams (M2M)
 
 - Params: `pk TeamMemberPK`
 - Returns: `*TeamMember`, `error`
-- Errors: `ErrNotFound`
+- Errors: `ErrNotFound`, `tenancy.ErrMissing`
 - Notes: Delegates to GetMany with a primary-key filter; returns ErrNotFound when no row matches.
 
 Generated SQL:
@@ -45,26 +47,28 @@ Generated SQL:
 postgres:
 
 ```sql
-SELECT "added_at", "team_id", "user_id" FROM "public"."team_members" WHERE "team_id" = $1 AND "user_id" = $2 LIMIT 1
+SELECT "added_at", "team_id", "user_id", "workspace_id" FROM "public"."team_members" WHERE "team_id" = $1 AND "user_id" = $2 LIMIT 1
 ```
 
 ### GetMany
 
 - Params: `input *GetTeamMembersInput`
 - Returns: `[]*TeamMember`, `error`
+- Errors: `tenancy.ErrMissing`
 
 Generated SQL:
 
 postgres:
 
 ```sql
-SELECT "added_at", "team_id", "user_id" FROM "public"."team_members" WHERE <filter> ORDER BY <sort> LIMIT <limit>
+SELECT "added_at", "team_id", "user_id", "workspace_id" FROM "public"."team_members" WHERE <filter> ORDER BY <sort> LIMIT <limit>
 ```
 
 ### Exists
 
 - Params: `pk TeamMemberPK`
 - Returns: `bool`, `error`
+- Errors: `tenancy.ErrMissing`
 
 Generated SQL:
 
@@ -78,6 +82,7 @@ SELECT EXISTS(SELECT 1 FROM "public"."team_members" WHERE "team_id" = $1 AND "us
 
 - Params: `filter *TeamMemberFilter`
 - Returns: `bool`, `error`
+- Errors: `tenancy.ErrMissing`
 
 Generated SQL:
 
@@ -91,6 +96,7 @@ SELECT EXISTS(SELECT 1 FROM "public"."team_members" WHERE <filter>)
 
 - Params: `filter *TeamMemberFilter`
 - Returns: `int64`, `error`
+- Errors: `tenancy.ErrMissing`
 
 Generated SQL:
 
@@ -104,19 +110,21 @@ SELECT COUNT(*) FROM "public"."team_members" WHERE <filter>
 
 - Params: `input PaginateInput[TeamMemberFilter]`
 - Returns: `*PaginateResult[TeamMember]`, `error`
+- Errors: `tenancy.ErrMissing`
 - Notes: Offset pagination. Issues no statement of its own — composes Count and GetMany, so no sql_bodies entry.
 
 ### Connection
 
 - Params: `input ConnectionInput[TeamMemberFilter]`
 - Returns: `*Connection[TeamMember]`, `error`
-- Errors: `ErrInvalidCursor`
+- Errors: `ErrInvalidCursor`, `tenancy.ErrMissing`
 - Notes: Relay cursor pagination. Issues no statement of its own — composes Count and GetMany, so no sql_bodies entry.
 
 ### Stream
 
 - Params: `input *StreamTeamMembersInput`
 - Returns: `iter.Seq2[*TeamMember, error]`, `error`
+- Errors: `tenancy.ErrMissing`
 - Notes: Scalars only — no relationship loading, cache always bypassed. Errors surface through the iterator's second value.
 
 Generated SQL:
@@ -124,7 +132,7 @@ Generated SQL:
 postgres:
 
 ```sql
-SELECT "added_at", "team_id", "user_id" FROM "public"."team_members" WHERE <filter> ORDER BY <sort>
+SELECT "added_at", "team_id", "user_id", "workspace_id" FROM "public"."team_members" WHERE <filter> ORDER BY <sort>
 ```
 
 ## Mutation methods
@@ -133,7 +141,7 @@ SELECT "added_at", "team_id", "user_id" FROM "public"."team_members" WHERE <filt
 
 - Params: `input *CreateTeamMemberInput`
 - Returns: `*TeamMember`, `error`
-- Errors: `ErrNilInput`, `ErrConstraintViolation`
+- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
 
 Generated SQL:
 
@@ -147,7 +155,7 @@ INSERT INTO "public"."team_members" (<columns>) VALUES (<values>)
 
 - Params: `inputs []*CreateTeamMemberInput`
 - Returns: `[]*TeamMember`, `error`
-- Errors: `ErrNilInput`, `ErrConstraintViolation`
+- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
 - Notes: Batched in generation.batch_size chunks. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.
 
 Generated SQL:
@@ -162,7 +170,7 @@ INSERT INTO "public"."team_members" (<columns>) VALUES <values>
 
 - Params: `pk TeamMemberPK`, `input *UpdateTeamMemberInput`
 - Returns: `*TeamMember`, `error`
-- Errors: `ErrNotFound`, `ErrNilInput`, `ErrConstraintViolation`
+- Errors: `ErrNotFound`, `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
 - Notes: Only fields where IsSet() reports true reach the SET clause; an input with none set issues no UPDATE and returns the row unchanged.
 
 Generated SQL:
@@ -177,7 +185,7 @@ UPDATE "public"."team_members" SET <set> WHERE "team_id" = $1 AND "user_id" = $2
 
 - Params: `items []UpdateTeamMemberItem`
 - Returns: `[]*TeamMember`, `error`
-- Errors: `ErrNilInput`, `ErrConstraintViolation`
+- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
 - Notes: Issues one statement per item. Batched like CreateMany — earlier items are not rolled back on a later failure. A primary key that does not exist is silently skipped, even under strict_updates.
 
 Generated SQL:
@@ -192,7 +200,7 @@ UPDATE "public"."team_members" SET <set> WHERE "team_id" = $1 AND "user_id" = $2
 
 - Params: `filter *TeamMemberFilter`, `input *UpdateTeamMemberInput`
 - Returns: `[]*TeamMember`, `error`
-- Errors: `ErrNilInput`, `ErrEmptyFilter`, `ErrConstraintViolation`
+- Errors: `ErrNilInput`, `ErrEmptyFilter`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
 - Notes: Idempotent — returns an empty slice when no row matches. ErrEmptyFilter when the filter produces no conditions.
 
 Generated SQL:
@@ -207,7 +215,7 @@ UPDATE "public"."team_members" SET <set> WHERE <filter> RETURNING "team_id", "us
 
 - Params: `input *CreateTeamMemberInput`, `target TeamMemberConflictTarget`
 - Returns: `*TeamMember`, `error`
-- Errors: `ErrNilInput`, `ErrConstraintViolation`
+- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
 - Notes: One method over the generated TeamMemberConflictTarget enum — the target argument selects the conflict columns at call time.
 
 Generated SQL:
@@ -222,7 +230,7 @@ INSERT INTO "public"."team_members" (<columns>) VALUES (<values>) ON CONFLICT (<
 
 - Params: `inputs []*CreateTeamMemberInput`, `target TeamMemberConflictTarget`
 - Returns: `[]*TeamMember`, `error`
-- Errors: `ErrNilInput`, `ErrConstraintViolation`
+- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
 - Notes: Batched in generation.batch_size chunks over the same TeamMemberConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.
 
 Generated SQL:
@@ -237,6 +245,7 @@ INSERT INTO "public"."team_members" (<columns>) VALUES <values> ON CONFLICT (<co
 
 - Params: `pk TeamMemberPK`
 - Returns: `error`
+- Errors: `tenancy.ErrMissing`
 - Notes: Idempotent — a primary key that does not exist is not an error.
 
 Generated SQL:
@@ -251,6 +260,7 @@ DELETE FROM "public"."team_members" WHERE "team_id" = $1 AND "user_id" = $2
 
 - Params: `pks []TeamMemberPK`
 - Returns: `error`
+- Errors: `tenancy.ErrMissing`
 - Notes: Idempotent — primary keys that do not exist are not an error.
 
 Generated SQL:
@@ -265,7 +275,7 @@ DELETE FROM "public"."team_members" WHERE ("team_id", "user_id") IN (<pks>)
 
 - Params: `filter *TeamMemberFilter`
 - Returns: `error`
-- Errors: `ErrEmptyFilter`
+- Errors: `ErrEmptyFilter`, `tenancy.ErrMissing`
 - Notes: Idempotent — no match is not an error. ErrEmptyFilter when the filter produces no conditions.
 
 Generated SQL:
@@ -285,6 +295,7 @@ Type `TeamMemberFilter`.
 | AddedAt | `*comparator.Time` |
 | TeamID | `*comparator.ID` |
 | UserID | `*comparator.ID` |
+| WorkspaceID | `*comparator.ID` |
 | And | `[]*TeamMemberFilter` |
 | Or | `[]*TeamMemberFilter` |
 
@@ -292,7 +303,7 @@ Type `TeamMemberFilter`.
 
 Type `TeamMemberSort`.
 
-Fields: AddedAt, TeamID, UserID
+Fields: AddedAt, TeamID, UserID, WorkspaceID
 
 ## Read examples
 

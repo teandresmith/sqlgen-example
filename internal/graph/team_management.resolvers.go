@@ -17,10 +17,10 @@ import (
 )
 
 // AddUserToTeam adds a User to a Team within the Active Workspace (story 17).
-// team_members carries no workspace_id, so the Team is resolved through the
-// tenant-scoped client first: a Team in another Workspace is invisible ("not
-// found") and cross-tenant membership writes are refused before any row is
-// written. A Team is "a group of Users within a Workspace" (CONTEXT.md), so the
+// team_members carries workspace_id with a composite FK to its Team (migration
+// 0006), so the database already refuses a cross-workspace link. The Team is
+// still resolved through the tenant-scoped client first, only so a Team in
+// another Workspace answers "not found" rather than a constraint error. A Team is "a group of Users within a Workspace" (CONTEXT.md), so the
 // User must hold a Membership in the Active Workspace — checked via the
 // tenant-scoped Memberships client, whose rows are already confined to the
 // Active Workspace, so a global identity that belongs to no/another Workspace
@@ -64,19 +64,12 @@ func (r *mutationResolver) AddUserToTeam(ctx context.Context, teamID uuid.UUID, 
 }
 
 // RemoveUserFromTeam removes a User from a Team within the Active Workspace
-// (story 17). The Team is resolved tenant-scoped first, closing the cross-tenant
-// hole a raw team_members delete (a composite PK with no Workspace to scope)
-// would otherwise leave open. The delete hits team_members, a guarded table, so
-// the authz hook rejects a caller below owner/admin. Idempotent: removing a User
-// who is not on the Team is not an error.
+// (story 17). The delete is tenant-scoped by team_members.workspace_id, so a Team
+// in another Workspace matches no row and nothing is removed. The delete hits
+// team_members, a guarded table, so the authz hook rejects a caller below
+// owner/admin. Idempotent: removing a User who is not on the Team is not an
+// error.
 func (r *mutationResolver) RemoveUserFromTeam(ctx context.Context, teamID uuid.UUID, userID uuid.UUID) (bool, error) {
-	if _, err := r.Client.Teams().Get(ctx, teamID); err != nil {
-		if errors.Is(err, database.ErrNotFound) {
-			return false, errors.New("team not found in the active workspace")
-		}
-		return false, err
-	}
-
 	err := r.Client.TeamMembers().HardDelete(ctx, database.TeamMemberPK{
 		TeamID: teamID,
 		UserID: userID,

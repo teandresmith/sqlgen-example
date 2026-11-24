@@ -1369,6 +1369,21 @@ func newTaskAssigneeEventHook(publisher event.Publisher, onError func(ctx contex
 				default:
 					inputVal = mc.Input
 				}
+				// Tenancy metadata: stamped from
+				// the structurally captured per-row tenant
+				// (mc.AffectedTenants, index-aligned with AffectedPKs) — never
+				// the resolver — so SkipTenancy mutations publish
+				// tenant-stamped events. Built synchronously here (before any
+				// OnCommit registration) so the async callback never
+				// re-resolves against Background. The %v form is
+				// byte-identical to the tenanted cache-key grammar (the
+				// round-trip invariant the event-driven receive side relies
+				// on). A nil capture (row not materialized, or an unwired
+				// shape) omits the key entirely — soft degrade, never "<nil>".
+				var tenantMeta map[string]string
+				if i < len(mc.AffectedTenants) && mc.AffectedTenants[i] != nil {
+					tenantMeta = map[string]string{"tenant": fmt.Sprintf("%v", mc.AffectedTenants[i])}
+				}
 				events[i] = event.Event{
 					ID:        uuid.NewV4().String(),
 					Table:     "task_assignees",
@@ -1377,7 +1392,7 @@ func newTaskAssigneeEventHook(publisher event.Publisher, onError func(ctx contex
 					PK:        pk,
 					Input:     inputVal,
 					Timestamp: time.Now(),
-					Metadata:  mergeEventMetadata(baseMeta, nil),
+					Metadata:  mergeEventMetadata(baseMeta, tenantMeta),
 				}
 			}
 
@@ -1651,6 +1666,21 @@ func newTaskWatcherEventHook(publisher event.Publisher, onError func(ctx context
 				default:
 					inputVal = mc.Input
 				}
+				// Tenancy metadata: stamped from
+				// the structurally captured per-row tenant
+				// (mc.AffectedTenants, index-aligned with AffectedPKs) — never
+				// the resolver — so SkipTenancy mutations publish
+				// tenant-stamped events. Built synchronously here (before any
+				// OnCommit registration) so the async callback never
+				// re-resolves against Background. The %v form is
+				// byte-identical to the tenanted cache-key grammar (the
+				// round-trip invariant the event-driven receive side relies
+				// on). A nil capture (row not materialized, or an unwired
+				// shape) omits the key entirely — soft degrade, never "<nil>".
+				var tenantMeta map[string]string
+				if i < len(mc.AffectedTenants) && mc.AffectedTenants[i] != nil {
+					tenantMeta = map[string]string{"tenant": fmt.Sprintf("%v", mc.AffectedTenants[i])}
+				}
 				events[i] = event.Event{
 					ID:        uuid.NewV4().String(),
 					Table:     "task_watchers",
@@ -1659,7 +1689,7 @@ func newTaskWatcherEventHook(publisher event.Publisher, onError func(ctx context
 					PK:        pk,
 					Input:     inputVal,
 					Timestamp: time.Now(),
-					Metadata:  mergeEventMetadata(baseMeta, nil),
+					Metadata:  mergeEventMetadata(baseMeta, tenantMeta),
 				}
 			}
 
@@ -1871,6 +1901,21 @@ func newTeamMemberEventHook(publisher event.Publisher, onError func(ctx context.
 				default:
 					inputVal = mc.Input
 				}
+				// Tenancy metadata: stamped from
+				// the structurally captured per-row tenant
+				// (mc.AffectedTenants, index-aligned with AffectedPKs) — never
+				// the resolver — so SkipTenancy mutations publish
+				// tenant-stamped events. Built synchronously here (before any
+				// OnCommit registration) so the async callback never
+				// re-resolves against Background. The %v form is
+				// byte-identical to the tenanted cache-key grammar (the
+				// round-trip invariant the event-driven receive side relies
+				// on). A nil capture (row not materialized, or an unwired
+				// shape) omits the key entirely — soft degrade, never "<nil>".
+				var tenantMeta map[string]string
+				if i < len(mc.AffectedTenants) && mc.AffectedTenants[i] != nil {
+					tenantMeta = map[string]string{"tenant": fmt.Sprintf("%v", mc.AffectedTenants[i])}
+				}
 				events[i] = event.Event{
 					ID:        uuid.NewV4().String(),
 					Table:     "team_members",
@@ -1879,7 +1924,7 @@ func newTeamMemberEventHook(publisher event.Publisher, onError func(ctx context.
 					PK:        pk,
 					Input:     inputVal,
 					Timestamp: time.Now(),
-					Metadata:  mergeEventMetadata(baseMeta, nil),
+					Metadata:  mergeEventMetadata(baseMeta, tenantMeta),
 				}
 			}
 

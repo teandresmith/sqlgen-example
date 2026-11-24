@@ -1,0 +1,16 @@
+ALTER TABLE team_members   DROP CONSTRAINT IF EXISTS team_members_ws_key;
+ALTER TABLE task_watchers  DROP CONSTRAINT IF EXISTS task_watchers_ws_key;
+ALTER TABLE task_assignees DROP CONSTRAINT IF EXISTS task_assignees_ws_key;
+ALTER TABLE team_members   DROP CONSTRAINT IF EXISTS team_members_workspace_fkey;
+ALTER TABLE task_watchers  DROP CONSTRAINT IF EXISTS task_watchers_workspace_fkey;
+ALTER TABLE task_assignees DROP CONSTRAINT IF EXISTS task_assignees_workspace_fkey;
+ALTER TABLE team_members   DROP CONSTRAINT IF EXISTS team_members_team_same_ws;
+ALTER TABLE task_watchers  DROP CONSTRAINT IF EXISTS task_watchers_task_same_ws;
+ALTER TABLE task_assignees DROP CONSTRAINT IF EXISTS task_assignees_task_same_ws;
+ALTER TABLE team_members   ADD CONSTRAINT team_members_team_id_fkey   FOREIGN KEY (team_id) REFERENCES teams (id) ON DELETE CASCADE;
+ALTER TABLE task_watchers  ADD CONSTRAINT task_watchers_task_id_fkey  FOREIGN KEY (task_id) REFERENCES tasks (id) ON DELETE CASCADE;
+ALTER TABLE task_assignees ADD CONSTRAINT task_assignees_task_id_fkey FOREIGN KEY (task_id) REFERENCES tasks (id) ON DELETE CASCADE;
+ALTER TABLE team_members   DROP COLUMN workspace_id;
+ALTER TABLE task_watchers  DROP COLUMN workspace_id;
+ALTER TABLE task_assignees DROP COLUMN workspace_id;
+ALTER TABLE tasks DROP CONSTRAINT IF EXISTS tasks_ws_id_key;

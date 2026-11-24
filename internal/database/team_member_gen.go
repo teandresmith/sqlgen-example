@@ -17,6 +17,7 @@ import (
 	"github.com/teandresmith/sqlgen/hook"
 	"github.com/teandresmith/sqlgen/omittable"
 	"github.com/teandresmith/sqlgen/sql"
+	"github.com/teandresmith/sqlgen/tenancy"
 )
 
 // TeamMemberPK - composite primary key for the team_members table.
@@ -35,6 +36,8 @@ type TeamMember struct {
 	UserID uuid.UUID `db:"user_id" json:"user_id"`
 	// AddedAt - When the user joined the team
 	AddedAt time.Time `db:"added_at" json:"added_at"`
+	// WorkspaceID - Owning workspace (tenant column); equals the team's
+	WorkspaceID uuid.UUID `db:"workspace_id" json:"workspace_id"`
 }
 
 // TeamMemberClient provides type-safe operations for the team_members table.
@@ -121,17 +124,18 @@ type TeamMemberClient interface {
 
 // teamMemberClient implements the TeamMemberClient interface.
 type teamMemberClient struct {
-	querier       database.Querier
-	dialect       sql.Dialect
-	table         sql.Table
-	batchSize     int
-	queryLimit    int
-	pageSize      int
-	cursorKeys    []string
-	strictUpdates bool
-	mutationHooks []hook.MutationHook
-	queryHooks    []hook.QueryHook
-	panicHandler  hook.PanicHandler
+	querier        database.Querier
+	dialect        sql.Dialect
+	table          sql.Table
+	batchSize      int
+	queryLimit     int
+	pageSize       int
+	cursorKeys     []string
+	strictUpdates  bool
+	mutationHooks  []hook.MutationHook
+	queryHooks     []hook.QueryHook
+	panicHandler   hook.PanicHandler
+	tenantResolver tenancy.TenantResolver[uuid.UUID]
 }
 
 // newTeamMemberClient creates a new teamMemberClient.
@@ -171,8 +175,142 @@ func (c *teamMemberClient) executeQuery(ctx context.Context, skipHooks bool, qc 
 	return hook.BuildQueryChain(c.panicHandler, hooks, fn)(ctx, qc)
 }
 
+// resolveTenant reads the operation's tenant from tenantValue and applies THIS
+// table's tenancy.required setting to it, returning the value, a bool
+// indicating whether tenancy should be applied to this call, and any resolver
+// error. The split matters: tenantValue's answer is shared across every client
+// the operation touches, while the apply bool below is this table's alone
+// (required is a per-table setting). The apply bool encodes the
+// tenancy.required semantic:
+//
+//   - Non-zero resolver return → apply=true; callers AND the filter into the
+//     WHERE (reads), verify-match against caller-supplied tenant (mutations),
+//     and auto-set the tenant column on INSERT.
+//   - Zero resolver return (resolver returned (zero, nil) or is nil) under
+//     tenancy.required:true → apply=false, err=tenancy.ErrMissing. The op
+//     fails closed before the DB round-trip.
+//   - Zero resolver return under tenancy.required:false → apply=false, err=nil.
+//     The op silently becomes cross-tenant: no filter append, no verify-match,
+//     no auto-set. This is the "missing tenant skips the filter" path
+//     — always-off rather than a silent zero-value write.
+//   - Resolver returns a non-nil error → apply=false, err propagated.
+//
+// Required-at-codegen determinism: the required:true vs required:false branch
+// is picked at template-expansion time per-table, from the table's resolved
+// tenancy config. Runtime callers observe a stable behavior per table.
+//
+// explicit carries CallOptions.Tenant (the explicit-tenant resolution
+// mode): when non-nil, tenancy behaves as normal resolution with
+// the resolver replaced by this constant — filter, auto-set, and verify-match
+// all apply. Precedence over SkipTenancy is normalized in
+// resolveCallOptions, so callers gate on SkipTenancy exactly as before. The
+// pointer distinguishes set from unset; a set zero value is honored verbatim.
+func (c *teamMemberClient) resolveTenant(ctx context.Context, explicit *uuid.UUID) (uuid.UUID, bool, error) {
+	if explicit != nil {
+		return *explicit, true, nil
+	}
+	var zero uuid.UUID
+	v, err := c.tenantValue(ctx)
+	if err != nil {
+		return zero, false, err
+	}
+	if v == zero {
+		return zero, false, tenancy.ErrMissing
+	}
+	return v, true, nil
+}
+
+// tenantValue returns the tenant the user resolver reports for this operation,
+// invoking it at most once per logical operation.
+//
+// It answers the table-independent half of the question and stops there: what
+// the resolver said. The tenancy.required reading of that answer — zero means
+// ErrMissing, or zero means skip the filter — belongs to resolveTenant above,
+// because `required` is a per-table setting while this value is
+// shared across every client the operation touches.
+//
+// Keeping the two apart is load-bearing rather than tidy. The ctx cache is
+// keyed on the tenant type alone, so it is one slot for the whole package;
+// caching the reading instead of the answer let whichever table resolved first
+// impose its `required` on the rest, and a required:false table handing
+// apply=false to a required:true one is a fail-open. A nil resolver
+// yields the zero value and the same per-table branch a zero return takes.
+func (c *teamMemberClient) tenantValue(ctx context.Context) (uuid.UUID, error) {
+	// Short-circuit: an entry point for this logical operation — a chaining
+	// mutation (Create, Update, Upsert, …) or a nested method's hoist — already
+	// resolved and stashed the value via tenancy.WithResolvedTenant. Lookup
+	// uses the same comparable T as the resolver, so collisions across entity
+	// clients with different tenant types are impossible.
+	if v, ok := tenancy.CachedTenant[uuid.UUID](ctx); ok {
+		return v, nil
+	}
+	if c.tenantResolver == nil {
+		var zero uuid.UUID
+		return zero, nil
+	}
+	return c.tenantResolver(ctx)
+}
+
+// captureAffectedTenants reads the workspace_id column of every row
+// matching conds, so cache invalidation and event stamping rebuild
+// tenant-scoped keys from the rows themselves rather than from the resolver.
+// Rows that do not exist (or are excluded by the conditions) are
+// simply absent from the map.
+//
+// Two shapes reach it. On MySQL, which has no RETURNING, every tenant-capturing
+// mutation pre-reads the rows it is about to touch. On every dialect, UpsertMany
+// reads back by primary key after each sub-batch: a conflict leaves the existing
+// row's tenant in place, and RETURNING cannot supply it because the DO NOTHING
+// branch yields no row at all. Only a caller-known key reaches here —
+// a database-generated one is resolved by resolveUpsertManyRows, which reads the
+// tenant column in the same statement.
+func (c *teamMemberClient) captureAffectedTenants(ctx context.Context, conn database.Querier, conds []sql.Condition) (map[TeamMemberPK]any, error) {
+	query, args := sql.BuildSelect(c.dialect, c.table, sql.SelectOptions{
+		Columns:    []string{"team_id", "user_id", "workspace_id"},
+		Conditions: conds,
+	})
+
+	rows, err := conn.Query(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	// BuildSelect emits its column list sorted, which need not match the order
+	// the columns were requested in above — a tenant column that sorts before a
+	// PK column (account_id, company_id) would bind to the wrong target under a
+	// positional scan, silently when the two share a Go type. Bind by name, the
+	// same rule scanTeamMembers follows.
+	cols, err := rows.Columns()
+	if err != nil {
+		return nil, err
+	}
+
+	tenants := make(map[TeamMemberPK]any)
+	for rows.Next() {
+		var pk TeamMemberPK
+		var rowTenant uuid.UUID
+		targets := make([]any, len(cols))
+		for i, col := range cols {
+			switch col {
+			case "team_id":
+				targets[i] = &pk.TeamID
+			case "user_id":
+				targets[i] = &pk.UserID
+			case "workspace_id":
+				targets[i] = &rowTenant
+			}
+		}
+		if err := rows.Scan(targets...); err != nil {
+			return nil, err
+		}
+		tenants[pk] = rowTenant
+	}
+	return tenants, rows.Err()
+}
+
 // teamMemberAllColumns is the column list for full-entity reads, sorted for determinism.
-var teamMemberAllColumns = []string{"added_at", "team_id", "user_id"}
+var teamMemberAllColumns = []string{"added_at", "team_id", "user_id", "workspace_id"}
 
 // scanTeamMembers scans rows into TeamMember entities using a column-name switch.
 // Handles both scan target shapes (direct, wrapped) without reflection.
@@ -190,6 +328,8 @@ func scanTeamMembers(rows database.Rows, columns []string) ([]*TeamMember, error
 				targets[idx] = &t.UserID
 			case "added_at":
 				targets[idx] = &t.AddedAt
+			case "workspace_id":
+				targets[idx] = &t.WorkspaceID
 			}
 		}
 
@@ -220,6 +360,20 @@ func (c *teamMemberClient) Get(ctx context.Context, pk TeamMemberPK, opts ...fun
 	qctx := &hook.QueryContext{
 		Op: hook.OpGet, Table: TableTeamMembers, Schema: "public",
 		PK: pk, CallOptions: options,
+	}
+	// Resolve tenant once at the entity-method boundary so the
+	// cache read-through hook can build a tenant-scoped key. The terminal
+	// (and the internal GetMany) sees the same value via q.Tenant. apply=false
+	// under tenancy.required:false + zero resolver skips both qctx.Tenant and
+	// the verify-match (cross-tenant read).
+	if !options.SkipTenancy {
+		resolvedTenant, apply, err := c.resolveTenant(ctx, options.Tenant)
+		if err != nil {
+			return nil, fmt.Errorf("get team_member: resolve tenant: %w", err)
+		}
+		if apply {
+			qctx.Tenant = resolvedTenant
+		}
 	}
 	result, err := c.executeQuery(ctx, options.SkipHooks, qctx, func(ctx context.Context, q *hook.QueryContext) (any, error) {
 		// Hooks may mutate q.CallOptions (e.g. the cache hook's hydration
@@ -311,6 +465,19 @@ func (c *teamMemberClient) GetMany(ctx context.Context, input *GetTeamMembersInp
 			conds = input.Filter.ToConditions(c.dialect)
 		}
 
+		// Tenancy auto-filter — append tenant = resolved to WHERE.
+		// apply=false under tenancy.required:false + zero resolver skips the
+		// filter (cross-tenant read).
+		if !options.SkipTenancy {
+			resolvedTenant, apply, err := c.resolveTenant(ctx, options.Tenant)
+			if err != nil {
+				return nil, fmt.Errorf("resolve tenant: %w", err)
+			}
+			if apply {
+				conds = append(conds, sql.Where(c.dialect.QuoteIdentifier("workspace_id")).Eq(resolvedTenant))
+			}
+		}
+
 		// Append internal conditions (e.g., keyset conditions from Connection)
 		conds = append(conds, input.conditions...)
 
@@ -382,6 +549,60 @@ func (c *teamMemberClient) Create(ctx context.Context, input *CreateTeamMemberIn
 
 		columns := []string{"team_id", "user_id"}
 		args := []any{input.TeamID, input.UserID}
+		// Tenancy auto-set + mismatch check. Caller-set tenant on
+		// the input is tolerated only when it matches the resolved value — any
+		// mismatch returns ErrMismatch before the DB round-trip. apply=false
+		// under tenancy.required:false + zero resolver falls through to the
+		// SkipTenancy-style branch: caller-supplied value wins, no auto-set,
+		// no verify-match (the DB NOT NULL constraint surfaces if the input is
+		// also empty).
+		// capturedTenant carries the tenant value written to the row into
+		// m.AffectedTenants so cache invalidation and event stamping rebuild
+		// the tenant-scoped key from the row itself, independent of how (or
+		// whether) the tenant was resolved. Stays nil only when
+		// no tenant value reaches the INSERT (a DB default fills the column).
+		var capturedTenant any
+		if !options.SkipTenancy {
+			resolvedTenant, apply, err := c.resolveTenant(ctx, options.Tenant)
+			if err != nil {
+				return nil, fmt.Errorf("resolve tenant: %w", err)
+			}
+			// Stash on ctx so the chained terminal read (Get, or GetMany
+			// on a soft-delete table) reuses this value instead of
+			// re-invoking the user resolver — single-resolve. What is cached is the
+			// resolver's answer, not this table's reading of it: a zero return
+			// is cached as a zero, and each table downstream re-applies its own
+			// tenancy.required branch to it.
+			// An explicit tenant is not cached: it rides on CallOptions, which
+			// every internal call inherits, and resolveTenant honours it ahead of
+			// the cache. A set zero is honoured verbatim where a resolved
+			// zero takes the required branch, and this slot cannot tell them apart.
+			if options.Tenant == nil {
+				ctx = tenancy.WithResolvedTenant(ctx, resolvedTenant)
+			}
+			if apply {
+				if v, ok := input.WorkspaceID.Get(); ok && v != resolvedTenant {
+					return nil, tenancy.ErrMismatch
+				}
+				columns = append(columns, "workspace_id")
+				args = append(args, resolvedTenant)
+				// Stash resolved tenant on MutationContext so the cache hook
+				// builds tenant-scoped keys without re-invoking the resolver
+				// (single-resolve per operation).
+				m.Tenant = resolvedTenant
+				capturedTenant = resolvedTenant
+			} else if v, ok := input.WorkspaceID.Get(); ok {
+				// required:false + zero resolver — caller-supplied value is used.
+				columns = append(columns, "workspace_id")
+				args = append(args, v)
+				capturedTenant = v
+			}
+		} else if v, ok := input.WorkspaceID.Get(); ok {
+			// SkipTenancy:true — caller must explicitly set the tenant value.
+			columns = append(columns, "workspace_id")
+			args = append(args, v)
+			capturedTenant = v
+		}
 
 		if v, ok := input.AddedAt.Get(); ok {
 			columns = append(columns, "added_at")
@@ -398,6 +619,7 @@ func (c *teamMemberClient) Create(ctx context.Context, input *CreateTeamMemberIn
 		}
 
 		m.AffectedPKs = []any{TeamMemberPK{TeamID: input.TeamID, UserID: input.UserID}}
+		m.AffectedTenants = []any{capturedTenant}
 
 		// Empty FieldOptions — caller doesn't need the result
 		if options.FieldOptions != nil && !options.FieldOptions.HasSelectedColumns() {
@@ -444,23 +666,79 @@ func (c *teamMemberClient) CreateMany(ctx context.Context, inputs []*CreateTeamM
 		if len(inputs) == 0 {
 			return []*TeamMember{}, nil
 		}
+
+		// Resolve the tenant once for the entire batch.
+		// applyTenancy encodes both SkipTenancy AND the required:false +
+		// zero-resolver path: when false, the per-input verify-match and
+		// auto-set blocks below fall through to caller-supplied values.
+		var resolvedTenant uuid.UUID
+		applyTenancy := false
+		if !options.SkipTenancy {
+			var err error
+			var apply bool
+			resolvedTenant, apply, err = c.resolveTenant(ctx, options.Tenant)
+			if err != nil {
+				return nil, fmt.Errorf("resolve tenant: %w", err)
+			}
+			// Stash on ctx so the chained terminal GetMany reuses this value
+			// (and the per-input verify-match short-circuits via the cache)
+			// instead of re-invoking the user resolver.
+			// An explicit tenant is not cached: it rides on CallOptions, which
+			// every internal call inherits, and resolveTenant honours it ahead of
+			// the cache. A set zero is honoured verbatim where a resolved
+			// zero takes the required branch, and this slot cannot tell them apart.
+			if options.Tenant == nil {
+				ctx = tenancy.WithResolvedTenant(ctx, resolvedTenant)
+			}
+			applyTenancy = apply
+			if apply {
+				// Stash resolved tenant on MutationContext for the cache hook
+				// (single-resolve per operation).
+				m.Tenant = resolvedTenant
+			}
+		}
 		var allPKs []TeamMemberPK
+		// Filled in lockstep with the PK slice above; feeds m.AffectedTenants
+		// so cache invalidation and event stamping rebuild tenant-scoped keys
+		// from each row's own tenant value.
+		var allTenants []any
 		for start := 0; start < len(inputs); start += c.batchSize {
 			end := min(start+c.batchSize, len(inputs))
 			batch := inputs[start:end]
 
-			columns := []string{"team_id", "user_id", "added_at"}
+			columns := []string{"team_id", "user_id", "added_at", "workspace_id"}
 			var valueRows [][]any
 			for _, input := range batch {
 				var addedAt any = sql.Default
 				if v, ok := input.AddedAt.Get(); ok {
 					addedAt = v
 				}
+				// Tenancy auto-set + mismatch check.
+				// applyTenancy=false under SkipTenancy OR under required:false
+				// + zero resolver — caller-supplied tenant is used, else the DB
+				// NOT NULL constraint surfaces.
+				// The allTenants append below relies on the tenant-∉-PK column
+				// always being an omittable CreateInput field (promoted by
+				// attachTenancyToTables) so exactly one carrier element is
+				// appended per input, in lockstep with the PK slice.
+				var workspaceID any
+				if applyTenancy {
+					if v, ok := input.WorkspaceID.Get(); ok && v != resolvedTenant {
+						return nil, tenancy.ErrMismatch
+					}
+					workspaceID = resolvedTenant
+				} else if v, ok := input.WorkspaceID.Get(); ok {
+					workspaceID = v
+				} else {
+					return nil, fmt.Errorf("tenant column workspace_id required when SkipTenancy is set or resolver is absent")
+				}
+				allTenants = append(allTenants, workspaceID)
 
 				valueRows = append(valueRows, []any{
 					input.TeamID,
 					input.UserID,
 					addedAt,
+					workspaceID,
 				})
 			}
 
@@ -478,6 +756,7 @@ func (c *teamMemberClient) CreateMany(ctx context.Context, inputs []*CreateTeamM
 		}
 
 		m.AffectedPKs = toAnySlice(allPKs)
+		m.AffectedTenants = allTenants
 
 		// Empty FieldOptions — skip fetch
 		if options.FieldOptions != nil && !options.FieldOptions.HasSelectedColumns() {
@@ -523,10 +802,49 @@ func (c *teamMemberClient) Update(ctx context.Context, pk TeamMemberPK, input *U
 	}, func(ctx context.Context, m *hook.MutationContext) (any, error) {
 		conn := database.Conn(ctx, c.querier)
 
+		// Tenancy mismatch check before any SQL build. applyTenancy
+		// is false under SkipTenancy OR under required:false + zero resolver —
+		// in the second case the WHERE below also drops the tenant predicate.
+		var resolvedTenant uuid.UUID
+		applyTenancy := false
+		if !options.SkipTenancy {
+			var err error
+			var apply bool
+			resolvedTenant, apply, err = c.resolveTenant(ctx, options.Tenant)
+			if err != nil {
+				return nil, fmt.Errorf("resolve tenant: %w", err)
+			}
+			// Stash on ctx so the chained terminal read reuses this value
+			// — single-resolve.
+			// An explicit tenant is not cached: it rides on CallOptions, which
+			// every internal call inherits, and resolveTenant honours it ahead of
+			// the cache. A set zero is honoured verbatim where a resolved
+			// zero takes the required branch, and this slot cannot tell them apart.
+			if options.Tenant == nil {
+				ctx = tenancy.WithResolvedTenant(ctx, resolvedTenant)
+			}
+			applyTenancy = apply
+			if apply {
+				if v, ok := input.WorkspaceID.Get(); ok && v != resolvedTenant {
+					return nil, tenancy.ErrMismatch
+				}
+				// Stash for cache hook (single-resolve per operation).
+				m.Tenant = resolvedTenant
+			}
+		}
+
 		// Build SET clause from omittable fields — explicit per-field checks, no reflection
 		setClauses := make(map[string]any)
 		if v, ok := input.AddedAt.Get(); ok {
 			setClauses["added_at"] = v
+		}
+		// Tenant column excluded from SET under normal operation.
+		// Honored when the caller opted out via SkipTenancy OR when
+		// required:false + zero resolver opted out of tenancy for this call.
+		if !applyTenancy {
+			if v, ok := input.WorkspaceID.Get(); ok {
+				setClauses["workspace_id"] = v
+			}
 		}
 
 		// Empty update — no fields set, return current entity unchanged
@@ -542,26 +860,47 @@ func (c *teamMemberClient) Update(ctx context.Context, pk TeamMemberPK, input *U
 				o.LockMode = sql.LockNone
 			})
 		}
+		updateConds := sql.BuildCompositePKConditions(c.dialect,
+			[]string{"team_id", "user_id"},
+			[]any{pk.TeamID, pk.UserID})
+		if applyTenancy {
+			updateConds = append(updateConds, sql.Where(c.dialect.QuoteIdentifier("workspace_id")).Eq(resolvedTenant))
+		}
 
+		// RETURNING the tenant column captures the row's own tenant so cache
+		// invalidation and event stamping can rebuild the tenant-scoped key,
+		// independent of how (or whether) the tenant was resolved.
 		query, args := sql.BuildUpdate(c.dialect, c.table, sql.UpdateOptions{
-			SetClauses: setClauses,
-			Conditions: sql.BuildCompositePKConditions(c.dialect,
-				[]string{"team_id", "user_id"},
-				[]any{pk.TeamID, pk.UserID}),
+			SetClauses:       setClauses,
+			Conditions:       updateConds,
+			ReturningColumns: []string{"workspace_id"},
 		})
 
-		execResult, err := conn.Exec(ctx, query, args...)
+		rows, err := conn.Query(ctx, query, args...)
 		if err != nil {
 			return nil, err
 		}
-		matched, err := execResult.RowsAffected()
-		if err != nil {
-			return nil, fmt.Errorf("rows affected: %w", err)
+		var capturedTenant any
+		matched := 0
+		for rows.Next() {
+			var rowTenant uuid.UUID
+			if err := rows.Scan(&rowTenant); err != nil {
+				rows.Close()
+				return nil, fmt.Errorf("scan updated team_member tenant: %w", err)
+			}
+			capturedTenant = rowTenant
+			matched++
 		}
+		if err := rows.Err(); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		rows.Close()
 		if matched == 0 {
 			return nil, ErrNotFound
 		}
 		m.AffectedPKs = []any{pk}
+		m.AffectedTenants = []any{capturedTenant}
 
 		// Empty FieldOptions — caller doesn't need the result
 		if options.FieldOptions != nil && !options.FieldOptions.HasSelectedColumns() {
@@ -618,12 +957,50 @@ func (c *teamMemberClient) UpdateMany(ctx context.Context, items []UpdateTeamMem
 		if len(items) == 0 {
 			return []*TeamMember{}, nil
 		}
+
+		// Resolve the tenant once; per-item mismatch checks use the same value.
+		// applyTenancy=false under SkipTenancy OR under required:false + zero
+		// resolver — the per-item verify-match and per-row WHERE both drop.
+		var resolvedTenant uuid.UUID
+		applyTenancy := false
+		if !options.SkipTenancy {
+			var err error
+			var apply bool
+			resolvedTenant, apply, err = c.resolveTenant(ctx, options.Tenant)
+			if err != nil {
+				return nil, fmt.Errorf("resolve tenant: %w", err)
+			}
+			// Stash on ctx so the per-item verify-match short-circuits via the
+			// cache and the chained terminal GetMany reuses this value
+			// — single-resolve.
+			// An explicit tenant is not cached: it rides on CallOptions, which
+			// every internal call inherits, and resolveTenant honours it ahead of
+			// the cache. A set zero is honoured verbatim where a resolved
+			// zero takes the required branch, and this slot cannot tell them apart.
+			if options.Tenant == nil {
+				ctx = tenancy.WithResolvedTenant(ctx, resolvedTenant)
+			}
+			applyTenancy = apply
+			if apply {
+				for _, item := range items {
+					if v, ok := item.Input.WorkspaceID.Get(); ok && v != resolvedTenant {
+						return nil, tenancy.ErrMismatch
+					}
+				}
+				// Stash for cache hook (single-resolve per operation).
+				m.Tenant = resolvedTenant
+			}
+		}
 		var allPKs []TeamMemberPK
 		// The items whose UPDATE matched a row. Only these record an affected
 		// key: an item whose key matches no row, or that sets no field, wrote
 		// nothing, so no cache entry is invalidated and no event is published
 		// for it.
 		var writtenItems []UpdateTeamMemberItem
+		// Per-item RETURNING captures each updated row's tenant; feeds
+		// m.AffectedTenants so cache invalidation and event stamping rebuild
+		// tenant-scoped keys from the rows themselves.
+		tenantByPK := make(map[TeamMemberPK]any, len(items))
 		for start := 0; start < len(items); start += c.batchSize {
 			end := min(start+c.batchSize, len(items))
 			batch := items[start:end]
@@ -638,18 +1015,27 @@ func (c *teamMemberClient) UpdateMany(ctx context.Context, items []UpdateTeamMem
 				if v, ok := item.Input.AddedAt.Get(); ok {
 					setClauses["added_at"] = v
 				}
+				if !applyTenancy {
+					if v, ok := item.Input.WorkspaceID.Get(); ok {
+						setClauses["workspace_id"] = v
+					}
+				}
 
 				// Skip no-op updates
 				if len(setClauses) == 0 {
 					allPKs = append(allPKs, item.PK)
 					continue
 				}
-
+				itemConds := sql.BuildCompositePKConditions(c.dialect,
+					[]string{"team_id", "user_id"},
+					[]any{item.PK.TeamID, item.PK.UserID})
+				if applyTenancy {
+					itemConds = append(itemConds, sql.Where(c.dialect.QuoteIdentifier("workspace_id")).Eq(resolvedTenant))
+				}
 				query, args := sql.BuildUpdate(c.dialect, c.table, sql.UpdateOptions{
-					SetClauses: setClauses,
-					Conditions: sql.BuildCompositePKConditions(c.dialect,
-						[]string{"team_id", "user_id"},
-						[]any{item.PK.TeamID, item.PK.UserID}),
+					SetClauses:       setClauses,
+					Conditions:       itemConds,
+					ReturningColumns: []string{"workspace_id"},
 				})
 				pgxBatch.Queue(query, args...)
 				batchQueries = append(batchQueries, query)
@@ -658,19 +1044,36 @@ func (c *teamMemberClient) UpdateMany(ctx context.Context, items []UpdateTeamMem
 				allPKs = append(allPKs, item.PK)
 			}
 
-			// Send all UPDATEs — pipelined if supported, sequential otherwise
+			// Send all UPDATEs — pipelined if supported, sequential otherwise.
+			// Each statement RETURNING-projects the row's tenant; the scan
+			// below captures it per queued PK.
 			if pgxBatch.Len() > 0 {
 				if batcher, ok := conn.(interface {
 					SendBatch(ctx context.Context, b *pgx.Batch) pgx.BatchResults
 				}); ok {
 					br := batcher.SendBatch(ctx, pgxBatch)
 					for i := range pgxBatch.Len() {
-						tag, err := br.Exec()
+						rows, err := br.Query()
 						if err != nil {
 							br.Close()
 							return nil, fmt.Errorf("item %v: %w", queuedItems[i].PK, err)
 						}
-						matched := tag.RowsAffected()
+						matched := 0
+						for rows.Next() {
+							var rowTenant uuid.UUID
+							if err := rows.Scan(&rowTenant); err != nil {
+								rows.Close()
+								br.Close()
+								return nil, fmt.Errorf("scan updated team_member tenant: %w", err)
+							}
+							tenantByPK[queuedItems[i].PK] = rowTenant
+							matched++
+						}
+						if err := rows.Err(); err != nil {
+							br.Close()
+							return nil, fmt.Errorf("item %v: %w", queuedItems[i].PK, err)
+						}
+						rows.Close()
 						if matched > 0 {
 							writtenItems = append(writtenItems, queuedItems[i])
 						}
@@ -689,14 +1092,25 @@ func (c *teamMemberClient) UpdateMany(ctx context.Context, items []UpdateTeamMem
 					if err := database.WithTransaction(ctx, c.querier, "update_many_team_member", func(ctx context.Context) error {
 						conn := database.Conn(ctx, c.querier)
 						for i, q := range batchQueries {
-							execResult, err := conn.Exec(ctx, q, batchArgs[i]...)
+							rows, err := conn.Query(ctx, q, batchArgs[i]...)
 							if err != nil {
 								return fmt.Errorf("item %v: %w", queuedItems[i].PK, err)
 							}
-							matched, err := execResult.RowsAffected()
-							if err != nil {
-								return fmt.Errorf("item %v rows affected: %w", queuedItems[i].PK, err)
+							matched := 0
+							for rows.Next() {
+								var rowTenant uuid.UUID
+								if err := rows.Scan(&rowTenant); err != nil {
+									rows.Close()
+									return fmt.Errorf("scan updated team_member tenant: %w", err)
+								}
+								tenantByPK[queuedItems[i].PK] = rowTenant
+								matched++
 							}
+							if err := rows.Err(); err != nil {
+								rows.Close()
+								return fmt.Errorf("item %v: %w", queuedItems[i].PK, err)
+							}
+							rows.Close()
 							if matched > 0 {
 								writtenItems = append(writtenItems, queuedItems[i])
 							}
@@ -710,10 +1124,13 @@ func (c *teamMemberClient) UpdateMany(ctx context.Context, items []UpdateTeamMem
 		}
 
 		affectedPKs := make([]any, len(writtenItems))
+		affectedTenants := make([]any, len(writtenItems))
 		for i, item := range writtenItems {
 			affectedPKs[i] = item.PK
+			affectedTenants[i] = tenantByPK[item.PK]
 		}
 		m.AffectedPKs = affectedPKs
+		m.AffectedTenants = affectedTenants
 		// The published input is narrowed to the written items, so it stays
 		// index-aligned with m.AffectedPKs: each event carries the input that
 		// wrote its row.
@@ -769,10 +1186,44 @@ func (c *teamMemberClient) UpdateWhere(ctx context.Context, filter *TeamMemberFi
 			return nil, ErrEmptyFilter
 		}
 
+		// Tenancy filter + mismatch check. applyTenancy=false
+		// under SkipTenancy OR under required:false + zero resolver — the
+		// filter is not AND'd and the SET-clause tenant override below fires
+		// (only meaningful when the tenant column is NOT in the PK; when it
+		// is, the column is excluded from UpdateInputFields entirely).
+		applyTenancy := false
+		if !options.SkipTenancy {
+			resolvedTenant, apply, err := c.resolveTenant(ctx, options.Tenant)
+			if err != nil {
+				return nil, fmt.Errorf("resolve tenant: %w", err)
+			}
+			// Stash on ctx so the chained terminal GetMany reuses this value
+			// — single-resolve.
+			// An explicit tenant is not cached: it rides on CallOptions, which
+			// every internal call inherits, and resolveTenant honours it ahead of
+			// the cache. A set zero is honoured verbatim where a resolved
+			// zero takes the required branch, and this slot cannot tell them apart.
+			if options.Tenant == nil {
+				ctx = tenancy.WithResolvedTenant(ctx, resolvedTenant)
+			}
+			applyTenancy = apply
+			if apply {
+				if v, ok := input.WorkspaceID.Get(); ok && v != resolvedTenant {
+					return nil, tenancy.ErrMismatch
+				}
+				conds = append(conds, sql.Where(c.dialect.QuoteIdentifier("workspace_id")).Eq(resolvedTenant))
+			}
+		}
+
 		// Build SET clause (same per-field checks as Update)
 		setClauses := make(map[string]any)
 		if v, ok := input.AddedAt.Get(); ok {
 			setClauses["added_at"] = v
+		}
+		if !applyTenancy {
+			if v, ok := input.WorkspaceID.Get(); ok {
+				setClauses["workspace_id"] = v
+			}
 		}
 
 		// No fields set — return matching entities unchanged
@@ -794,7 +1245,7 @@ func (c *teamMemberClient) UpdateWhere(ctx context.Context, filter *TeamMemberFi
 		query, args := sql.BuildUpdate(c.dialect, c.table, sql.UpdateOptions{
 			SetClauses:       setClauses,
 			Conditions:       conds,
-			ReturningColumns: []string{"team_id", "user_id"},
+			ReturningColumns: []string{"team_id", "user_id", "workspace_id"},
 		})
 
 		rows, err := conn.Query(ctx, query, args...)
@@ -804,12 +1255,15 @@ func (c *teamMemberClient) UpdateWhere(ctx context.Context, filter *TeamMemberFi
 		defer rows.Close()
 
 		var pks []TeamMemberPK
+		var affectedTenants []any
 		for rows.Next() {
 			var pk TeamMemberPK
-			if err := rows.Scan(&pk.TeamID, &pk.UserID); err != nil {
+			var rowTenant uuid.UUID
+			if err := rows.Scan(&pk.TeamID, &pk.UserID, &rowTenant); err != nil {
 				return nil, fmt.Errorf("scan updated team_member pk: %w", err)
 			}
 			pks = append(pks, pk)
+			affectedTenants = append(affectedTenants, rowTenant)
 		}
 		if err := rows.Err(); err != nil {
 			return nil, err
@@ -818,6 +1272,7 @@ func (c *teamMemberClient) UpdateWhere(ctx context.Context, filter *TeamMemberFi
 			return nil, nil
 		}
 		m.AffectedPKs = toAnySlice(pks)
+		m.AffectedTenants = affectedTenants
 
 		// Empty FieldOptions — skip fetch
 		if options.FieldOptions != nil && !options.FieldOptions.HasSelectedColumns() {
@@ -853,24 +1308,53 @@ func (c *teamMemberClient) HardDelete(ctx context.Context, pk TeamMemberPK, opts
 		PK: pk, CallOptions: options,
 	}, func(ctx context.Context, m *hook.MutationContext) (any, error) {
 		conn := database.Conn(ctx, c.querier)
+		hardConds := sql.BuildCompositePKConditions(c.dialect,
+			[]string{"team_id", "user_id"},
+			[]any{pk.TeamID, pk.UserID})
+		if !options.SkipTenancy {
+			resolvedTenant, apply, err := c.resolveTenant(ctx, options.Tenant)
+			if err != nil {
+				return nil, fmt.Errorf("resolve tenant: %w", err)
+			}
+			if apply {
+				hardConds = append(hardConds, sql.Where(c.dialect.QuoteIdentifier("workspace_id")).Eq(resolvedTenant))
+				// Stash for cache hook (single-resolve per operation).
+				m.Tenant = resolvedTenant
+			}
+		}
+		// RETURNING the tenant column captures the row's own tenant so cache
+		// invalidation and event stamping can rebuild the tenant-scoped key,
+		// independent of how (or whether) the tenant was resolved.
 		query, args := sql.BuildHardDelete(c.dialect, c.table, sql.HardDeleteOptions{
-			Conditions: sql.BuildCompositePKConditions(c.dialect,
-				[]string{"team_id", "user_id"},
-				[]any{pk.TeamID, pk.UserID}),
+			Conditions:       hardConds,
+			ReturningColumns: []string{"workspace_id"},
 		})
 
-		execResult, err := conn.Exec(ctx, query, args...)
+		rows, err := conn.Query(ctx, query, args...)
 		if err != nil {
 			return nil, err
 		}
-		matched, err := execResult.RowsAffected()
-		if err != nil {
-			return nil, fmt.Errorf("rows affected: %w", err)
+		var capturedTenant any
+		var matched int
+		for rows.Next() {
+			var rowTenant uuid.UUID
+			if err := rows.Scan(&rowTenant); err != nil {
+				rows.Close()
+				return nil, fmt.Errorf("scan deleted team_member tenant: %w", err)
+			}
+			capturedTenant = rowTenant
+			matched++
 		}
+		if err := rows.Err(); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		rows.Close()
 		// A key that matched no row wrote nothing: it records no affected
 		// key, so no cache entry is invalidated and no event is published.
 		if matched > 0 {
 			m.AffectedPKs = []any{pk}
+			m.AffectedTenants = []any{capturedTenant}
 		}
 		return nil, nil
 	})
@@ -889,9 +1373,23 @@ func (c *teamMemberClient) HardDeleteMany(ctx context.Context, pks []TeamMemberP
 	}, func(ctx context.Context, m *hook.MutationContext) (any, error) {
 		conn := database.Conn(ctx, c.querier)
 
-		// The keys the sub-batches below write. A listed key that matches no
-		// row stays out of it, so it records no affected key.
-		written := make(map[TeamMemberPK]struct{}, len(pks))
+		var scopeConds []sql.Condition
+		if !options.SkipTenancy {
+			resolvedTenant, apply, err := c.resolveTenant(ctx, options.Tenant)
+			if err != nil {
+				return nil, fmt.Errorf("resolve tenant: %w", err)
+			}
+			if apply {
+				scopeConds = append(scopeConds, sql.Where(c.dialect.QuoteIdentifier("workspace_id")).Eq(resolvedTenant))
+				// Stash for cache hook (single-resolve per operation).
+				m.Tenant = resolvedTenant
+			}
+		}
+
+		// Every sub-batch records the tenant of each row it touches, so cache
+		// invalidation and event stamping rebuild tenant-scoped keys from the
+		// rows themselves.
+		tenantByPK := make(map[TeamMemberPK]any, len(pks))
 
 		// One statement per sub-batch of c.batchSize keys. A failing sub-batch
 		// returns at once, and the sub-batches before it stay applied.
@@ -904,42 +1402,48 @@ func (c *teamMemberClient) HardDeleteMany(ctx context.Context, pks []TeamMemberP
 			hardConds := []sql.Condition{
 				sql.BuildCompositePKBatchCondition(c.dialect, []string{"team_id", "user_id"}, pkValues),
 			}
+			hardConds = append(hardConds, scopeConds...)
 
-			// RETURNING the key columns names the rows this sub-batch wrote.
 			query, args := sql.BuildHardDelete(c.dialect, c.table, sql.HardDeleteOptions{
 				Conditions:       hardConds,
-				ReturningColumns: []string{"team_id", "user_id"},
+				ReturningColumns: []string{"team_id", "user_id", "workspace_id"},
 			})
 			rows, err := conn.Query(ctx, query, args...)
 			if err != nil {
 				return nil, err
 			}
-			batchKeys := make(map[TeamMemberPK]struct{}, end-start)
+			batchTenants := make(map[TeamMemberPK]any, end-start)
 			for rows.Next() {
 				var rowPK TeamMemberPK
-				if err := rows.Scan(&rowPK.TeamID, &rowPK.UserID); err != nil {
+				var rowTenant uuid.UUID
+				if err := rows.Scan(&rowPK.TeamID, &rowPK.UserID, &rowTenant); err != nil {
 					rows.Close()
-					return nil, fmt.Errorf("scan deleted team_member key: %w", err)
+					return nil, fmt.Errorf("scan deleted team_member tenant: %w", err)
 				}
-				batchKeys[rowPK] = struct{}{}
+				batchTenants[rowPK] = rowTenant
 			}
 			if err := rows.Err(); err != nil {
 				rows.Close()
 				return nil, err
 			}
 			rows.Close()
-			c.recordWrittenKeys(written, pks[start:end], batchKeys)
+			c.recordWrittenTenants(tenantByPK, pks[start:end], batchTenants)
 		}
 
 		// A listed key whose row this call did not write records no affected
 		// key, so no cache entry is invalidated and no event is published for it.
 		affectedPKs := make([]any, 0, len(pks))
+		affectedTenants := make([]any, 0, len(pks))
 		for _, key := range pks {
-			if _, ok := written[key]; ok {
-				affectedPKs = append(affectedPKs, key)
+			tenant, ok := tenantByPK[key]
+			if !ok {
+				continue
 			}
+			affectedPKs = append(affectedPKs, key)
+			affectedTenants = append(affectedTenants, tenant)
 		}
 		m.AffectedPKs = affectedPKs
+		m.AffectedTenants = affectedTenants
 		return nil, nil
 	})
 	if err != nil {
@@ -963,11 +1467,20 @@ func (c *teamMemberClient) HardDeleteWhere(ctx context.Context, filter *TeamMemb
 		if len(conds) == 0 {
 			return nil, ErrEmptyFilter
 		}
+		if !options.SkipTenancy {
+			resolvedTenant, apply, err := c.resolveTenant(ctx, options.Tenant)
+			if err != nil {
+				return nil, fmt.Errorf("resolve tenant: %w", err)
+			}
+			if apply {
+				conds = append(conds, sql.Where(c.dialect.QuoteIdentifier("workspace_id")).Eq(resolvedTenant))
+			}
+		}
 
 		// DELETE with RETURNING — get affected composite PKs in one round-trip
 		query, args := sql.BuildHardDelete(c.dialect, c.table, sql.HardDeleteOptions{
 			Conditions:       conds,
-			ReturningColumns: []string{"team_id", "user_id"},
+			ReturningColumns: []string{"team_id", "user_id", "workspace_id"},
 		})
 
 		rows, err := conn.Query(ctx, query, args...)
@@ -977,17 +1490,21 @@ func (c *teamMemberClient) HardDeleteWhere(ctx context.Context, filter *TeamMemb
 		defer rows.Close()
 
 		var pks []TeamMemberPK
+		var affectedTenants []any
 		for rows.Next() {
 			var pk TeamMemberPK
-			if err := rows.Scan(&pk.TeamID, &pk.UserID); err != nil {
+			var rowTenant uuid.UUID
+			if err := rows.Scan(&pk.TeamID, &pk.UserID, &rowTenant); err != nil {
 				return nil, fmt.Errorf("scan deleted team_member pk: %w", err)
 			}
 			pks = append(pks, pk)
+			affectedTenants = append(affectedTenants, rowTenant)
 		}
 		if err := rows.Err(); err != nil {
 			return nil, err
 		}
 		m.AffectedPKs = toAnySlice(pks)
+		m.AffectedTenants = affectedTenants
 		return nil, nil
 	})
 	if err != nil {
@@ -996,29 +1513,49 @@ func (c *teamMemberClient) HardDeleteWhere(ctx context.Context, filter *TeamMemb
 	return nil
 }
 
-// recordWrittenKeys adds to written the keys of listed, one sub-batch, that
-// its statement wrote; rowKeys holds the keys of the rows the statement
-// matched. The database matches keys under its own equality — a
-// case-insensitive collation, blank-padded CHAR, a timestamp's stored
-// precision — so a row it matched can carry a key that differs under Go ==
-// from every listed key. When it matched more rows than listed keys were
-// found among rowKeys, every key of listed is recorded: a superset, so no
-// written row goes without its cache invalidation and event.
-func (c *teamMemberClient) recordWrittenKeys(written map[TeamMemberPK]struct{}, listed []TeamMemberPK, rowKeys map[TeamMemberPK]struct{}) {
-	found := make(map[TeamMemberPK]struct{}, len(rowKeys))
+// recordWrittenTenants adds to tenantByPK the keys of listed, one sub-batch,
+// that its statement wrote, each with its row's tenant; rowTenants holds the
+// tenant of every row the statement matched, by that row's key. The database
+// matches keys under its own equality — a case-insensitive collation,
+// blank-padded CHAR, a timestamp's stored precision — so a row it matched can
+// carry a key that differs under Go == from every listed key. When it matched
+// more rows than listed keys were found among rowTenants, every key of listed
+// is recorded: a superset, so no written row goes without its cache
+// invalidation and event. A key found under == keeps its own row's tenant;
+// any other takes the tenant the remaining rows share, or none when they
+// carry more than one.
+func (c *teamMemberClient) recordWrittenTenants(tenantByPK map[TeamMemberPK]any, listed []TeamMemberPK, rowTenants map[TeamMemberPK]any) {
+	found := make(map[TeamMemberPK]struct{}, len(rowTenants))
 	for _, key := range listed {
-		if _, ok := rowKeys[key]; ok {
+		if tenant, ok := rowTenants[key]; ok {
+			tenantByPK[key] = tenant
 			found[key] = struct{}{}
 		}
 	}
-	if len(found) < len(rowKeys) {
-		for _, key := range listed {
-			written[key] = struct{}{}
-		}
+	if len(found) == len(rowTenants) {
 		return
 	}
-	for key := range found {
-		written[key] = struct{}{}
+
+	// The tenant of the rows no listed key found under ==, when they share one.
+	// Tenants compare by their %v form, the form tenant-scoped cache keys use.
+	var shared any
+	for key, tenant := range rowTenants {
+		if _, ok := found[key]; ok {
+			continue
+		}
+		if shared == nil {
+			shared = tenant
+			continue
+		}
+		if fmt.Sprint(shared) != fmt.Sprint(tenant) {
+			shared = nil
+			break
+		}
+	}
+	for _, key := range listed {
+		if _, ok := tenantByPK[key]; !ok {
+			tenantByPK[key] = shared
+		}
 	}
 }
 
@@ -1026,12 +1563,14 @@ func (c *teamMemberClient) recordWrittenKeys(written map[TeamMemberPK]struct{}, 
 type TeamMemberConflictTarget int
 
 const (
-	TeamMemberConflictPK TeamMemberConflictTarget = iota // PRIMARY KEY (team_id, user_id)
+	TeamMemberConflictPK                      TeamMemberConflictTarget = iota // PRIMARY KEY (team_id, user_id)
+	TeamMemberConflictWorkspaceIDTeamIDUserID                                 // UNIQUE (workspace_id, team_id, user_id)
 )
 
 // teamMemberConflictColumns maps each conflict target to its column set.
 var teamMemberConflictColumns = map[TeamMemberConflictTarget][]string{
-	TeamMemberConflictPK: {"team_id", "user_id"},
+	TeamMemberConflictPK:                      {"team_id", "user_id"},
+	TeamMemberConflictWorkspaceIDTeamIDUserID: {"workspace_id", "team_id", "user_id"},
 }
 
 // Upsert inserts a team_member or updates it if a row matching the conflict target already
@@ -1059,6 +1598,41 @@ func (c *teamMemberClient) Upsert(ctx context.Context, input *CreateTeamMemberIn
 
 		columns := []string{"team_id", "user_id"}
 		args := []any{input.TeamID, input.UserID}
+		// Tenancy auto-set + mismatch check. apply=false under
+		// tenancy.required:false + zero resolver falls through to the
+		// caller-supplied value branch.
+		if !options.SkipTenancy {
+			resolvedTenant, apply, err := c.resolveTenant(ctx, options.Tenant)
+			if err != nil {
+				return nil, fmt.Errorf("resolve tenant: %w", err)
+			}
+			// Stash on ctx so the chained terminal read reuses this value
+			// (single-resolve). The resolver's answer is cached, not
+			// this table's reading of it.
+			// An explicit tenant is not cached: it rides on CallOptions, which
+			// every internal call inherits, and resolveTenant honours it ahead of
+			// the cache. A set zero is honoured verbatim where a resolved
+			// zero takes the required branch, and this slot cannot tell them apart.
+			if options.Tenant == nil {
+				ctx = tenancy.WithResolvedTenant(ctx, resolvedTenant)
+			}
+			if apply {
+				if v, ok := input.WorkspaceID.Get(); ok && v != resolvedTenant {
+					return nil, tenancy.ErrMismatch
+				}
+				columns = append(columns, "workspace_id")
+				args = append(args, resolvedTenant)
+				// Stash for cache hook (single-resolve per operation).
+				m.Tenant = resolvedTenant
+			} else if v, ok := input.WorkspaceID.Get(); ok {
+				// required:false + zero resolver — caller-supplied value used.
+				columns = append(columns, "workspace_id")
+				args = append(args, v)
+			}
+		} else if v, ok := input.WorkspaceID.Get(); ok {
+			columns = append(columns, "workspace_id")
+			args = append(args, v)
+		}
 
 		if v, ok := input.AddedAt.Get(); ok {
 			columns = append(columns, "added_at")
@@ -1069,20 +1643,65 @@ func (c *teamMemberClient) Upsert(ctx context.Context, input *CreateTeamMemberIn
 		// from the UPDATE-set half of the conflict clause — a
 		// row's tenant is not a mutable attribute under normal operation.
 		conflictColumns := teamMemberConflictColumns[target]
-		updateColumns := excludeColumns(columns, append(conflictColumns, "team_id", "user_id"))
+		updateColumns := excludeColumns(columns, append(conflictColumns, "team_id", "user_id", "workspace_id"))
 
+		// RETURNING the tenant column captures the row's own tenant — on the
+		// conflict-update path the existing row keeps its tenant, so the
+		// returned value (not the input) is the correct cache-key tenant.
 		query, queryArgs := sql.BuildInsert(c.dialect, c.table, sql.InsertOptions{
 			Columns:             columns,
 			Values:              args,
 			UpsertConflictKeys:  conflictColumns,
 			UpsertUpdateColumns: updateColumns,
+			ReturningColumns:    []string{"workspace_id"},
 		})
-		_, err := conn.Exec(ctx, query, queryArgs...)
-		if err != nil {
-			return nil, err
+		var capturedTenant any
+		{
+			rows, err := conn.Query(ctx, query, queryArgs...)
+			if err != nil {
+				return nil, err
+			}
+			var rowTenant uuid.UUID
+			found := rows.Next()
+			if found {
+				err = rows.Scan(&rowTenant)
+			}
+			if err == nil {
+				err = rows.Err()
+			}
+			// Closed before the fallback below issues its own statement: conn
+			// may be a transaction, where an open result set blocks the next
+			// statement on the same connection.
+			if cerr := rows.Close(); err == nil {
+				err = cerr
+			}
+			if err != nil {
+				return nil, err
+			}
+			if found {
+				capturedTenant = rowTenant
+			} else {
+				// A conflict target covering every inserted column leaves
+				// nothing to set, so the dialect emitted DO NOTHING — which
+				// returns no row. The PK is caller-known on this
+				// branch, so the conflicting row's tenant is read back by PK.
+				// One column, so there is no scan-order hazard to guard.
+				tenantQuery, tenantArgs := sql.BuildSelect(c.dialect, c.table, sql.SelectOptions{
+					Columns: []string{"workspace_id"},
+					Conditions: sql.BuildCompositePKConditions(c.dialect,
+						[]string{"team_id", "user_id"},
+						[]any{input.TeamID, input.UserID}),
+					Limit: new(1),
+				})
+				if err := conn.QueryRow(ctx, tenantQuery, tenantArgs...).Scan(&rowTenant); err != nil {
+					return nil, fmt.Errorf("capture tenant: %w", err)
+				}
+				capturedTenant = rowTenant
+			}
 		}
 
 		m.AffectedPKs = []any{TeamMemberPK{TeamID: input.TeamID, UserID: input.UserID}}
+		m.AffectedTenants = []any{capturedTenant}
 
 		// Empty FieldOptions — caller doesn't need the result
 		if options.FieldOptions != nil && !options.FieldOptions.HasSelectedColumns() {
@@ -1146,6 +1765,36 @@ func (c *teamMemberClient) UpsertMany(ctx context.Context, inputs []*CreateTeamM
 		}
 		conn := database.Conn(ctx, c.querier)
 
+		// Resolve the tenant once for the entire batch.
+		// applyTenancy encodes both SkipTenancy AND the required:false +
+		// zero-resolver path: when false, the per-input verify-match and
+		// auto-set blocks below fall through to caller-supplied values.
+		var resolvedTenant uuid.UUID
+		applyTenancy := false
+		if !options.SkipTenancy {
+			var err error
+			var apply bool
+			resolvedTenant, apply, err = c.resolveTenant(ctx, options.Tenant)
+			if err != nil {
+				return nil, fmt.Errorf("resolve tenant: %w", err)
+			}
+			// Stash on ctx so the chained terminal GetMany reuses this value
+			// instead of re-invoking the user resolver.
+			// An explicit tenant is not cached: it rides on CallOptions, which
+			// every internal call inherits, and resolveTenant honours it ahead of
+			// the cache. A set zero is honoured verbatim where a resolved
+			// zero takes the required branch, and this slot cannot tell them apart.
+			if options.Tenant == nil {
+				ctx = tenancy.WithResolvedTenant(ctx, resolvedTenant)
+			}
+			applyTenancy = apply
+			if apply {
+				// Stash resolved tenant on MutationContext for the cache hook
+				// (single-resolve per operation).
+				m.Tenant = resolvedTenant
+			}
+		}
+
 		// Resolve conflict target and update columns. Tenant column is excluded
 		// from the UPDATE-set half of the conflict clause — a
 		// row's tenant is not a mutable attribute under normal operation.
@@ -1155,9 +1804,9 @@ func (c *teamMemberClient) UpsertMany(ctx context.Context, inputs []*CreateTeamM
 		// the OK packet, and after a batch that packet names at most one row.
 		// Nothing here reads LastInsertId, so requesting it would
 		// only add a misleading assignment to the SET list.
-		columns := []string{"team_id", "user_id", "added_at"}
+		columns := []string{"team_id", "user_id", "added_at", "workspace_id"}
 		conflictColumns := teamMemberConflictColumns[target]
-		updateColumns := excludeColumns(columns, append(conflictColumns, "team_id", "user_id"))
+		updateColumns := excludeColumns(columns, append(conflictColumns, "team_id", "user_id", "workspace_id"))
 		conflictPositions, haveConflictKey := upsertConflictPositions(columns, conflictColumns)
 
 		// One value row per input, built before any statement runs: the dedupe
@@ -1166,16 +1815,38 @@ func (c *teamMemberClient) UpsertMany(ctx context.Context, inputs []*CreateTeamM
 		valueRows := make([][]any, 0, len(inputs))
 		rowInputs := make([]*CreateTeamMemberInput, 0, len(inputs))
 		rowPKs := make([]TeamMemberPK, 0, len(inputs))
+		// Filled from the rows themselves after each sub-batch; feeds
+		// m.AffectedTenants so cache invalidation and event stamping rebuild
+		// tenant-scoped keys from each row's own tenant value. A
+		// conflict leaves the existing row's tenant in place, so the input's
+		// value is not authoritative the way it is for CreateMany.
+		var rowTenants []any
 		for _, input := range inputs {
 			var addedAt any = sql.Default
 			if v, ok := input.AddedAt.Get(); ok {
 				addedAt = v
+			}
+			// Tenancy auto-set + mismatch check.
+			// applyTenancy=false under SkipTenancy OR under required:false
+			// + zero resolver — caller-supplied tenant is used, else the DB
+			// NOT NULL constraint surfaces.
+			var workspaceID any
+			if applyTenancy {
+				if v, ok := input.WorkspaceID.Get(); ok && v != resolvedTenant {
+					return nil, tenancy.ErrMismatch
+				}
+				workspaceID = resolvedTenant
+			} else if v, ok := input.WorkspaceID.Get(); ok {
+				workspaceID = v
+			} else {
+				return nil, fmt.Errorf("tenant column workspace_id required when SkipTenancy is set or resolver is absent")
 			}
 
 			valueRows = append(valueRows, []any{
 				input.TeamID,
 				input.UserID,
 				addedAt,
+				workspaceID,
 			})
 			rowInputs = append(rowInputs, input)
 			rowPKs = append(rowPKs, TeamMemberPK{TeamID: input.TeamID, UserID: input.UserID})
@@ -1246,9 +1917,28 @@ func (c *teamMemberClient) UpsertMany(ctx context.Context, inputs []*CreateTeamM
 			} else if err := writeGroups(ctx, conn); err != nil {
 				return nil, err
 			}
+
+			// The conflicting row keeps its own tenant, and no dialect can
+			// report it from the statement — RETURNING yields nothing on the
+			// DO NOTHING branch — so the sub-batch is read back by primary key.
+			batchPKs := rowPKs[start:end]
+			pkValueSets := make([][]any, len(batchPKs))
+			for i, pk := range batchPKs {
+				pkValueSets[i] = []any{pk.TeamID, pk.UserID}
+			}
+			tenantByPK, err := c.captureAffectedTenants(ctx, conn, []sql.Condition{
+				sql.BuildCompositePKBatchCondition(c.dialect, []string{"team_id", "user_id"}, pkValueSets),
+			})
+			if err != nil {
+				return nil, fmt.Errorf("capture tenants: %w", err)
+			}
+			for _, pk := range batchPKs {
+				rowTenants = append(rowTenants, tenantByPK[pk])
+			}
 		}
 
 		m.AffectedPKs = toAnySlice(rowPKs)
+		m.AffectedTenants = rowTenants
 
 		// Empty FieldOptions — skip fetch
 		if options.FieldOptions != nil && !options.FieldOptions.HasSelectedColumns() {
@@ -1299,6 +1989,18 @@ func (c *teamMemberClient) Exists(ctx context.Context, pk TeamMemberPK, opts ...
 			[]string{"team_id", "user_id"},
 			[]any{pk.TeamID, pk.UserID})
 
+		// Tenancy auto-filter. apply=false under tenancy.required:false
+		// + zero resolver skips both the verify-match and the filter append.
+		if !options.SkipTenancy {
+			resolvedTenant, apply, err := c.resolveTenant(ctx, options.Tenant)
+			if err != nil {
+				return false, fmt.Errorf("resolve tenant: %w", err)
+			}
+			if apply {
+				conds = append(conds, sql.Where(c.dialect.QuoteIdentifier("workspace_id")).Eq(resolvedTenant))
+			}
+		}
+
 		query, args := sql.BuildExists(c.dialect, c.table, conds)
 
 		var exists bool
@@ -1328,6 +2030,18 @@ func (c *teamMemberClient) ExistsWhere(ctx context.Context, filter *TeamMemberFi
 		var conds []sql.Condition
 		if filter != nil {
 			conds = filter.ToConditions(c.dialect)
+		}
+
+		// Tenancy auto-filter. apply=false under tenancy.required:false
+		// + zero resolver skips the filter (cross-tenant probe).
+		if !options.SkipTenancy {
+			resolvedTenant, apply, err := c.resolveTenant(ctx, options.Tenant)
+			if err != nil {
+				return false, fmt.Errorf("resolve tenant: %w", err)
+			}
+			if apply {
+				conds = append(conds, sql.Where(c.dialect.QuoteIdentifier("workspace_id")).Eq(resolvedTenant))
+			}
 		}
 
 		query, args := sql.BuildExists(c.dialect, c.table, conds)
@@ -1360,6 +2074,18 @@ func (c *teamMemberClient) Count(ctx context.Context, filter *TeamMemberFilter, 
 		var conds []sql.Condition
 		if filter != nil {
 			conds = filter.ToConditions(c.dialect)
+		}
+
+		// Tenancy auto-filter. apply=false under tenancy.required:false
+		// + zero resolver skips the filter (cross-tenant count).
+		if !options.SkipTenancy {
+			resolvedTenant, apply, err := c.resolveTenant(ctx, options.Tenant)
+			if err != nil {
+				return int64(0), fmt.Errorf("resolve tenant: %w", err)
+			}
+			if apply {
+				conds = append(conds, sql.Where(c.dialect.QuoteIdentifier("workspace_id")).Eq(resolvedTenant))
+			}
 		}
 
 		query, args := sql.BuildCount(c.dialect, c.table, conds)
@@ -1566,6 +2292,8 @@ func encodeTeamMemberCursor(keys []string, t *TeamMember) (string, error) {
 			out["user_id"] = t.UserID
 		case "added_at":
 			out["added_at"] = t.AddedAt
+		case "workspace_id":
+			out["workspace_id"] = t.WorkspaceID
 		}
 	}
 	data, err := json.Marshal(out)
@@ -1614,9 +2342,10 @@ type StreamTeamMembersInput struct {
 // StreamTeamMemberFieldOptions controls scalar column selection for team_members streams.
 // Stream cannot load relationships — only scalar columns are selectable.
 type StreamTeamMemberFieldOptions struct {
-	TeamID  bool `json:"team_id"`
-	UserID  bool `json:"user_id"`
-	AddedAt bool `json:"added_at"`
+	TeamID      bool `json:"team_id"`
+	UserID      bool `json:"user_id"`
+	AddedAt     bool `json:"added_at"`
+	WorkspaceID bool `json:"workspace_id"`
 }
 
 // Columns returns the SQL column names for all selected columns, sorted alphabetically
@@ -1632,6 +2361,9 @@ func (fo *StreamTeamMemberFieldOptions) Columns() []string {
 	if fo.AddedAt {
 		cols = append(cols, "added_at")
 	}
+	if fo.WorkspaceID {
+		cols = append(cols, "workspace_id")
+	}
 	slices.Sort(cols)
 	return cols
 }
@@ -1645,6 +2377,9 @@ func (fo *StreamTeamMemberFieldOptions) HasSelectedColumns() bool {
 		return true
 	}
 	if fo.AddedAt {
+		return true
+	}
+	if fo.WorkspaceID {
 		return true
 	}
 	return false
@@ -1664,6 +2399,8 @@ func scanTeamMemberRow(rows database.Rows, columns []string) (*TeamMember, error
 			targets[idx] = &t.UserID
 		case "added_at":
 			targets[idx] = &t.AddedAt
+		case "workspace_id":
+			targets[idx] = &t.WorkspaceID
 		}
 	}
 
@@ -1752,6 +2489,17 @@ func (c *teamMemberClient) Stream(ctx context.Context, input *StreamTeamMembersI
 				conds = input.Filter.ToConditions(c.dialect)
 			}
 
+			if !options.SkipTenancy {
+				resolvedTenant, apply, err := c.resolveTenant(ctx, options.Tenant)
+				if err != nil {
+					emit(nil, fmt.Errorf("resolve tenant: %w", err))
+					return nil, nil
+				}
+				if apply {
+					conds = append(conds, sql.Where(c.dialect.QuoteIdentifier("workspace_id")).Eq(resolvedTenant))
+				}
+			}
+
 			query, args := sql.BuildSelect(c.dialect, c.table, sql.SelectOptions{
 				Columns:    columns,
 				Conditions: conds,
@@ -1790,12 +2538,13 @@ func (c *teamMemberClient) Stream(ctx context.Context, input *StreamTeamMembersI
 
 // TeamMemberFilter provides type-safe filtering for the team_members table.
 type TeamMemberFilter struct {
-	AddedAt *comparator.Time    `json:"added_at"`
-	TeamID  *comparator.ID      `json:"team_id"`
-	UserID  *comparator.ID      `json:"user_id"`
-	PKs     []TeamMemberPK      `json:"pks"`
-	And     []*TeamMemberFilter `json:"and"`
-	Or      []*TeamMemberFilter `json:"or"`
+	AddedAt     *comparator.Time    `json:"added_at"`
+	TeamID      *comparator.ID      `json:"team_id"`
+	UserID      *comparator.ID      `json:"user_id"`
+	WorkspaceID *comparator.ID      `json:"workspace_id"`
+	PKs         []TeamMemberPK      `json:"pks"`
+	And         []*TeamMemberFilter `json:"and"`
+	Or          []*TeamMemberFilter `json:"or"`
 }
 
 // ToConditions converts the filter to a slice of SQL conditions.
@@ -1823,6 +2572,10 @@ func (f *TeamMemberFilter) ToConditions(dialect sql.Dialect, opts ...FilterOptio
 
 	if f.UserID != nil {
 		conds = append(conds, f.UserID.Parse(dialect.QuoteIdentifier("user_id"), dialect)...)
+	}
+
+	if f.WorkspaceID != nil {
+		conds = append(conds, f.WorkspaceID.Parse(dialect.QuoteIdentifier("workspace_id"), dialect)...)
 	}
 
 	if len(f.PKs) > 0 {
@@ -1869,9 +2622,10 @@ func (f *TeamMemberFilter) ToConditions(dialect sql.Dialect, opts ...FilterOptio
 
 // TeamMemberFieldOptions controls column selection and relationship loading for team_members queries.
 type TeamMemberFieldOptions struct {
-	TeamID  bool `json:"team_id"`
-	UserID  bool `json:"user_id"`
-	AddedAt bool `json:"added_at"`
+	TeamID      bool `json:"team_id"`
+	UserID      bool `json:"user_id"`
+	AddedAt     bool `json:"added_at"`
+	WorkspaceID bool `json:"workspace_id"`
 }
 
 // Columns returns the SQL column names for all selected columns, sorted alphabetically
@@ -1887,6 +2641,9 @@ func (fo *TeamMemberFieldOptions) Columns() []string {
 	if fo.AddedAt {
 		cols = append(cols, "added_at")
 	}
+	if fo.WorkspaceID {
+		cols = append(cols, "workspace_id")
+	}
 	slices.Sort(cols)
 	return cols
 }
@@ -1894,9 +2651,10 @@ func (fo *TeamMemberFieldOptions) Columns() []string {
 // ColumnMap returns a mapping of Go field name to SQL column name for all columns.
 func (fo *TeamMemberFieldOptions) ColumnMap() map[string]string {
 	return map[string]string{
-		"TeamID":  "team_id",
-		"UserID":  "user_id",
-		"AddedAt": "added_at",
+		"TeamID":      "team_id",
+		"UserID":      "user_id",
+		"AddedAt":     "added_at",
+		"WorkspaceID": "workspace_id",
 	}
 }
 
@@ -1911,6 +2669,9 @@ func (fo *TeamMemberFieldOptions) HasSelectedColumns() bool {
 	if fo.AddedAt {
 		return true
 	}
+	if fo.WorkspaceID {
+		return true
+	}
 	return false
 }
 
@@ -1922,6 +2683,8 @@ type CreateTeamMemberInput struct {
 	UserID uuid.UUID `json:"user_id"`
 	// AddedAt - When the user joined the team
 	AddedAt omittable.Value[time.Time] `json:"added_at,omitzero"`
+	// WorkspaceID - Owning workspace (tenant column); equals the team's
+	WorkspaceID omittable.Value[uuid.UUID] `json:"workspace_id,omitzero"`
 }
 
 // UpdateTeamMemberInput holds the fields for updating a team_members record.
@@ -1929,6 +2692,8 @@ type CreateTeamMemberInput struct {
 type UpdateTeamMemberInput struct {
 	// AddedAt - When the user joined the team
 	AddedAt omittable.Value[time.Time] `json:"added_at,omitzero"`
+	// WorkspaceID - Owning workspace (tenant column); equals the team's
+	WorkspaceID omittable.Value[uuid.UUID] `json:"workspace_id,omitzero"`
 }
 
 // GetTeamMembersInput holds query parameters for retrieving team_members records.

@@ -43,6 +43,7 @@ The unit of work; belongs to a project, may have a parent task
 | `idx_tasks_project` | project_id |  | btree |  |
 | `idx_tasks_workspace_status` | workspace_id, status |  | btree |  |
 | `tasks_pkey` | id | yes | btree |  |
+| `tasks_ws_id_key` | workspace_id, id | yes | btree |  |
 
 ## Relationships
 
