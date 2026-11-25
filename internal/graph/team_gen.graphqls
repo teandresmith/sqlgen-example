@@ -22,6 +22,8 @@ type Team {
   projects: [Project!]!
   "many-to-many relationship with the users table."
   users: [User!]!
+  "one-to-one relationship with the workspaces table."
+  workspace: Workspace
 }
 
 type TeamConnection {
@@ -44,6 +46,7 @@ type TeamListResult {
 }
 
 input TeamFilter {
+  id: IDComparator
   workspaceID: IDComparator
   name: StringComparator
   slug: StringComparator
@@ -72,12 +75,12 @@ input TeamSort {
   direction: SortDirection!
 }
 input CreateTeamInput {
-  workspaceID: UUID!
+  workspaceID: UUID
   name: String!
   slug: String!
   description: String
-  createdAt: Time!
-  updatedAt: Time!
+  createdAt: Time
+  updatedAt: Time
 }
 input UpdateTeamInput {
   name: String
@@ -116,11 +119,10 @@ input TeamProjectsUpdateNested {
 }
 
 input TeamProjectsCreateInput {
-  workspaceID: UUID!
   name: String!
   description: String
-  createdAt: Time!
-  updatedAt: Time!
+  createdAt: Time
+  updatedAt: Time
   deletedAt: Time
 }
 

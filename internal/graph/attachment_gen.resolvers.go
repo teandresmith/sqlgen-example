@@ -7,57 +7,29 @@ package graph
 
 import (
 	"context"
-	uuid1 "uuid"
+	"uuid"
 
 	"github.com/teandresmith/sqlgen-example/internal/database"
 	gqlmodel "github.com/teandresmith/sqlgen-example/internal/graph/model"
-	"github.com/teandresmith/sqlgen-example/internal/graph/sqlgenresolver"
 )
 
 // UpdateAttachment is the resolver for the updateAttachment field.
-func (r *mutationResolver) UpdateAttachment(ctx context.Context, id uuid1.UUID, input gqlmodel.UpdateAttachmentInput) (*database.Attachment, error) {
-	if input.SizeBytes != nil && input.SizeBytesInc != nil {
-		return nil, sqlgenresolver.InvalidInputError("update attachments: column \"size_bytes\" cannot be both set and incremented in one mutation")
-	}
-	if input.SizeBytesInc != nil && input.SizeBytesDec != nil {
-		return nil, sqlgenresolver.InvalidInputError("update attachments: column \"size_bytes\" cannot be both incremented and decremented in one mutation")
-	}
-	setIn := translateUpdateAttachmentInput(input)
-	hasSet := hasUpdateAttachmentSetFields(input)
-	var incOps []sqlgenresolver.IncrementOp[database.AttachmentIncrementColumn]
-	if input.SizeBytesInc != nil {
-		incOps = append(incOps, sqlgenresolver.IncrementOp[database.AttachmentIncrementColumn]{
-			Column: database.AttachmentIncrementSizeBytes,
-			Amount: int(*input.SizeBytesInc),
-		})
-	}
-	if input.SizeBytesDec != nil {
-		incOps = append(incOps, sqlgenresolver.IncrementOp[database.AttachmentIncrementColumn]{
-			Column: database.AttachmentIncrementSizeBytes,
-			Amount: -int(*input.SizeBytesDec),
-		})
-	}
-	return r.M.UpdateAttachment(ctx, id, setIn, hasSet, incOps)
+func (r *mutationResolver) UpdateAttachment(ctx context.Context, id uuid.UUID, input gqlmodel.UpdateAttachmentInput) (*database.Attachment, error) {
+	return r.M.UpdateAttachment(ctx, id, translateUpdateAttachmentRequest(input))
 }
 
 // UpdateAttachments is the resolver for the updateAttachments field.
 func (r *mutationResolver) UpdateAttachments(ctx context.Context, filter gqlmodel.AttachmentFilter, input gqlmodel.UpdateAttachmentInput) ([]*database.Attachment, error) {
-	if input.SizeBytes != nil && input.SizeBytesInc != nil {
-		return nil, sqlgenresolver.InvalidInputError("update attachments: column \"size_bytes\" cannot be both set and incremented in one mutation")
-	}
-	if input.SizeBytesInc != nil && input.SizeBytesDec != nil {
-		return nil, sqlgenresolver.InvalidInputError("update attachments: column \"size_bytes\" cannot be both incremented and decremented in one mutation")
-	}
-	return r.M.UpdateAttachments(ctx, translateAttachmentFilter(&filter), translateUpdateAttachmentInput(input))
+	return r.M.UpdateAttachments(ctx, translateAttachmentFilter(&filter), translateUpdateAttachmentRequest(input))
 }
 
 // DeleteAttachment is the resolver for the deleteAttachment field.
-func (r *mutationResolver) DeleteAttachment(ctx context.Context, id uuid1.UUID) (bool, error) {
+func (r *mutationResolver) DeleteAttachment(ctx context.Context, id uuid.UUID) (bool, error) {
 	return r.M.DeleteAttachment(ctx, id)
 }
 
 // Attachment is the resolver for the attachment field.
-func (r *queryResolver) Attachment(ctx context.Context, id uuid1.UUID) (*database.Attachment, error) {
+func (r *queryResolver) Attachment(ctx context.Context, id uuid.UUID) (*database.Attachment, error) {
 	return r.Q.Attachment(ctx, id)
 }
 

@@ -36,6 +36,13 @@ Files attached to a task or a comment (polymorphic)
 | `attachments_pkey` | id | yes | btree |  |
 | `idx_attachments_entity` | entity_type, entity_id |  | btree |  |
 
+## Relationships
+
+| Name | Kind | Target | FK | Filter |
+| --- | --- | --- | --- | --- |
+| user | o2o | User | public.attachments.uploaded_by |  |
+| workspace | o2o | Workspace | public.attachments.workspace_id |  |
+
 ## Query methods
 
 ### Get
@@ -67,20 +74,6 @@ postgres:
 SELECT "content_type", "created_at", "entity_id", "entity_type", "file_name", "id", "size_bytes", "storage_url", "uploaded_by", "workspace_id" FROM "public"."attachments" WHERE <filter> ORDER BY <sort> LIMIT <limit>
 ```
 
-### Count
-
-- Params: `filter *AttachmentFilter`
-- Returns: `int64`, `error`
-- Errors: `tenancy.ErrMissing`
-
-Generated SQL:
-
-postgres:
-
-```sql
-SELECT COUNT(*) FROM "public"."attachments" WHERE <filter>
-```
-
 ### Exists
 
 - Params: `id uuid.UUID`
@@ -107,6 +100,20 @@ postgres:
 
 ```sql
 SELECT EXISTS(SELECT 1 FROM "public"."attachments" WHERE <filter>)
+```
+
+### Count
+
+- Params: `filter *AttachmentFilter`
+- Returns: `int64`, `error`
+- Errors: `tenancy.ErrMissing`
+
+Generated SQL:
+
+postgres:
+
+```sql
+SELECT COUNT(*) FROM "public"."attachments" WHERE <filter>
 ```
 
 ### Paginate
@@ -169,36 +176,6 @@ postgres:
 INSERT INTO "public"."attachments" (<columns>) VALUES <values> RETURNING "id"
 ```
 
-### Upsert
-
-- Params: `input *CreateAttachmentInput`, `target AttachmentConflictTarget`
-- Returns: `*Attachment`, `error`
-- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
-- Notes: One method over the generated AttachmentConflictTarget enum — the target argument selects the conflict columns at call time.
-
-Generated SQL:
-
-postgres:
-
-```sql
-INSERT INTO "public"."attachments" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING "id"
-```
-
-### UpsertMany
-
-- Params: `inputs []*CreateAttachmentInput`, `target AttachmentConflictTarget`
-- Returns: `[]*Attachment`, `error`
-- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
-- Notes: Batched in generation.batch_size chunks over the same AttachmentConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.
-
-Generated SQL:
-
-postgres:
-
-```sql
-INSERT INTO "public"."attachments" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>
-```
-
 ### Update
 
 - Params: `id uuid.UUID`, `input *UpdateAttachmentInput`
@@ -242,6 +219,36 @@ postgres:
 
 ```sql
 UPDATE "public"."attachments" SET <set> WHERE <filter> RETURNING "id"
+```
+
+### Upsert
+
+- Params: `input *CreateAttachmentInput`, `target AttachmentConflictTarget`
+- Returns: `*Attachment`, `error`
+- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
+- Notes: One method over the generated AttachmentConflictTarget enum — the target argument selects the conflict columns at call time.
+
+Generated SQL:
+
+postgres:
+
+```sql
+INSERT INTO "public"."attachments" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING "id"
+```
+
+### UpsertMany
+
+- Params: `inputs []*CreateAttachmentInput`, `target AttachmentConflictTarget`
+- Returns: `[]*Attachment`, `error`
+- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
+- Notes: Batched in generation.batch_size chunks over the same AttachmentConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.
+
+Generated SQL:
+
+postgres:
+
+```sql
+INSERT INTO "public"."attachments" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>
 ```
 
 ### Increment
@@ -328,3 +335,17 @@ Type `AttachmentFilter`.
 Type `AttachmentSort`.
 
 Fields: ContentType, CreatedAt, EntityID, EntityType, FileName, ID, SizeBytes, StorageURL, UploadedBy, WorkspaceID
+
+## Read examples
+
+```go
+row, err := client.Attachments().Get(ctx, uuid.NewV4())
+rows, err := client.Attachments().GetMany(ctx, &database.GetAttachmentsInput{Filter: &database.AttachmentFilter{ContentType: &comparator.String{Eq: new("example")}}})
+```
+
+## Write examples
+
+```go
+created, err := client.Attachments().Create(ctx, &database.CreateAttachmentInput{EntityType: database.AttachmentEntityType("task"), EntityID: uuid.NewV4(), UploadedBy: uuid.NewV4(), FileName: "example", ContentType: "example", SizeBytes: 1, StorageURL: "example"})
+updated, err := client.Attachments().Update(ctx, uuid.NewV4(), &database.UpdateAttachmentInput{WorkspaceID: omittable.Set(uuid.NewV4())})
+```

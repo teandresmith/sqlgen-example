@@ -7,19 +7,19 @@ package graph
 
 import (
 	"context"
-	uuid1 "uuid"
+	"uuid"
 
 	"github.com/teandresmith/sqlgen-example/internal/database"
 	gqlmodel "github.com/teandresmith/sqlgen-example/internal/graph/model"
 )
 
 // DeleteTaskLabel is the resolver for the deleteTaskLabel field.
-func (r *mutationResolver) DeleteTaskLabel(ctx context.Context, taskID uuid1.UUID, labelID uuid1.UUID) (bool, error) {
+func (r *mutationResolver) DeleteTaskLabel(ctx context.Context, taskID uuid.UUID, labelID uuid.UUID) (bool, error) {
 	return r.M.DeleteTaskLabel(ctx, taskID, labelID)
 }
 
 // TaskLabel is the resolver for the taskLabel field.
-func (r *queryResolver) TaskLabel(ctx context.Context, taskID uuid1.UUID, labelID uuid1.UUID) (*database.TaskLabel, error) {
+func (r *queryResolver) TaskLabel(ctx context.Context, taskID uuid.UUID, labelID uuid.UUID) (*database.TaskLabel, error) {
 	return r.Q.TaskLabel(ctx, taskID, labelID)
 }
 

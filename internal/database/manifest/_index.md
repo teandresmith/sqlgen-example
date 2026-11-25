@@ -1,8 +1,8 @@
 # database manifest
 
 - **Dialect:** postgres
-- **Generator:** sqlgen 0.1.0
-- **Schema version:** 0.1.0
+- **Generator:** sqlgen 0.1.4
+- **Schema version:** 0.2.0
 
 Features: audit_columns, cache, events, graph_top_level, graphql, soft_delete, tenancy, views
 

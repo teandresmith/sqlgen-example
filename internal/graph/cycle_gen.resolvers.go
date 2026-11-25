@@ -7,7 +7,7 @@ package graph
 
 import (
 	"context"
-	uuid1 "uuid"
+	"uuid"
 
 	"github.com/teandresmith/sqlgen-example/internal/database"
 	gqlmodel "github.com/teandresmith/sqlgen-example/internal/graph/model"
@@ -31,18 +31,13 @@ func (r *mutationResolver) CreateCycles(ctx context.Context, inputs []*gqlmodel.
 }
 
 // UpdateCycle is the resolver for the updateCycle field.
-// FIX-066: no numeric non-PK columns → no IncrementColumn enum, no `_inc`/
-// `_dec` operators on the input, and the seed delegates with the reduced
-// (set-only) signature exposed by Q/M.
-func (r *mutationResolver) UpdateCycle(ctx context.Context, id uuid1.UUID, input gqlmodel.UpdateCycleInput) (*database.Cycle, error) {
-	setIn := translateUpdateCycleInput(input)
-	hasSet := hasUpdateCycleSetFields(input)
-	return r.M.UpdateCycle(ctx, id, setIn, hasSet)
+func (r *mutationResolver) UpdateCycle(ctx context.Context, id uuid.UUID, input gqlmodel.UpdateCycleInput) (*database.Cycle, error) {
+	return r.M.UpdateCycle(ctx, id, translateUpdateCycleRequest(input))
 }
 
 // UpdateCycles is the resolver for the updateCycles field.
 func (r *mutationResolver) UpdateCycles(ctx context.Context, filter gqlmodel.CycleFilter, input gqlmodel.UpdateCycleInput) ([]*database.Cycle, error) {
-	return r.M.UpdateCycles(ctx, translateCycleFilter(&filter), translateUpdateCycleInput(input))
+	return r.M.UpdateCycles(ctx, translateCycleFilter(&filter), translateUpdateCycleRequest(input))
 }
 
 // UpsertCycle is the resolver for the upsertCycle field.
@@ -51,17 +46,17 @@ func (r *mutationResolver) UpsertCycle(ctx context.Context, input gqlmodel.Creat
 }
 
 // DeleteCycle is the resolver for the deleteCycle field.
-func (r *mutationResolver) DeleteCycle(ctx context.Context, id uuid1.UUID) (bool, error) {
+func (r *mutationResolver) DeleteCycle(ctx context.Context, id uuid.UUID) (bool, error) {
 	return r.M.DeleteCycle(ctx, id)
 }
 
 // UpdateCycleWithRelated is the resolver for the updateCycleWithRelated field.
-func (r *mutationResolver) UpdateCycleWithRelated(ctx context.Context, id uuid1.UUID, input gqlmodel.UpdateCycleWithRelatedInput) (*database.Cycle, error) {
+func (r *mutationResolver) UpdateCycleWithRelated(ctx context.Context, id uuid.UUID, input gqlmodel.UpdateCycleWithRelatedInput) (*database.Cycle, error) {
 	return r.M.UpdateCycleWithRelated(ctx, id, translateUpdateCycleWithRelatedInput(input))
 }
 
 // Cycle is the resolver for the cycle field.
-func (r *queryResolver) Cycle(ctx context.Context, id uuid1.UUID) (*database.Cycle, error) {
+func (r *queryResolver) Cycle(ctx context.Context, id uuid.UUID) (*database.Cycle, error) {
 	return r.Q.Cycle(ctx, id)
 }
 

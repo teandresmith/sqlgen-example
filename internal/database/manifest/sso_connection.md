@@ -31,7 +31,13 @@ Per-workspace single sign-on configuration
 | Name | Columns | Unique | Method | Where |
 | --- | --- | --- | --- | --- |
 | `sso_connections_pkey` | id | yes | btree |  |
-| `sso_connections_workspace_id_provider_idx` | workspace_id, provider | yes | btree |  |
+| `sso_connections_workspace_id_provider_key` | workspace_id, provider | yes | btree |  |
+
+## Relationships
+
+| Name | Kind | Target | FK | Filter |
+| --- | --- | --- | --- | --- |
+| workspace | o2o | Workspace | public.sso_connections.workspace_id |  |
 
 ## Query methods
 
@@ -64,20 +70,6 @@ postgres:
 SELECT "config", "created_at", "enabled", "id", "provider", "updated_at", "workspace_id" FROM "public"."sso_connections" WHERE <filter> ORDER BY <sort> LIMIT <limit>
 ```
 
-### Count
-
-- Params: `filter *SsoConnectionFilter`
-- Returns: `int64`, `error`
-- Errors: `tenancy.ErrMissing`
-
-Generated SQL:
-
-postgres:
-
-```sql
-SELECT COUNT(*) FROM "public"."sso_connections" WHERE <filter>
-```
-
 ### Exists
 
 - Params: `id uuid.UUID`
@@ -104,6 +96,20 @@ postgres:
 
 ```sql
 SELECT EXISTS(SELECT 1 FROM "public"."sso_connections" WHERE <filter>)
+```
+
+### Count
+
+- Params: `filter *SsoConnectionFilter`
+- Returns: `int64`, `error`
+- Errors: `tenancy.ErrMissing`
+
+Generated SQL:
+
+postgres:
+
+```sql
+SELECT COUNT(*) FROM "public"."sso_connections" WHERE <filter>
 ```
 
 ### Paginate
@@ -166,36 +172,6 @@ postgres:
 INSERT INTO "public"."sso_connections" (<columns>) VALUES <values> RETURNING "id"
 ```
 
-### Upsert
-
-- Params: `input *CreateSsoConnectionInput`, `target SsoConnectionConflictTarget`
-- Returns: `*SsoConnection`, `error`
-- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
-- Notes: One method over the generated SsoConnectionConflictTarget enum — the target argument selects the conflict columns at call time.
-
-Generated SQL:
-
-postgres:
-
-```sql
-INSERT INTO "public"."sso_connections" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING "id"
-```
-
-### UpsertMany
-
-- Params: `inputs []*CreateSsoConnectionInput`, `target SsoConnectionConflictTarget`
-- Returns: `[]*SsoConnection`, `error`
-- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
-- Notes: Batched in generation.batch_size chunks over the same SsoConnectionConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.
-
-Generated SQL:
-
-postgres:
-
-```sql
-INSERT INTO "public"."sso_connections" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>
-```
-
 ### Update
 
 - Params: `id uuid.UUID`, `input *UpdateSsoConnectionInput`
@@ -239,6 +215,36 @@ postgres:
 
 ```sql
 UPDATE "public"."sso_connections" SET <set> WHERE <filter> RETURNING "id"
+```
+
+### Upsert
+
+- Params: `input *CreateSsoConnectionInput`, `target SsoConnectionConflictTarget`
+- Returns: `*SsoConnection`, `error`
+- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
+- Notes: One method over the generated SsoConnectionConflictTarget enum — the target argument selects the conflict columns at call time.
+
+Generated SQL:
+
+postgres:
+
+```sql
+INSERT INTO "public"."sso_connections" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING "id"
+```
+
+### UpsertMany
+
+- Params: `inputs []*CreateSsoConnectionInput`, `target SsoConnectionConflictTarget`
+- Returns: `[]*SsoConnection`, `error`
+- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
+- Notes: Batched in generation.batch_size chunks over the same SsoConnectionConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.
+
+Generated SQL:
+
+postgres:
+
+```sql
+INSERT INTO "public"."sso_connections" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>
 ```
 
 ### HardDelete
@@ -307,3 +313,17 @@ Type `SsoConnectionFilter`.
 Type `SsoConnectionSort`.
 
 Fields: Config, CreatedAt, Enabled, ID, Provider, UpdatedAt, WorkspaceID
+
+## Read examples
+
+```go
+row, err := client.SsoConnections().Get(ctx, uuid.NewV4())
+rows, err := client.SsoConnections().GetMany(ctx, &database.GetSsoConnectionsInput{Filter: &database.SsoConnectionFilter{Provider: &comparator.Enum[database.SsoProvider]{Eq: new(database.SsoProvider("saml"))}}})
+```
+
+## Write examples
+
+```go
+created, err := client.SsoConnections().Create(ctx, &database.CreateSsoConnectionInput{Provider: database.SsoProvider("saml")})
+updated, err := client.SsoConnections().Update(ctx, uuid.NewV4(), &database.UpdateSsoConnectionInput{WorkspaceID: omittable.Set(uuid.NewV4())})
+```

@@ -7,7 +7,7 @@ package graph
 
 import (
 	"context"
-	uuid1 "uuid"
+	"uuid"
 
 	"github.com/teandresmith/sqlgen-example/internal/database"
 	gqlmodel "github.com/teandresmith/sqlgen-example/internal/graph/model"
@@ -31,18 +31,13 @@ func (r *mutationResolver) CreateTeams(ctx context.Context, inputs []*gqlmodel.C
 }
 
 // UpdateTeam is the resolver for the updateTeam field.
-// FIX-066: no numeric non-PK columns → no IncrementColumn enum, no `_inc`/
-// `_dec` operators on the input, and the seed delegates with the reduced
-// (set-only) signature exposed by Q/M.
-func (r *mutationResolver) UpdateTeam(ctx context.Context, id uuid1.UUID, input gqlmodel.UpdateTeamInput) (*database.Team, error) {
-	setIn := translateUpdateTeamInput(input)
-	hasSet := hasUpdateTeamSetFields(input)
-	return r.M.UpdateTeam(ctx, id, setIn, hasSet)
+func (r *mutationResolver) UpdateTeam(ctx context.Context, id uuid.UUID, input gqlmodel.UpdateTeamInput) (*database.Team, error) {
+	return r.M.UpdateTeam(ctx, id, translateUpdateTeamRequest(input))
 }
 
 // UpdateTeams is the resolver for the updateTeams field.
 func (r *mutationResolver) UpdateTeams(ctx context.Context, filter gqlmodel.TeamFilter, input gqlmodel.UpdateTeamInput) ([]*database.Team, error) {
-	return r.M.UpdateTeams(ctx, translateTeamFilter(&filter), translateUpdateTeamInput(input))
+	return r.M.UpdateTeams(ctx, translateTeamFilter(&filter), translateUpdateTeamRequest(input))
 }
 
 // UpsertTeam is the resolver for the upsertTeam field.
@@ -51,17 +46,17 @@ func (r *mutationResolver) UpsertTeam(ctx context.Context, input gqlmodel.Create
 }
 
 // DeleteTeam is the resolver for the deleteTeam field.
-func (r *mutationResolver) DeleteTeam(ctx context.Context, id uuid1.UUID) (bool, error) {
+func (r *mutationResolver) DeleteTeam(ctx context.Context, id uuid.UUID) (bool, error) {
 	return r.M.DeleteTeam(ctx, id)
 }
 
 // UpdateTeamWithRelated is the resolver for the updateTeamWithRelated field.
-func (r *mutationResolver) UpdateTeamWithRelated(ctx context.Context, id uuid1.UUID, input gqlmodel.UpdateTeamWithRelatedInput) (*database.Team, error) {
+func (r *mutationResolver) UpdateTeamWithRelated(ctx context.Context, id uuid.UUID, input gqlmodel.UpdateTeamWithRelatedInput) (*database.Team, error) {
 	return r.M.UpdateTeamWithRelated(ctx, id, translateUpdateTeamWithRelatedInput(input))
 }
 
 // Team is the resolver for the team field.
-func (r *queryResolver) Team(ctx context.Context, id uuid1.UUID) (*database.Team, error) {
+func (r *queryResolver) Team(ctx context.Context, id uuid.UUID) (*database.Team, error) {
 	return r.Q.Team(ctx, id)
 }
 

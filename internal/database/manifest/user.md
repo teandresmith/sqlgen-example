@@ -42,9 +42,9 @@ Global user identity, spanning workspaces
 | comments | o2m | Comment | public.comments.author_id |  |
 | invitations | o2m | Invitation | public.invitations.invited_by |  |
 | reporter_tasks | o2m | Task | public.tasks.reporter_id |  |
-| task_assignees | m2m | Task | public.task_assignees (user_id → task_id) |  |
-| task_watchers | m2m | Task | public.task_watchers (user_id → task_id) |  |
-| teams | m2m | Team | public.team_members (user_id → team_id) |  |
+| task_assignees | m2m | Task | public.task_assignees (user_id → (workspace_id, task_id)) |  |
+| task_watchers | m2m | Task | public.task_watchers (user_id → (workspace_id, task_id)) |  |
+| teams | m2m | Team | public.team_members (user_id → (workspace_id, team_id)) |  |
 | time_entries | o2m | TimeEntry | public.time_entries.user_id |  |
 | workspaces | m2m | Workspace | public.memberships (user_id → workspace_id) |  |
 
@@ -78,19 +78,6 @@ postgres:
 SELECT "created_at", "display_name", "email", "id", "password_hash", "updated_at" FROM "public"."users" WHERE <filter> ORDER BY <sort> LIMIT <limit>
 ```
 
-### Count
-
-- Params: `filter *UserFilter`
-- Returns: `int64`, `error`
-
-Generated SQL:
-
-postgres:
-
-```sql
-SELECT COUNT(*) FROM "public"."users" WHERE <filter>
-```
-
 ### Exists
 
 - Params: `id uuid.UUID`
@@ -115,6 +102,19 @@ postgres:
 
 ```sql
 SELECT EXISTS(SELECT 1 FROM "public"."users" WHERE <filter>)
+```
+
+### Count
+
+- Params: `filter *UserFilter`
+- Returns: `int64`, `error`
+
+Generated SQL:
+
+postgres:
+
+```sql
+SELECT COUNT(*) FROM "public"."users" WHERE <filter>
 ```
 
 ### Paginate
@@ -175,36 +175,6 @@ postgres:
 INSERT INTO "public"."users" (<columns>) VALUES <values> RETURNING "id"
 ```
 
-### Upsert
-
-- Params: `input *CreateUserInput`, `target UserConflictTarget`
-- Returns: `*User`, `error`
-- Errors: `ErrNilInput`, `ErrConstraintViolation`
-- Notes: One method over the generated UserConflictTarget enum — the target argument selects the conflict columns at call time.
-
-Generated SQL:
-
-postgres:
-
-```sql
-INSERT INTO "public"."users" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING "id"
-```
-
-### UpsertMany
-
-- Params: `inputs []*CreateUserInput`, `target UserConflictTarget`
-- Returns: `[]*User`, `error`
-- Errors: `ErrNilInput`, `ErrConstraintViolation`
-- Notes: Batched in generation.batch_size chunks over the same UserConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.
-
-Generated SQL:
-
-postgres:
-
-```sql
-INSERT INTO "public"."users" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>
-```
-
 ### Update
 
 - Params: `id uuid.UUID`, `input *UpdateUserInput`
@@ -250,6 +220,43 @@ postgres:
 UPDATE "public"."users" SET <set> WHERE <filter> RETURNING "id"
 ```
 
+### Upsert
+
+- Params: `input *CreateUserInput`, `target UserConflictTarget`
+- Returns: `*User`, `error`
+- Errors: `ErrNilInput`, `ErrConstraintViolation`
+- Notes: One method over the generated UserConflictTarget enum — the target argument selects the conflict columns at call time.
+
+Generated SQL:
+
+postgres:
+
+```sql
+INSERT INTO "public"."users" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING "id"
+```
+
+### UpsertMany
+
+- Params: `inputs []*CreateUserInput`, `target UserConflictTarget`
+- Returns: `[]*User`, `error`
+- Errors: `ErrNilInput`, `ErrConstraintViolation`
+- Notes: Batched in generation.batch_size chunks over the same UserConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.
+
+Generated SQL:
+
+postgres:
+
+```sql
+INSERT INTO "public"."users" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>
+```
+
+### UpdateWithRelated
+
+- Params: `id uuid.UUID`, `input *UpdateUserWithRelatedInput`
+- Returns: `*User`, `error`
+- Errors: `ErrNilInput`, `ErrNotFound`, `ErrAlreadyRelated`, `ErrNestedVerbConflict`, `ErrConstraintViolation`
+- Notes: Writes the parent and its nested rows in one transaction — a SAVEPOINT when ctx already holds one. Issues no statement of its own: it composes Update and, per eligible relationship (APITokens, Activities, Attachments, Comments, Invitations, ReporterTasks, TimeEntries), the target's and junction's own client methods, so no sql_bodies entry. Each inner call fires its own hooks, events and cache invalidation under its own op; the nested method has none.
+
 ### HardDelete
 
 - Params: `id uuid.UUID`
@@ -293,13 +300,6 @@ postgres:
 DELETE FROM "public"."users" WHERE <filter> RETURNING "id"
 ```
 
-### UpdateWithRelated
-
-- Params: `id uuid.UUID`, `input *UpdateUserWithRelatedInput`
-- Returns: `*User`, `error`
-- Errors: `ErrNilInput`, `ErrNotFound`, `ErrAlreadyRelated`, `ErrNestedVerbConflict`, `ErrConstraintViolation`
-- Notes: Writes the parent and its nested rows in one transaction — a SAVEPOINT when ctx already holds one. Issues no statement of its own: it composes Update and, per eligible relationship (APITokens, Activities, Attachments, Comments, Invitations, ReporterTasks, TimeEntries), the target's and junction's own client methods, so no sql_bodies entry. Each inner call fires its own hooks, events and cache invalidation under its own op; the nested method has none.
-
 ## Filter
 
 Type `UserFilter`.
@@ -320,3 +320,17 @@ Type `UserFilter`.
 Type `UserSort`.
 
 Fields: CreatedAt, DisplayName, Email, ID, PasswordHash, UpdatedAt
+
+## Read examples
+
+```go
+row, err := client.Users().Get(ctx, uuid.NewV4())
+rows, err := client.Users().GetMany(ctx, &database.GetUsersInput{Filter: &database.UserFilter{DisplayName: &comparator.String{Eq: new("example")}}})
+```
+
+## Write examples
+
+```go
+created, err := client.Users().Create(ctx, &database.CreateUserInput{Email: "example", DisplayName: "example", PasswordHash: "example"})
+updated, err := client.Users().Update(ctx, uuid.NewV4(), &database.UpdateUserInput{Email: omittable.Set("example")})
+```

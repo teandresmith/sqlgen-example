@@ -7,7 +7,7 @@ package graph
 
 import (
 	"context"
-	uuid1 "uuid"
+	"uuid"
 
 	"github.com/teandresmith/sqlgen-example/internal/database"
 	gqlmodel "github.com/teandresmith/sqlgen-example/internal/graph/model"
@@ -31,18 +31,13 @@ func (r *mutationResolver) CreateWorkspaceSettings(ctx context.Context, inputs [
 }
 
 // UpdateWorkspaceSetting is the resolver for the updateWorkspaceSetting field.
-// FIX-066: no numeric non-PK columns → no IncrementColumn enum, no `_inc`/
-// `_dec` operators on the input, and the seed delegates with the reduced
-// (set-only) signature exposed by Q/M.
-func (r *mutationResolver) UpdateWorkspaceSetting(ctx context.Context, id uuid1.UUID, input gqlmodel.UpdateWorkspaceSettingInput) (*database.WorkspaceSetting, error) {
-	setIn := translateUpdateWorkspaceSettingInput(input)
-	hasSet := hasUpdateWorkspaceSettingSetFields(input)
-	return r.M.UpdateWorkspaceSetting(ctx, id, setIn, hasSet)
+func (r *mutationResolver) UpdateWorkspaceSetting(ctx context.Context, id uuid.UUID, input gqlmodel.UpdateWorkspaceSettingInput) (*database.WorkspaceSetting, error) {
+	return r.M.UpdateWorkspaceSetting(ctx, id, translateUpdateWorkspaceSettingRequest(input))
 }
 
 // UpdateWorkspaceSettings is the resolver for the updateWorkspaceSettings field.
 func (r *mutationResolver) UpdateWorkspaceSettings(ctx context.Context, filter gqlmodel.WorkspaceSettingFilter, input gqlmodel.UpdateWorkspaceSettingInput) ([]*database.WorkspaceSetting, error) {
-	return r.M.UpdateWorkspaceSettings(ctx, translateWorkspaceSettingFilter(&filter), translateUpdateWorkspaceSettingInput(input))
+	return r.M.UpdateWorkspaceSettings(ctx, translateWorkspaceSettingFilter(&filter), translateUpdateWorkspaceSettingRequest(input))
 }
 
 // UpsertWorkspaceSetting is the resolver for the upsertWorkspaceSetting field.
@@ -51,12 +46,12 @@ func (r *mutationResolver) UpsertWorkspaceSetting(ctx context.Context, input gql
 }
 
 // DeleteWorkspaceSetting is the resolver for the deleteWorkspaceSetting field.
-func (r *mutationResolver) DeleteWorkspaceSetting(ctx context.Context, id uuid1.UUID) (bool, error) {
+func (r *mutationResolver) DeleteWorkspaceSetting(ctx context.Context, id uuid.UUID) (bool, error) {
 	return r.M.DeleteWorkspaceSetting(ctx, id)
 }
 
 // WorkspaceSetting is the resolver for the workspaceSetting field.
-func (r *queryResolver) WorkspaceSetting(ctx context.Context, id uuid1.UUID) (*database.WorkspaceSetting, error) {
+func (r *queryResolver) WorkspaceSetting(ctx context.Context, id uuid.UUID) (*database.WorkspaceSetting, error) {
 	return r.Q.WorkspaceSetting(ctx, id)
 }
 

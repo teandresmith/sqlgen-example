@@ -38,6 +38,9 @@ A note left by a user on a task
 | Name | Kind | Target | FK | Filter |
 | --- | --- | --- | --- | --- |
 | Attachments | o2m | Attachment | public.attachments.entity_id | `entity_type = 'comment'` |
+| author | o2o | User | public.comments.author_id |  |
+| task | o2o | Task | public.comments.task_id |  |
+| workspace | o2o | Workspace | public.comments.workspace_id |  |
 
 ## Query methods
 
@@ -70,20 +73,6 @@ postgres:
 SELECT "author_id", "body", "created_at", "id", "task_id", "updated_at", "workspace_id" FROM "public"."comments" WHERE <filter> ORDER BY <sort> LIMIT <limit>
 ```
 
-### Count
-
-- Params: `filter *CommentFilter`
-- Returns: `int64`, `error`
-- Errors: `tenancy.ErrMissing`
-
-Generated SQL:
-
-postgres:
-
-```sql
-SELECT COUNT(*) FROM "public"."comments" WHERE <filter>
-```
-
 ### Exists
 
 - Params: `id uuid.UUID`
@@ -110,6 +99,20 @@ postgres:
 
 ```sql
 SELECT EXISTS(SELECT 1 FROM "public"."comments" WHERE <filter>)
+```
+
+### Count
+
+- Params: `filter *CommentFilter`
+- Returns: `int64`, `error`
+- Errors: `tenancy.ErrMissing`
+
+Generated SQL:
+
+postgres:
+
+```sql
+SELECT COUNT(*) FROM "public"."comments" WHERE <filter>
 ```
 
 ### Paginate
@@ -172,36 +175,6 @@ postgres:
 INSERT INTO "public"."comments" (<columns>) VALUES <values> RETURNING "id"
 ```
 
-### Upsert
-
-- Params: `input *CreateCommentInput`, `target CommentConflictTarget`
-- Returns: `*Comment`, `error`
-- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
-- Notes: One method over the generated CommentConflictTarget enum — the target argument selects the conflict columns at call time.
-
-Generated SQL:
-
-postgres:
-
-```sql
-INSERT INTO "public"."comments" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING "id"
-```
-
-### UpsertMany
-
-- Params: `inputs []*CreateCommentInput`, `target CommentConflictTarget`
-- Returns: `[]*Comment`, `error`
-- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
-- Notes: Batched in generation.batch_size chunks over the same CommentConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.
-
-Generated SQL:
-
-postgres:
-
-```sql
-INSERT INTO "public"."comments" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>
-```
-
 ### Update
 
 - Params: `id uuid.UUID`, `input *UpdateCommentInput`
@@ -245,6 +218,36 @@ postgres:
 
 ```sql
 UPDATE "public"."comments" SET <set> WHERE <filter> RETURNING "id"
+```
+
+### Upsert
+
+- Params: `input *CreateCommentInput`, `target CommentConflictTarget`
+- Returns: `*Comment`, `error`
+- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
+- Notes: One method over the generated CommentConflictTarget enum — the target argument selects the conflict columns at call time.
+
+Generated SQL:
+
+postgres:
+
+```sql
+INSERT INTO "public"."comments" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING "id"
+```
+
+### UpsertMany
+
+- Params: `inputs []*CreateCommentInput`, `target CommentConflictTarget`
+- Returns: `[]*Comment`, `error`
+- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
+- Notes: Batched in generation.batch_size chunks over the same CommentConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.
+
+Generated SQL:
+
+postgres:
+
+```sql
+INSERT INTO "public"."comments" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>
 ```
 
 ### HardDelete
@@ -313,3 +316,17 @@ Type `CommentFilter`.
 Type `CommentSort`.
 
 Fields: AuthorID, Body, CreatedAt, ID, TaskID, UpdatedAt, WorkspaceID
+
+## Read examples
+
+```go
+row, err := client.Comments().Get(ctx, uuid.NewV4())
+rows, err := client.Comments().GetMany(ctx, &database.GetCommentsInput{Filter: &database.CommentFilter{Body: &comparator.String{Eq: new("example")}}})
+```
+
+## Write examples
+
+```go
+created, err := client.Comments().Create(ctx, &database.CreateCommentInput{TaskID: uuid.NewV4(), AuthorID: uuid.NewV4(), Body: "example"})
+updated, err := client.Comments().Update(ctx, uuid.NewV4(), &database.UpdateCommentInput{WorkspaceID: omittable.Set(uuid.NewV4())})
+```

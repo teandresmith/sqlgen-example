@@ -7,7 +7,7 @@ package graph
 
 import (
 	"context"
-	uuid1 "uuid"
+	"uuid"
 
 	"github.com/teandresmith/sqlgen-example/internal/database"
 	gqlmodel "github.com/teandresmith/sqlgen-example/internal/graph/model"
@@ -31,18 +31,13 @@ func (r *mutationResolver) CreateLabels(ctx context.Context, inputs []*gqlmodel.
 }
 
 // UpdateLabel is the resolver for the updateLabel field.
-// FIX-066: no numeric non-PK columns → no IncrementColumn enum, no `_inc`/
-// `_dec` operators on the input, and the seed delegates with the reduced
-// (set-only) signature exposed by Q/M.
-func (r *mutationResolver) UpdateLabel(ctx context.Context, id uuid1.UUID, input gqlmodel.UpdateLabelInput) (*database.Label, error) {
-	setIn := translateUpdateLabelInput(input)
-	hasSet := hasUpdateLabelSetFields(input)
-	return r.M.UpdateLabel(ctx, id, setIn, hasSet)
+func (r *mutationResolver) UpdateLabel(ctx context.Context, id uuid.UUID, input gqlmodel.UpdateLabelInput) (*database.Label, error) {
+	return r.M.UpdateLabel(ctx, id, translateUpdateLabelRequest(input))
 }
 
 // UpdateLabels is the resolver for the updateLabels field.
 func (r *mutationResolver) UpdateLabels(ctx context.Context, filter gqlmodel.LabelFilter, input gqlmodel.UpdateLabelInput) ([]*database.Label, error) {
-	return r.M.UpdateLabels(ctx, translateLabelFilter(&filter), translateUpdateLabelInput(input))
+	return r.M.UpdateLabels(ctx, translateLabelFilter(&filter), translateUpdateLabelRequest(input))
 }
 
 // UpsertLabel is the resolver for the upsertLabel field.
@@ -51,12 +46,12 @@ func (r *mutationResolver) UpsertLabel(ctx context.Context, input gqlmodel.Creat
 }
 
 // DeleteLabel is the resolver for the deleteLabel field.
-func (r *mutationResolver) DeleteLabel(ctx context.Context, id uuid1.UUID) (bool, error) {
+func (r *mutationResolver) DeleteLabel(ctx context.Context, id uuid.UUID) (bool, error) {
 	return r.M.DeleteLabel(ctx, id)
 }
 
 // Label is the resolver for the label field.
-func (r *queryResolver) Label(ctx context.Context, id uuid1.UUID) (*database.Label, error) {
+func (r *queryResolver) Label(ctx context.Context, id uuid.UUID) (*database.Label, error) {
 	return r.Q.Label(ctx, id)
 }
 

@@ -13,7 +13,7 @@ type WorkspaceSetting {
   "Last modification timestamp"
   updatedAt: Time!
   "one-to-one relationship with the workspaces table."
-  workspaces: Workspace
+  workspace: Workspace
 }
 
 type WorkspaceSettingConnection {
@@ -36,6 +36,7 @@ type WorkspaceSettingListResult {
 }
 
 input WorkspaceSettingFilter {
+  id: IDComparator
   workspaceID: IDComparator
   settings: JSONBComparator
   createdAt: TimeComparator
@@ -57,10 +58,10 @@ input WorkspaceSettingSort {
   direction: SortDirection!
 }
 input CreateWorkspaceSettingInput {
-  workspaceID: UUID!
-  settings: JSON!
-  createdAt: Time!
-  updatedAt: Time!
+  workspaceID: UUID
+  settings: JSON
+  createdAt: Time
+  updatedAt: Time
 }
 input UpdateWorkspaceSettingInput {
   settings: JSON

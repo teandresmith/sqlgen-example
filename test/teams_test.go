@@ -12,7 +12,7 @@ import (
 // scoped on the Team. Assigning a Project to a Team drives the generated nested
 // updateTeamWithRelated mutation's projects.connect (story 18), which any member
 // may call and which resolves both endpoints tenant-scoped; the composite FK
-// (migration 0005) backstops the raw updateProject path at the database.
+// (0001_init) backstops the raw updateProject path at the database.
 
 const createTeamMutation = `
 	mutation ($input: CreateTeamInput!) {
@@ -72,7 +72,7 @@ func readProjectTeam(t *testing.T, token, wsID, projectID string) *string {
 }
 
 // updateProjectTeamMutation drives the RAW generated updateProject to set teamID —
-// the path the composite FK (migration 0005) has to backstop, since updateProject
+// the path the composite FK (0001_init) has to backstop, since updateProject
 // is tenant-scoped only on the Project, not on the referenced Team.
 const updateProjectTeamMutation = `
 	mutation ($id: UUID!, $teamID: UUID) {
@@ -442,7 +442,7 @@ func TestAssignRejectsCrossWorkspaceTeam(t *testing.T) {
 }
 
 // TestRawUpdateProjectCannotAssignCrossWorkspaceTeam proves the composite FK
-// (migration 0005, projects_team_same_ws) closes the cross-tenant assignment hole
+// (0001_init, projects_team_same_ws) closes the cross-tenant assignment hole
 // at the DATABASE, not only in the blessed mutation. The generated updateProject
 // is tenant-scoped on the Project but places no Workspace constraint on the teamID
 // it writes; the composite FK (workspace_id, team_id) -> teams(workspace_id, id)

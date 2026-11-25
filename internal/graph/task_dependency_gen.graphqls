@@ -32,6 +32,8 @@ type TaskDependencyListResult {
 }
 
 input TaskDependencyFilter {
+  taskID: IDComparator
+  dependsOnTaskID: IDComparator
   type: DependencyTypeComparator
   createdAt: TimeComparator
   and: [TaskDependencyFilter!]

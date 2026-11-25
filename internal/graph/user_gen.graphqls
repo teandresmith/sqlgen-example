@@ -56,6 +56,7 @@ type UserListResult {
 }
 
 input UserFilter {
+  id: IDComparator
   email: StringComparator
   displayName: StringComparator
   createdAt: TimeComparator
@@ -91,8 +92,8 @@ input CreateUserInput {
   email: String!
   displayName: String!
   passwordHash: String!
-  createdAt: Time!
-  updatedAt: Time!
+  createdAt: Time
+  updatedAt: Time
 }
 input UpdateUserInput {
   email: String

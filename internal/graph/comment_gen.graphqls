@@ -18,6 +18,12 @@ type Comment {
   updatedAt: Time!
   "one-to-many relationship with the attachments table."
   attachments: [Attachment!]!
+  "one-to-one relationship with the users table."
+  author: User
+  "one-to-one relationship with the tasks table."
+  task: Task
+  "one-to-one relationship with the workspaces table."
+  workspace: Workspace
 }
 
 type CommentConnection {
@@ -40,6 +46,7 @@ type CommentListResult {
 }
 
 input CommentFilter {
+  id: IDComparator
   workspaceID: IDComparator
   taskID: IDComparator
   authorID: IDComparator

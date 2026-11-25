@@ -22,6 +22,10 @@ type Cycle {
   updatedAt: Time!
   "one-to-many relationship with the tasks table."
   tasks: [Task!]!
+  "one-to-one relationship with the teams table."
+  team: Team
+  "one-to-one relationship with the workspaces table."
+  workspace: Workspace
 }
 
 type CycleConnection {
@@ -44,6 +48,7 @@ type CycleListResult {
 }
 
 input CycleFilter {
+  id: IDComparator
   workspaceID: IDComparator
   teamID: NullableIDComparator
   name: StringComparator
@@ -74,14 +79,14 @@ input CycleSort {
   direction: SortDirection!
 }
 input CreateCycleInput {
-  workspaceID: UUID!
+  workspaceID: UUID
   teamID: UUID
   name: String!
-  status: CycleStatus!
+  status: CycleStatus
   startsOn: Time!
   endsOn: Time!
-  createdAt: Time!
-  updatedAt: Time!
+  createdAt: Time
+  updatedAt: Time
 }
 input UpdateCycleInput {
   teamID: UUID
@@ -122,18 +127,17 @@ input CycleTasksUpdateNested {
 }
 
 input CycleTasksCreateInput {
-  workspaceID: UUID!
   projectID: UUID!
   parentTaskID: UUID
   reporterID: UUID!
   title: String!
   description: String
-  status: TaskStatus!
-  priority: TaskPriority!
-  customFields: JSON!
+  status: TaskStatus
+  priority: TaskPriority
+  customFields: JSON
   dueAt: Time
-  createdAt: Time!
-  updatedAt: Time!
+  createdAt: Time
+  updatedAt: Time
   deletedAt: Time
 }
 

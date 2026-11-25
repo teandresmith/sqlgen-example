@@ -34,6 +34,13 @@ Append-only activity feed derived from mutation events
 | `activity_pkey` | id | yes | btree |  |
 | `idx_activity_workspace` | workspace_id, created_at |  | btree |  |
 
+## Relationships
+
+| Name | Kind | Target | FK | Filter |
+| --- | --- | --- | --- | --- |
+| actor | o2o | User | public.activity.actor_id |  |
+| workspace | o2o | Workspace | public.activity.workspace_id |  |
+
 ## Query methods
 
 ### Get
@@ -65,20 +72,6 @@ postgres:
 SELECT "action", "actor_id", "created_at", "entity_id", "entity_table", "id", "payload", "workspace_id" FROM "public"."activity" WHERE <filter> ORDER BY <sort> LIMIT <limit>
 ```
 
-### Count
-
-- Params: `filter *ActivityFilter`
-- Returns: `int64`, `error`
-- Errors: `tenancy.ErrMissing`
-
-Generated SQL:
-
-postgres:
-
-```sql
-SELECT COUNT(*) FROM "public"."activity" WHERE <filter>
-```
-
 ### Exists
 
 - Params: `id uuid.UUID`
@@ -105,6 +98,20 @@ postgres:
 
 ```sql
 SELECT EXISTS(SELECT 1 FROM "public"."activity" WHERE <filter>)
+```
+
+### Count
+
+- Params: `filter *ActivityFilter`
+- Returns: `int64`, `error`
+- Errors: `tenancy.ErrMissing`
+
+Generated SQL:
+
+postgres:
+
+```sql
+SELECT COUNT(*) FROM "public"."activity" WHERE <filter>
 ```
 
 ### Paginate
@@ -167,36 +174,6 @@ postgres:
 INSERT INTO "public"."activity" (<columns>) VALUES <values> RETURNING "id"
 ```
 
-### Upsert
-
-- Params: `input *CreateActivityInput`, `target ActivityConflictTarget`
-- Returns: `*Activity`, `error`
-- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
-- Notes: One method over the generated ActivityConflictTarget enum — the target argument selects the conflict columns at call time.
-
-Generated SQL:
-
-postgres:
-
-```sql
-INSERT INTO "public"."activity" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING "id"
-```
-
-### UpsertMany
-
-- Params: `inputs []*CreateActivityInput`, `target ActivityConflictTarget`
-- Returns: `[]*Activity`, `error`
-- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
-- Notes: Batched in generation.batch_size chunks over the same ActivityConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.
-
-Generated SQL:
-
-postgres:
-
-```sql
-INSERT INTO "public"."activity" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>
-```
-
 ### Update
 
 - Params: `id uuid.UUID`, `input *UpdateActivityInput`
@@ -240,6 +217,36 @@ postgres:
 
 ```sql
 UPDATE "public"."activity" SET <set> WHERE <filter> RETURNING "id"
+```
+
+### Upsert
+
+- Params: `input *CreateActivityInput`, `target ActivityConflictTarget`
+- Returns: `*Activity`, `error`
+- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
+- Notes: One method over the generated ActivityConflictTarget enum — the target argument selects the conflict columns at call time.
+
+Generated SQL:
+
+postgres:
+
+```sql
+INSERT INTO "public"."activity" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING "id"
+```
+
+### UpsertMany
+
+- Params: `inputs []*CreateActivityInput`, `target ActivityConflictTarget`
+- Returns: `[]*Activity`, `error`
+- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
+- Notes: Batched in generation.batch_size chunks over the same ActivityConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.
+
+Generated SQL:
+
+postgres:
+
+```sql
+INSERT INTO "public"."activity" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>
 ```
 
 ### HardDelete
@@ -309,3 +316,17 @@ Type `ActivityFilter`.
 Type `ActivitySort`.
 
 Fields: Action, ActorID, CreatedAt, EntityID, EntityTable, ID, Payload, WorkspaceID
+
+## Read examples
+
+```go
+row, err := client.Activities().Get(ctx, uuid.NewV4())
+rows, err := client.Activities().GetMany(ctx, &database.GetActivitiesInput{Filter: &database.ActivityFilter{Action: &comparator.String{Eq: new("example")}}})
+```
+
+## Write examples
+
+```go
+created, err := client.Activities().Create(ctx, &database.CreateActivityInput{EntityTable: "example", EntityID: uuid.NewV4(), Action: "example"})
+updated, err := client.Activities().Update(ctx, uuid.NewV4(), &database.UpdateActivityInput{WorkspaceID: omittable.Set(uuid.NewV4())})
+```

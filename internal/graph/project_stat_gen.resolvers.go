@@ -7,14 +7,14 @@ package graph
 
 import (
 	"context"
-	uuid1 "uuid"
+	"uuid"
 
 	"github.com/teandresmith/sqlgen-example/internal/database"
 	gqlmodel "github.com/teandresmith/sqlgen-example/internal/graph/model"
 )
 
 // ProjectStat is the resolver for the projectStat field.
-func (r *queryResolver) ProjectStat(ctx context.Context, projectID uuid1.UUID) (*database.ProjectStat, error) {
+func (r *queryResolver) ProjectStat(ctx context.Context, projectID uuid.UUID) (*database.ProjectStat, error) {
 	return r.Q.ProjectStat(ctx, projectID)
 }
 

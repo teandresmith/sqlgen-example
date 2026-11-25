@@ -7,7 +7,7 @@ package graph
 
 import (
 	"context"
-	uuid1 "uuid"
+	"uuid"
 
 	"github.com/teandresmith/sqlgen-example/internal/database"
 	gqlmodel "github.com/teandresmith/sqlgen-example/internal/graph/model"
@@ -31,18 +31,13 @@ func (r *mutationResolver) CreateTasks(ctx context.Context, inputs []*gqlmodel.C
 }
 
 // UpdateTask is the resolver for the updateTask field.
-// FIX-066: no numeric non-PK columns → no IncrementColumn enum, no `_inc`/
-// `_dec` operators on the input, and the seed delegates with the reduced
-// (set-only) signature exposed by Q/M.
-func (r *mutationResolver) UpdateTask(ctx context.Context, id uuid1.UUID, input gqlmodel.UpdateTaskInput) (*database.Task, error) {
-	setIn := translateUpdateTaskInput(input)
-	hasSet := hasUpdateTaskSetFields(input)
-	return r.M.UpdateTask(ctx, id, setIn, hasSet)
+func (r *mutationResolver) UpdateTask(ctx context.Context, id uuid.UUID, input gqlmodel.UpdateTaskInput) (*database.Task, error) {
+	return r.M.UpdateTask(ctx, id, translateUpdateTaskRequest(input))
 }
 
 // UpdateTasks is the resolver for the updateTasks field.
 func (r *mutationResolver) UpdateTasks(ctx context.Context, filter gqlmodel.TaskFilter, input gqlmodel.UpdateTaskInput) ([]*database.Task, error) {
-	return r.M.UpdateTasks(ctx, translateTaskFilter(&filter), translateUpdateTaskInput(input))
+	return r.M.UpdateTasks(ctx, translateTaskFilter(&filter), translateUpdateTaskRequest(input))
 }
 
 // UpsertTask is the resolver for the upsertTask field.
@@ -51,27 +46,27 @@ func (r *mutationResolver) UpsertTask(ctx context.Context, input gqlmodel.Create
 }
 
 // HardDeleteTask is the resolver for the hardDeleteTask field.
-func (r *mutationResolver) HardDeleteTask(ctx context.Context, id uuid1.UUID) (bool, error) {
+func (r *mutationResolver) HardDeleteTask(ctx context.Context, id uuid.UUID) (bool, error) {
 	return r.M.HardDeleteTask(ctx, id)
 }
 
 // SoftDeleteTask is the resolver for the softDeleteTask field.
-func (r *mutationResolver) SoftDeleteTask(ctx context.Context, id uuid1.UUID) (*database.Task, error) {
+func (r *mutationResolver) SoftDeleteTask(ctx context.Context, id uuid.UUID) (*database.Task, error) {
 	return r.M.SoftDeleteTask(ctx, id)
 }
 
 // RestoreTask is the resolver for the restoreTask field.
-func (r *mutationResolver) RestoreTask(ctx context.Context, id uuid1.UUID) (*database.Task, error) {
+func (r *mutationResolver) RestoreTask(ctx context.Context, id uuid.UUID) (*database.Task, error) {
 	return r.M.RestoreTask(ctx, id)
 }
 
 // UpdateTaskWithRelated is the resolver for the updateTaskWithRelated field.
-func (r *mutationResolver) UpdateTaskWithRelated(ctx context.Context, id uuid1.UUID, input gqlmodel.UpdateTaskWithRelatedInput) (*database.Task, error) {
+func (r *mutationResolver) UpdateTaskWithRelated(ctx context.Context, id uuid.UUID, input gqlmodel.UpdateTaskWithRelatedInput) (*database.Task, error) {
 	return r.M.UpdateTaskWithRelated(ctx, id, translateUpdateTaskWithRelatedInput(input))
 }
 
 // Task is the resolver for the task field.
-func (r *queryResolver) Task(ctx context.Context, id uuid1.UUID) (*database.Task, error) {
+func (r *queryResolver) Task(ctx context.Context, id uuid.UUID) (*database.Task, error) {
 	return r.Q.Task(ctx, id)
 }
 

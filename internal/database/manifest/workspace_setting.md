@@ -35,7 +35,7 @@ Per-workspace configuration (one row per workspace)
 
 | Name | Kind | Target | FK | Filter |
 | --- | --- | --- | --- | --- |
-| workspaces | o2o | Workspace | public.workspace_settings.workspace_id |  |
+| workspace | o2o | Workspace | public.workspace_settings.workspace_id |  |
 
 ## Query methods
 
@@ -68,20 +68,6 @@ postgres:
 SELECT "created_at", "id", "settings", "updated_at", "workspace_id" FROM "public"."workspace_settings" WHERE <filter> ORDER BY <sort> LIMIT <limit>
 ```
 
-### Count
-
-- Params: `filter *WorkspaceSettingFilter`
-- Returns: `int64`, `error`
-- Errors: `tenancy.ErrMissing`
-
-Generated SQL:
-
-postgres:
-
-```sql
-SELECT COUNT(*) FROM "public"."workspace_settings" WHERE <filter>
-```
-
 ### Exists
 
 - Params: `id uuid.UUID`
@@ -108,6 +94,20 @@ postgres:
 
 ```sql
 SELECT EXISTS(SELECT 1 FROM "public"."workspace_settings" WHERE <filter>)
+```
+
+### Count
+
+- Params: `filter *WorkspaceSettingFilter`
+- Returns: `int64`, `error`
+- Errors: `tenancy.ErrMissing`
+
+Generated SQL:
+
+postgres:
+
+```sql
+SELECT COUNT(*) FROM "public"."workspace_settings" WHERE <filter>
 ```
 
 ### Paginate
@@ -170,36 +170,6 @@ postgres:
 INSERT INTO "public"."workspace_settings" (<columns>) VALUES <values> RETURNING "id"
 ```
 
-### Upsert
-
-- Params: `input *CreateWorkspaceSettingInput`, `target WorkspaceSettingConflictTarget`
-- Returns: `*WorkspaceSetting`, `error`
-- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
-- Notes: One method over the generated WorkspaceSettingConflictTarget enum — the target argument selects the conflict columns at call time.
-
-Generated SQL:
-
-postgres:
-
-```sql
-INSERT INTO "public"."workspace_settings" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING "id"
-```
-
-### UpsertMany
-
-- Params: `inputs []*CreateWorkspaceSettingInput`, `target WorkspaceSettingConflictTarget`
-- Returns: `[]*WorkspaceSetting`, `error`
-- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
-- Notes: Batched in generation.batch_size chunks over the same WorkspaceSettingConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.
-
-Generated SQL:
-
-postgres:
-
-```sql
-INSERT INTO "public"."workspace_settings" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>
-```
-
 ### Update
 
 - Params: `id uuid.UUID`, `input *UpdateWorkspaceSettingInput`
@@ -243,6 +213,36 @@ postgres:
 
 ```sql
 UPDATE "public"."workspace_settings" SET <set> WHERE <filter> RETURNING "id"
+```
+
+### Upsert
+
+- Params: `input *CreateWorkspaceSettingInput`, `target WorkspaceSettingConflictTarget`
+- Returns: `*WorkspaceSetting`, `error`
+- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
+- Notes: One method over the generated WorkspaceSettingConflictTarget enum — the target argument selects the conflict columns at call time.
+
+Generated SQL:
+
+postgres:
+
+```sql
+INSERT INTO "public"."workspace_settings" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING "id"
+```
+
+### UpsertMany
+
+- Params: `inputs []*CreateWorkspaceSettingInput`, `target WorkspaceSettingConflictTarget`
+- Returns: `[]*WorkspaceSetting`, `error`
+- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
+- Notes: Batched in generation.batch_size chunks over the same WorkspaceSettingConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.
+
+Generated SQL:
+
+postgres:
+
+```sql
+INSERT INTO "public"."workspace_settings" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>
 ```
 
 ### HardDelete
@@ -309,3 +309,17 @@ Type `WorkspaceSettingFilter`.
 Type `WorkspaceSettingSort`.
 
 Fields: CreatedAt, ID, Settings, UpdatedAt, WorkspaceID
+
+## Read examples
+
+```go
+row, err := client.WorkspaceSettings().Get(ctx, uuid.NewV4())
+rows, err := client.WorkspaceSettings().GetMany(ctx, &database.GetWorkspaceSettingsInput{Filter: &database.WorkspaceSettingFilter{CreatedAt: &comparator.Time{Eq: new(time.Now())}}})
+```
+
+## Write examples
+
+```go
+created, err := client.WorkspaceSettings().Create(ctx, &database.CreateWorkspaceSettingInput{})
+updated, err := client.WorkspaceSettings().Update(ctx, uuid.NewV4(), &database.UpdateWorkspaceSettingInput{WorkspaceID: omittable.Set(uuid.NewV4())})
+```

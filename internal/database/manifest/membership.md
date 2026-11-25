@@ -63,20 +63,6 @@ postgres:
 SELECT "created_at", "role", "updated_at", "user_id", "workspace_id" FROM "public"."memberships" WHERE <filter> ORDER BY <sort> LIMIT <limit>
 ```
 
-### Count
-
-- Params: `filter *MembershipFilter`
-- Returns: `int64`, `error`
-- Errors: `tenancy.ErrMissing`
-
-Generated SQL:
-
-postgres:
-
-```sql
-SELECT COUNT(*) FROM "public"."memberships" WHERE <filter>
-```
-
 ### Exists
 
 - Params: `pk MembershipPK`
@@ -103,6 +89,20 @@ postgres:
 
 ```sql
 SELECT EXISTS(SELECT 1 FROM "public"."memberships" WHERE <filter>)
+```
+
+### Count
+
+- Params: `filter *MembershipFilter`
+- Returns: `int64`, `error`
+- Errors: `tenancy.ErrMissing`
+
+Generated SQL:
+
+postgres:
+
+```sql
+SELECT COUNT(*) FROM "public"."memberships" WHERE <filter>
 ```
 
 ### Paginate
@@ -165,36 +165,6 @@ postgres:
 INSERT INTO "public"."memberships" (<columns>) VALUES <values>
 ```
 
-### Upsert
-
-- Params: `input *CreateMembershipInput`, `target MembershipConflictTarget`
-- Returns: `*Membership`, `error`
-- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
-- Notes: One method over the generated MembershipConflictTarget enum — the target argument selects the conflict columns at call time.
-
-Generated SQL:
-
-postgres:
-
-```sql
-INSERT INTO "public"."memberships" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>
-```
-
-### UpsertMany
-
-- Params: `inputs []*CreateMembershipInput`, `target MembershipConflictTarget`
-- Returns: `[]*Membership`, `error`
-- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
-- Notes: Batched in generation.batch_size chunks over the same MembershipConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.
-
-Generated SQL:
-
-postgres:
-
-```sql
-INSERT INTO "public"."memberships" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>
-```
-
 ### Update
 
 - Params: `pk MembershipPK`, `input *UpdateMembershipInput`
@@ -238,6 +208,36 @@ postgres:
 
 ```sql
 UPDATE "public"."memberships" SET <set> WHERE <filter> RETURNING "workspace_id", "user_id"
+```
+
+### Upsert
+
+- Params: `input *CreateMembershipInput`, `target MembershipConflictTarget`
+- Returns: `*Membership`, `error`
+- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
+- Notes: One method over the generated MembershipConflictTarget enum — the target argument selects the conflict columns at call time.
+
+Generated SQL:
+
+postgres:
+
+```sql
+INSERT INTO "public"."memberships" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>
+```
+
+### UpsertMany
+
+- Params: `inputs []*CreateMembershipInput`, `target MembershipConflictTarget`
+- Returns: `[]*Membership`, `error`
+- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
+- Notes: Batched in generation.batch_size chunks over the same MembershipConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.
+
+Generated SQL:
+
+postgres:
+
+```sql
+INSERT INTO "public"."memberships" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>
 ```
 
 ### HardDelete
@@ -304,3 +304,17 @@ Type `MembershipFilter`.
 Type `MembershipSort`.
 
 Fields: CreatedAt, Role, UpdatedAt, UserID, WorkspaceID
+
+## Read examples
+
+```go
+row, err := client.Memberships().Get(ctx, database.MembershipPK{WorkspaceID: uuid.NewV4(), UserID: uuid.NewV4()})
+rows, err := client.Memberships().GetMany(ctx, &database.GetMembershipsInput{Filter: &database.MembershipFilter{Role: &comparator.Enum[database.MembershipRole]{Eq: new(database.MembershipRole("owner"))}}})
+```
+
+## Write examples
+
+```go
+created, err := client.Memberships().Create(ctx, &database.CreateMembershipInput{WorkspaceID: uuid.NewV4(), UserID: uuid.NewV4()})
+updated, err := client.Memberships().Update(ctx, database.MembershipPK{WorkspaceID: uuid.NewV4(), UserID: uuid.NewV4()}, &database.UpdateMembershipInput{Role: omittable.Set(database.MembershipRole("owner"))})
+```

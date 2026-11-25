@@ -7,34 +7,29 @@ package graph
 
 import (
 	"context"
-	uuid1 "uuid"
+	"uuid"
 
 	"github.com/teandresmith/sqlgen-example/internal/database"
 	gqlmodel "github.com/teandresmith/sqlgen-example/internal/graph/model"
 )
 
 // UpdateTaskWatcher is the resolver for the updateTaskWatcher field.
-// FIX-066: no numeric non-PK columns → no IncrementColumn enum, no `_inc`/
-// `_dec` operators on the input, and the seed delegates with the reduced
-// (set-only) signature exposed by Q/M.
-func (r *mutationResolver) UpdateTaskWatcher(ctx context.Context, taskID uuid1.UUID, userID uuid1.UUID, input gqlmodel.UpdateTaskWatcherInput) (*database.TaskWatcher, error) {
-	setIn := translateUpdateTaskWatcherInput(input)
-	hasSet := hasUpdateTaskWatcherSetFields(input)
-	return r.M.UpdateTaskWatcher(ctx, taskID, userID, setIn, hasSet)
+func (r *mutationResolver) UpdateTaskWatcher(ctx context.Context, taskID uuid.UUID, userID uuid.UUID, input gqlmodel.UpdateTaskWatcherInput) (*database.TaskWatcher, error) {
+	return r.M.UpdateTaskWatcher(ctx, taskID, userID, translateUpdateTaskWatcherRequest(input))
 }
 
 // UpdateTaskWatchers is the resolver for the updateTaskWatchers field.
 func (r *mutationResolver) UpdateTaskWatchers(ctx context.Context, filter gqlmodel.TaskWatcherFilter, input gqlmodel.UpdateTaskWatcherInput) ([]*database.TaskWatcher, error) {
-	return r.M.UpdateTaskWatchers(ctx, translateTaskWatcherFilter(&filter), translateUpdateTaskWatcherInput(input))
+	return r.M.UpdateTaskWatchers(ctx, translateTaskWatcherFilter(&filter), translateUpdateTaskWatcherRequest(input))
 }
 
 // DeleteTaskWatcher is the resolver for the deleteTaskWatcher field.
-func (r *mutationResolver) DeleteTaskWatcher(ctx context.Context, taskID uuid1.UUID, userID uuid1.UUID) (bool, error) {
+func (r *mutationResolver) DeleteTaskWatcher(ctx context.Context, taskID uuid.UUID, userID uuid.UUID) (bool, error) {
 	return r.M.DeleteTaskWatcher(ctx, taskID, userID)
 }
 
 // TaskWatcher is the resolver for the taskWatcher field.
-func (r *queryResolver) TaskWatcher(ctx context.Context, taskID uuid1.UUID, userID uuid1.UUID) (*database.TaskWatcher, error) {
+func (r *queryResolver) TaskWatcher(ctx context.Context, taskID uuid.UUID, userID uuid.UUID) (*database.TaskWatcher, error) {
 	return r.Q.TaskWatcher(ctx, taskID, userID)
 }
 

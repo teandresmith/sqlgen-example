@@ -72,7 +72,9 @@ overrides:
 # Tenancy: workspace_id is the tenant column; fail-closed. Tables carrying
 # workspace_id are auto-detected as tenanted (projects, tasks, labels,
 # comments, memberships, workspace_settings, activity). workspaces and users
-# are shared. task_assignees / task_labels are reached via tenanted parents.
+# are shared. task_assignees / task_watchers / team_members carry workspace_id
+# with a composite FK to their parent (0001_init); task_labels and
+# task_dependencies are still reached via tenanted parents.
 # ---------------------------------------------------------------------------
 tenancy:
   enabled: true
@@ -118,6 +120,8 @@ api:
     max_complexity: 1000
     gqlgen_config: ./gqlgen.yml
     gqlgen_bin: go run github.com/99designs/gqlgen
+    # The app serves GraphQL from internal/server (own limits, auth, cache).
+    server_scaffold: false
 
 # ---------------------------------------------------------------------------
 # Per-table configuration. Most relationships are auto-detected from FKs:
@@ -197,13 +201,14 @@ tables:
     # needed — kept here to showcase self-ref auto-detection working.
     # The polymorphic attachments relationship (no real FK) still needs an
     # explicit discriminator filter (sub-categorized polymorphism, PRD §13.7).
-    # exclude_relationships matches the parser's snake_case relationship name
-    # (junction base name for M2M; "<fk-stem>_<table>" for a disambiguated
-    # self-ref O2M).
+    # A declared edge over exactly a detected edge's key takes its place, so no
+    # exclude_relationships entry is needed to rename one (sqlgen v0.1.3).
+    # The junctions now carry a composite (workspace_id, task_id) key, which a
+    # declared edge cannot take over (it maps onto tasks' primary key only), so
+    # the detected edges are excluded again to keep the Assignees/Watchers names.
     exclude_relationships:
       - task_assignees
       - task_watchers
-      - parent_task_tasks
     relationships:
       - name: Subtasks
         type: o2m
@@ -288,9 +293,11 @@ tables:
       enabled: false
 
   # ---------------------------------------------------------------------------
-  # Junction (M2M link) tables. These carry no workspace_id, so the generated
-  # create/upsert mutations cannot enforce tenant isolation — a raw
-  # createTaskLabel(taskID, labelID) could link rows across Workspaces. The
+  # Junction (M2M link) tables. task_assignees, task_watchers and team_members
+  # now carry workspace_id with a composite FK (0001_init), so the database
+  # itself refuses a cross-Workspace link; task_labels and task_dependencies do
+  # not, so a raw createTaskLabel(taskID, labelID) could link rows across
+  # Workspaces. The API masks below are kept for all five (no public API change). The
   # blessed mutations (assignUserToTask / watchTask / applyLabelToTask /
   # addTaskDependency) are the tenant-guarded write path: they resolve each
   # tenanted endpoint tenant-scoped before writing. So we subtract the raw
@@ -312,9 +319,9 @@ tables:
     api:
       operations: { create: false, create_many: false, upsert: false }
   team_members:
-    # team_members is a workspace_id-less M2M junction, so the generated write
-    # mutations can enforce neither tenant isolation nor the owner/admin guard
-    # story 17 requires. Unlike the task_* junctions above (whose removal stays an
+    # team_members is tenant-safe in 0001_init, but story 17's owner/admin
+    # guard and the user-is-a-member check live in the blessed resolvers, so the
+    # raw write surface stays subtracted. Unlike the task_* junctions above (whose removal stays an
     # unguarded generated delete), Team membership management is owner/admin-only
     # AND must be tenant-safe on removal too — the raw deleteTeamMember names a
     # composite PK with no Workspace to scope, so an admin of one Workspace could
@@ -338,7 +345,7 @@ tables:
   #
   # The parent is resolved tenant-scoped and each connected row is read through
   # its own tenant-scoped client first, so a Cycle/Team/Task/Project in another
-  # Workspace is NOT_FOUND (migrations 0004/0005 backstop it at the DB). The
+  # Workspace is NOT_FOUND (the composite FKs in 0001_init backstop it at the DB). The
   # nested-only call sets no Cycle/Team column, and the authz hook lets such an
   # empty update through (internal/authz), so a member can schedule and assign;
   # editing the Cycle or Team itself stays owner/admin-only.

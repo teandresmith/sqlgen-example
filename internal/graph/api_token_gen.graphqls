@@ -18,6 +18,10 @@ type APIToken {
   expiresAt: Time
   "Row creation timestamp"
   createdAt: Time!
+  "one-to-one relationship with the users table."
+  user: User
+  "one-to-one relationship with the workspaces table."
+  workspace: Workspace
 }
 
 type APITokenConnection {
@@ -40,6 +44,7 @@ type APITokenListResult {
 }
 
 input APITokenFilter {
+  id: IDComparator
   workspaceID: IDComparator
   userID: NullableIDComparator
   name: StringComparator

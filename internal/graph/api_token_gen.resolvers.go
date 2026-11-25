@@ -7,14 +7,14 @@ package graph
 
 import (
 	"context"
-	uuid1 "uuid"
+	"uuid"
 
 	"github.com/teandresmith/sqlgen-example/internal/database"
 	gqlmodel "github.com/teandresmith/sqlgen-example/internal/graph/model"
 )
 
 // APIToken is the resolver for the apiToken field.
-func (r *queryResolver) APIToken(ctx context.Context, id uuid1.UUID) (*database.APIToken, error) {
+func (r *queryResolver) APIToken(ctx context.Context, id uuid.UUID) (*database.APIToken, error) {
 	return r.Q.APIToken(ctx, id)
 }
 

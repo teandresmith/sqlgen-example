@@ -22,7 +22,7 @@ Logged time against a task
 | `workspace_id` | WorkspaceID | `uuid.UUID` | `uuid` |  |  |  |  | `comparator.ID` | Owning workspace (tenant column) |
 | `task_id` | TaskID | `uuid.UUID` | `uuid` |  |  |  |  | `comparator.ID` | Task the time was logged against |
 | `user_id` | UserID | `uuid.UUID` | `uuid` |  |  |  |  | `comparator.ID` | User who logged the time |
-| `hours` | Hours | `decimal.Decimal` | `numeric(6, 2)` |  |  |  |  | `comparator.String` | Hours worked (decimal) |
+| `hours` | Hours | `decimal.Decimal` | `numeric(6,2)` |  |  |  |  | `comparator.String` | Hours worked (decimal) |
 | `billable` | Billable | `bool` | `boolean` |  |  |  | `true` | `comparator.Bool` | Whether the time is billable |
 | `notes` | Notes | `*string` | `text` | yes |  |  |  | `comparator.NullableString` | Optional note |
 | `spent_on` | SpentOn | `time.Time` | `date` |  |  |  |  | `comparator.Time` | The day the work was performed |
@@ -35,6 +35,14 @@ Logged time against a task
 | `idx_time_entries_task` | task_id |  | btree |  |
 | `idx_time_entries_workspace` | workspace_id, spent_on |  | btree |  |
 | `time_entries_pkey` | id | yes | btree |  |
+
+## Relationships
+
+| Name | Kind | Target | FK | Filter |
+| --- | --- | --- | --- | --- |
+| task | o2o | Task | public.time_entries.task_id |  |
+| user | o2o | User | public.time_entries.user_id |  |
+| workspace | o2o | Workspace | public.time_entries.workspace_id |  |
 
 ## Query methods
 
@@ -67,20 +75,6 @@ postgres:
 SELECT "billable", "created_at", "hours", "id", "notes", "spent_on", "task_id", "user_id", "workspace_id" FROM "public"."time_entries" WHERE <filter> ORDER BY <sort> LIMIT <limit>
 ```
 
-### Count
-
-- Params: `filter *TimeEntryFilter`
-- Returns: `int64`, `error`
-- Errors: `tenancy.ErrMissing`
-
-Generated SQL:
-
-postgres:
-
-```sql
-SELECT COUNT(*) FROM "public"."time_entries" WHERE <filter>
-```
-
 ### Exists
 
 - Params: `id uuid.UUID`
@@ -107,6 +101,20 @@ postgres:
 
 ```sql
 SELECT EXISTS(SELECT 1 FROM "public"."time_entries" WHERE <filter>)
+```
+
+### Count
+
+- Params: `filter *TimeEntryFilter`
+- Returns: `int64`, `error`
+- Errors: `tenancy.ErrMissing`
+
+Generated SQL:
+
+postgres:
+
+```sql
+SELECT COUNT(*) FROM "public"."time_entries" WHERE <filter>
 ```
 
 ### Paginate
@@ -169,36 +177,6 @@ postgres:
 INSERT INTO "public"."time_entries" (<columns>) VALUES <values> RETURNING "id"
 ```
 
-### Upsert
-
-- Params: `input *CreateTimeEntryInput`, `target TimeEntryConflictTarget`
-- Returns: `*TimeEntry`, `error`
-- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
-- Notes: One method over the generated TimeEntryConflictTarget enum — the target argument selects the conflict columns at call time.
-
-Generated SQL:
-
-postgres:
-
-```sql
-INSERT INTO "public"."time_entries" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING "id"
-```
-
-### UpsertMany
-
-- Params: `inputs []*CreateTimeEntryInput`, `target TimeEntryConflictTarget`
-- Returns: `[]*TimeEntry`, `error`
-- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
-- Notes: Batched in generation.batch_size chunks over the same TimeEntryConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.
-
-Generated SQL:
-
-postgres:
-
-```sql
-INSERT INTO "public"."time_entries" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>
-```
-
 ### Update
 
 - Params: `id uuid.UUID`, `input *UpdateTimeEntryInput`
@@ -242,6 +220,36 @@ postgres:
 
 ```sql
 UPDATE "public"."time_entries" SET <set> WHERE <filter> RETURNING "id"
+```
+
+### Upsert
+
+- Params: `input *CreateTimeEntryInput`, `target TimeEntryConflictTarget`
+- Returns: `*TimeEntry`, `error`
+- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
+- Notes: One method over the generated TimeEntryConflictTarget enum — the target argument selects the conflict columns at call time.
+
+Generated SQL:
+
+postgres:
+
+```sql
+INSERT INTO "public"."time_entries" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING "id"
+```
+
+### UpsertMany
+
+- Params: `inputs []*CreateTimeEntryInput`, `target TimeEntryConflictTarget`
+- Returns: `[]*TimeEntry`, `error`
+- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
+- Notes: Batched in generation.batch_size chunks over the same TimeEntryConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.
+
+Generated SQL:
+
+postgres:
+
+```sql
+INSERT INTO "public"."time_entries" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>
 ```
 
 ### Increment
@@ -327,3 +335,17 @@ Type `TimeEntryFilter`.
 Type `TimeEntrySort`.
 
 Fields: Billable, CreatedAt, Hours, ID, Notes, SpentOn, TaskID, UserID, WorkspaceID
+
+## Read examples
+
+```go
+row, err := client.TimeEntries().Get(ctx, uuid.NewV4())
+rows, err := client.TimeEntries().GetMany(ctx, &database.GetTimeEntriesInput{Filter: &database.TimeEntryFilter{Hours: &comparator.String{Eq: new("example")}}})
+```
+
+## Write examples
+
+```go
+created, err := client.TimeEntries().Create(ctx, &database.CreateTimeEntryInput{TaskID: uuid.NewV4(), UserID: uuid.NewV4(), Hours: decimal.NewFromInt(1), SpentOn: time.Now()})
+updated, err := client.TimeEntries().Update(ctx, uuid.NewV4(), &database.UpdateTimeEntryInput{WorkspaceID: omittable.Set(uuid.NewV4())})
+```

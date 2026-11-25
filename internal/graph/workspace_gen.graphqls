@@ -60,6 +60,7 @@ type WorkspaceListResult {
 }
 
 input WorkspaceFilter {
+  id: IDComparator
   name: StringComparator
   slug: StringComparator
   createdAt: TimeComparator
@@ -96,8 +97,8 @@ input WorkspaceSort {
 input CreateWorkspaceInput {
   name: String!
   slug: String!
-  createdAt: Time!
-  updatedAt: Time!
+  createdAt: Time
+  updatedAt: Time
 }
 input UpdateWorkspaceInput {
   name: String

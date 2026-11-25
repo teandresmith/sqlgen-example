@@ -34,6 +34,8 @@ type MembershipListResult {
 }
 
 input MembershipFilter {
+  workspaceID: IDComparator
+  userID: IDComparator
   role: MembershipRoleComparator
   createdAt: TimeComparator
   updatedAt: TimeComparator

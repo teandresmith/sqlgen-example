@@ -40,6 +40,8 @@ A container for tasks, owned by one workspace
 | Name | Kind | Target | FK | Filter |
 | --- | --- | --- | --- | --- |
 | tasks | o2m | Task | public.tasks.project_id |  |
+| team | o2o | Team | public.projects.(workspace_id, team_id) |  |
+| workspace | o2o | Workspace | public.projects.workspace_id |  |
 
 ## Query methods
 
@@ -72,20 +74,6 @@ postgres:
 SELECT "created_at", "deleted_at", "description", "id", "name", "team_id", "updated_at", "workspace_id" FROM "public"."projects" WHERE <filter> AND "deleted_at" IS NULL ORDER BY <sort> LIMIT <limit>
 ```
 
-### Count
-
-- Params: `filter *ProjectFilter`
-- Returns: `int64`, `error`
-- Errors: `tenancy.ErrMissing`
-
-Generated SQL:
-
-postgres:
-
-```sql
-SELECT COUNT(*) FROM "public"."projects" WHERE <filter> AND "deleted_at" IS NULL
-```
-
 ### Exists
 
 - Params: `id uuid.UUID`
@@ -112,6 +100,20 @@ postgres:
 
 ```sql
 SELECT EXISTS(SELECT 1 FROM "public"."projects" WHERE <filter> AND "deleted_at" IS NULL)
+```
+
+### Count
+
+- Params: `filter *ProjectFilter`
+- Returns: `int64`, `error`
+- Errors: `tenancy.ErrMissing`
+
+Generated SQL:
+
+postgres:
+
+```sql
+SELECT COUNT(*) FROM "public"."projects" WHERE <filter> AND "deleted_at" IS NULL
 ```
 
 ### Paginate
@@ -174,36 +176,6 @@ postgres:
 INSERT INTO "public"."projects" (<columns>) VALUES <values> RETURNING "id"
 ```
 
-### Upsert
-
-- Params: `input *CreateProjectInput`, `target ProjectConflictTarget`
-- Returns: `*Project`, `error`
-- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
-- Notes: One method over the generated ProjectConflictTarget enum — the target argument selects the conflict columns at call time.
-
-Generated SQL:
-
-postgres:
-
-```sql
-INSERT INTO "public"."projects" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING "id"
-```
-
-### UpsertMany
-
-- Params: `inputs []*CreateProjectInput`, `target ProjectConflictTarget`
-- Returns: `[]*Project`, `error`
-- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
-- Notes: Batched in generation.batch_size chunks over the same ProjectConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.
-
-Generated SQL:
-
-postgres:
-
-```sql
-INSERT INTO "public"."projects" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>
-```
-
 ### Update
 
 - Params: `id uuid.UUID`, `input *UpdateProjectInput`
@@ -248,6 +220,43 @@ postgres:
 ```sql
 UPDATE "public"."projects" SET <set> WHERE <filter> RETURNING "id"
 ```
+
+### Upsert
+
+- Params: `input *CreateProjectInput`, `target ProjectConflictTarget`
+- Returns: `*Project`, `error`
+- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
+- Notes: One method over the generated ProjectConflictTarget enum — the target argument selects the conflict columns at call time.
+
+Generated SQL:
+
+postgres:
+
+```sql
+INSERT INTO "public"."projects" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING "id"
+```
+
+### UpsertMany
+
+- Params: `inputs []*CreateProjectInput`, `target ProjectConflictTarget`
+- Returns: `[]*Project`, `error`
+- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
+- Notes: Batched in generation.batch_size chunks over the same ProjectConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.
+
+Generated SQL:
+
+postgres:
+
+```sql
+INSERT INTO "public"."projects" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>
+```
+
+### UpdateWithRelated
+
+- Params: `id uuid.UUID`, `input *UpdateProjectWithRelatedInput`
+- Returns: `*Project`, `error`
+- Errors: `ErrNilInput`, `ErrNotFound`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
+- Notes: Writes the parent and its nested rows in one transaction — a SAVEPOINT when ctx already holds one. Issues no statement of its own: it composes Update and, per eligible relationship (Tasks), the target's and junction's own client methods, so no sql_bodies entry. Each inner call fires its own hooks, events and cache invalidation under its own op; the nested method has none.
 
 ### SoftDelete
 
@@ -384,13 +393,6 @@ postgres:
 DELETE FROM "public"."projects" WHERE <filter> RETURNING "id"
 ```
 
-### UpdateWithRelated
-
-- Params: `id uuid.UUID`, `input *UpdateProjectWithRelatedInput`
-- Returns: `*Project`, `error`
-- Errors: `ErrNilInput`, `ErrNotFound`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
-- Notes: Writes the parent and its nested rows in one transaction — a SAVEPOINT when ctx already holds one. Issues no statement of its own: it composes Update and, per eligible relationship (Tasks), the target's and junction's own client methods, so no sql_bodies entry. Each inner call fires its own hooks, events and cache invalidation under its own op; the nested method has none.
-
 ## Filter
 
 Type `ProjectFilter`.
@@ -413,3 +415,17 @@ Type `ProjectFilter`.
 Type `ProjectSort`.
 
 Fields: CreatedAt, DeletedAt, Description, ID, Name, TeamID, UpdatedAt, WorkspaceID
+
+## Read examples
+
+```go
+row, err := client.Projects().Get(ctx, uuid.NewV4())
+rows, err := client.Projects().GetMany(ctx, &database.GetProjectsInput{Filter: &database.ProjectFilter{Name: &comparator.String{Eq: new("example")}}})
+```
+
+## Write examples
+
+```go
+created, err := client.Projects().Create(ctx, &database.CreateProjectInput{Name: "example"})
+updated, err := client.Projects().Update(ctx, uuid.NewV4(), &database.UpdateProjectInput{WorkspaceID: omittable.Set(uuid.NewV4())})
+```

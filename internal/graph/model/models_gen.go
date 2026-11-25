@@ -10,12 +10,14 @@ import (
 	"time"
 	"uuid"
 
+	"github.com/99designs/gqlgen/graphql"
 	"github.com/shopspring/decimal"
 	"github.com/teandresmith/sqlgen-example/internal/database"
 	"github.com/teandresmith/sqlgen/types"
 )
 
 type APITokenFilter struct {
+	ID          *IDComparator           `json:"id,omitempty"`
 	WorkspaceID *IDComparator           `json:"workspaceID,omitempty"`
 	UserID      *NullableIDComparator   `json:"userID,omitempty"`
 	Name        *StringComparator       `json:"name,omitempty"`
@@ -33,6 +35,7 @@ type APITokenSort struct {
 }
 
 type ActivityFilter struct {
+	ID          *IDComparator         `json:"id,omitempty"`
 	WorkspaceID *IDComparator         `json:"workspaceID,omitempty"`
 	ActorID     *NullableIDComparator `json:"actorID,omitempty"`
 	EntityTable *StringComparator     `json:"entityTable,omitempty"`
@@ -57,6 +60,7 @@ type AttachmentEntityTypeComparator struct {
 }
 
 type AttachmentFilter struct {
+	ID          *IDComparator                   `json:"id,omitempty"`
 	WorkspaceID *IDComparator                   `json:"workspaceID,omitempty"`
 	EntityType  *AttachmentEntityTypeComparator `json:"entityType,omitempty"`
 	EntityID    *IDComparator                   `json:"entityID,omitempty"`
@@ -84,8 +88,9 @@ type AuthPayload struct {
 }
 
 type BooleanComparator struct {
-	Eq  *bool `json:"eq,omitempty"`
-	Neq *bool `json:"neq,omitempty"`
+	Eq  *bool  `json:"eq,omitempty"`
+	Neq *bool  `json:"neq,omitempty"`
+	In  []bool `json:"in,omitempty"`
 }
 
 // Details for founding a new Workspace. The caller (from the request's bearer
@@ -99,6 +104,7 @@ type BootstrapWorkspaceInput struct {
 }
 
 type CommentFilter struct {
+	ID          *IDComparator     `json:"id,omitempty"`
 	WorkspaceID *IDComparator     `json:"workspaceID,omitempty"`
 	TaskID      *IDComparator     `json:"taskID,omitempty"`
 	AuthorID    *IDComparator     `json:"authorID,omitempty"`
@@ -150,39 +156,39 @@ type CreateAPITokenResult struct {
 }
 
 type CreateActivityInput struct {
-	WorkspaceID uuid.UUID  `json:"workspaceID"`
+	WorkspaceID *uuid.UUID `json:"workspaceID,omitempty"`
 	ActorID     *uuid.UUID `json:"actorID,omitempty"`
 	EntityTable string     `json:"entityTable"`
 	EntityID    uuid.UUID  `json:"entityID"`
 	Action      string     `json:"action"`
-	Payload     types.JSON `json:"payload"`
-	CreatedAt   time.Time  `json:"createdAt"`
+	Payload     types.JSON `json:"payload,omitempty"`
+	CreatedAt   *time.Time `json:"createdAt,omitempty"`
 }
 
 type CreateCycleInput struct {
-	WorkspaceID uuid.UUID            `json:"workspaceID"`
-	TeamID      *uuid.UUID           `json:"teamID,omitempty"`
-	Name        string               `json:"name"`
-	Status      database.CycleStatus `json:"status"`
-	StartsOn    time.Time            `json:"startsOn"`
-	EndsOn      time.Time            `json:"endsOn"`
-	CreatedAt   time.Time            `json:"createdAt"`
-	UpdatedAt   time.Time            `json:"updatedAt"`
+	WorkspaceID *uuid.UUID            `json:"workspaceID,omitempty"`
+	TeamID      *uuid.UUID            `json:"teamID,omitempty"`
+	Name        string                `json:"name"`
+	Status      *database.CycleStatus `json:"status,omitempty"`
+	StartsOn    time.Time             `json:"startsOn"`
+	EndsOn      time.Time             `json:"endsOn"`
+	CreatedAt   *time.Time            `json:"createdAt,omitempty"`
+	UpdatedAt   *time.Time            `json:"updatedAt,omitempty"`
 }
 
 type CreateLabelInput struct {
-	WorkspaceID uuid.UUID `json:"workspaceID"`
-	Name        string    `json:"name"`
-	Color       string    `json:"color"`
-	CreatedAt   time.Time `json:"createdAt"`
+	WorkspaceID *uuid.UUID `json:"workspaceID,omitempty"`
+	Name        string     `json:"name"`
+	Color       *string    `json:"color,omitempty"`
+	CreatedAt   *time.Time `json:"createdAt,omitempty"`
 }
 
 type CreateProjectInput struct {
-	WorkspaceID uuid.UUID  `json:"workspaceID"`
+	WorkspaceID *uuid.UUID `json:"workspaceID,omitempty"`
 	Name        string     `json:"name"`
 	Description *string    `json:"description,omitempty"`
-	CreatedAt   time.Time  `json:"createdAt"`
-	UpdatedAt   time.Time  `json:"updatedAt"`
+	CreatedAt   *time.Time `json:"createdAt,omitempty"`
+	UpdatedAt   *time.Time `json:"updatedAt,omitempty"`
 	DeletedAt   *time.Time `json:"deletedAt,omitempty"`
 	TeamID      *uuid.UUID `json:"teamID,omitempty"`
 }
@@ -207,54 +213,55 @@ type CreateTaskInProjectInput struct {
 }
 
 type CreateTaskInput struct {
-	WorkspaceID  uuid.UUID             `json:"workspaceID"`
-	ProjectID    uuid.UUID             `json:"projectID"`
-	ParentTaskID *uuid.UUID            `json:"parentTaskID,omitempty"`
-	ReporterID   uuid.UUID             `json:"reporterID"`
-	Title        string                `json:"title"`
-	Description  *string               `json:"description,omitempty"`
-	Status       database.TaskStatus   `json:"status"`
-	Priority     database.TaskPriority `json:"priority"`
-	CustomFields types.JSON            `json:"customFields"`
-	DueAt        *time.Time            `json:"dueAt,omitempty"`
-	CreatedAt    time.Time             `json:"createdAt"`
-	UpdatedAt    time.Time             `json:"updatedAt"`
-	DeletedAt    *time.Time            `json:"deletedAt,omitempty"`
-	CycleID      *uuid.UUID            `json:"cycleID,omitempty"`
+	WorkspaceID  *uuid.UUID             `json:"workspaceID,omitempty"`
+	ProjectID    uuid.UUID              `json:"projectID"`
+	ParentTaskID *uuid.UUID             `json:"parentTaskID,omitempty"`
+	ReporterID   uuid.UUID              `json:"reporterID"`
+	Title        string                 `json:"title"`
+	Description  *string                `json:"description,omitempty"`
+	Status       *database.TaskStatus   `json:"status,omitempty"`
+	Priority     *database.TaskPriority `json:"priority,omitempty"`
+	CustomFields types.JSON             `json:"customFields,omitempty"`
+	DueAt        *time.Time             `json:"dueAt,omitempty"`
+	CreatedAt    *time.Time             `json:"createdAt,omitempty"`
+	UpdatedAt    *time.Time             `json:"updatedAt,omitempty"`
+	DeletedAt    *time.Time             `json:"deletedAt,omitempty"`
+	CycleID      *uuid.UUID             `json:"cycleID,omitempty"`
 }
 
 type CreateTeamInput struct {
-	WorkspaceID uuid.UUID `json:"workspaceID"`
-	Name        string    `json:"name"`
-	Slug        string    `json:"slug"`
-	Description *string   `json:"description,omitempty"`
-	CreatedAt   time.Time `json:"createdAt"`
-	UpdatedAt   time.Time `json:"updatedAt"`
+	WorkspaceID *uuid.UUID `json:"workspaceID,omitempty"`
+	Name        string     `json:"name"`
+	Slug        string     `json:"slug"`
+	Description *string    `json:"description,omitempty"`
+	CreatedAt   *time.Time `json:"createdAt,omitempty"`
+	UpdatedAt   *time.Time `json:"updatedAt,omitempty"`
 }
 
 type CreateUserInput struct {
-	Email        string    `json:"email"`
-	DisplayName  string    `json:"displayName"`
-	PasswordHash string    `json:"passwordHash"`
-	CreatedAt    time.Time `json:"createdAt"`
-	UpdatedAt    time.Time `json:"updatedAt"`
+	Email        string     `json:"email"`
+	DisplayName  string     `json:"displayName"`
+	PasswordHash string     `json:"passwordHash"`
+	CreatedAt    *time.Time `json:"createdAt,omitempty"`
+	UpdatedAt    *time.Time `json:"updatedAt,omitempty"`
 }
 
 type CreateWorkspaceInput struct {
-	Name      string    `json:"name"`
-	Slug      string    `json:"slug"`
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	Name      string     `json:"name"`
+	Slug      string     `json:"slug"`
+	CreatedAt *time.Time `json:"createdAt,omitempty"`
+	UpdatedAt *time.Time `json:"updatedAt,omitempty"`
 }
 
 type CreateWorkspaceSettingInput struct {
-	WorkspaceID uuid.UUID  `json:"workspaceID"`
-	Settings    types.JSON `json:"settings"`
-	CreatedAt   time.Time  `json:"createdAt"`
-	UpdatedAt   time.Time  `json:"updatedAt"`
+	WorkspaceID *uuid.UUID `json:"workspaceID,omitempty"`
+	Settings    types.JSON `json:"settings,omitempty"`
+	CreatedAt   *time.Time `json:"createdAt,omitempty"`
+	UpdatedAt   *time.Time `json:"updatedAt,omitempty"`
 }
 
 type CycleFilter struct {
+	ID          *IDComparator          `json:"id,omitempty"`
 	WorkspaceID *IDComparator          `json:"workspaceID,omitempty"`
 	TeamID      *NullableIDComparator  `json:"teamID,omitempty"`
 	Name        *StringComparator      `json:"name,omitempty"`
@@ -281,19 +288,18 @@ type CycleStatusComparator struct {
 }
 
 type CycleTasksCreateInput struct {
-	WorkspaceID  uuid.UUID             `json:"workspaceID"`
-	ProjectID    uuid.UUID             `json:"projectID"`
-	ParentTaskID *uuid.UUID            `json:"parentTaskID,omitempty"`
-	ReporterID   uuid.UUID             `json:"reporterID"`
-	Title        string                `json:"title"`
-	Description  *string               `json:"description,omitempty"`
-	Status       database.TaskStatus   `json:"status"`
-	Priority     database.TaskPriority `json:"priority"`
-	CustomFields types.JSON            `json:"customFields"`
-	DueAt        *time.Time            `json:"dueAt,omitempty"`
-	CreatedAt    time.Time             `json:"createdAt"`
-	UpdatedAt    time.Time             `json:"updatedAt"`
-	DeletedAt    *time.Time            `json:"deletedAt,omitempty"`
+	ProjectID    uuid.UUID              `json:"projectID"`
+	ParentTaskID *uuid.UUID             `json:"parentTaskID,omitempty"`
+	ReporterID   uuid.UUID              `json:"reporterID"`
+	Title        string                 `json:"title"`
+	Description  *string                `json:"description,omitempty"`
+	Status       *database.TaskStatus   `json:"status,omitempty"`
+	Priority     *database.TaskPriority `json:"priority,omitempty"`
+	CustomFields types.JSON             `json:"customFields,omitempty"`
+	DueAt        *time.Time             `json:"dueAt,omitempty"`
+	CreatedAt    *time.Time             `json:"createdAt,omitempty"`
+	UpdatedAt    *time.Time             `json:"updatedAt,omitempty"`
+	DeletedAt    *time.Time             `json:"deletedAt,omitempty"`
 }
 
 type CycleTasksUpdateNested struct {
@@ -333,6 +339,7 @@ type IDComparator struct {
 }
 
 type InvitationFilter struct {
+	ID          *IDComparator               `json:"id,omitempty"`
 	WorkspaceID *IDComparator               `json:"workspaceID,omitempty"`
 	Email       *StringComparator           `json:"email,omitempty"`
 	Role        *MembershipRoleComparator   `json:"role,omitempty"`
@@ -379,6 +386,7 @@ type JSONBComparator struct {
 }
 
 type LabelFilter struct {
+	ID          *IDComparator     `json:"id,omitempty"`
 	WorkspaceID *IDComparator     `json:"workspaceID,omitempty"`
 	Name        *StringComparator `json:"name,omitempty"`
 	Color       *StringComparator `json:"color,omitempty"`
@@ -400,11 +408,13 @@ type LoginInput struct {
 }
 
 type MembershipFilter struct {
-	Role      *MembershipRoleComparator `json:"role,omitempty"`
-	CreatedAt *TimeComparator           `json:"createdAt,omitempty"`
-	UpdatedAt *TimeComparator           `json:"updatedAt,omitempty"`
-	And       []*MembershipFilter       `json:"and,omitempty"`
-	Or        []*MembershipFilter       `json:"or,omitempty"`
+	WorkspaceID *IDComparator             `json:"workspaceID,omitempty"`
+	UserID      *IDComparator             `json:"userID,omitempty"`
+	Role        *MembershipRoleComparator `json:"role,omitempty"`
+	CreatedAt   *TimeComparator           `json:"createdAt,omitempty"`
+	UpdatedAt   *TimeComparator           `json:"updatedAt,omitempty"`
+	And         []*MembershipFilter       `json:"and,omitempty"`
+	Or          []*MembershipFilter       `json:"or,omitempty"`
 }
 
 type MembershipRoleComparator struct {
@@ -484,6 +494,7 @@ type NumericRange struct {
 }
 
 type ProjectFilter struct {
+	ID          *IDComparator             `json:"id,omitempty"`
 	WorkspaceID *IDComparator             `json:"workspaceID,omitempty"`
 	Name        *StringComparator         `json:"name,omitempty"`
 	Description *NullableStringComparator `json:"description,omitempty"`
@@ -502,7 +513,8 @@ type ProjectSort struct {
 }
 
 type ProjectStatFilter struct {
-	WorkspaceID *StringComparator    `json:"workspaceID,omitempty"`
+	ProjectID   *IDComparator        `json:"projectID,omitempty"`
+	WorkspaceID *IDComparator        `json:"workspaceID,omitempty"`
 	TotalTasks  *NumericComparator   `json:"totalTasks,omitempty"`
 	DoneTasks   *NumericComparator   `json:"doneTasks,omitempty"`
 	OpenTasks   *NumericComparator   `json:"openTasks,omitempty"`
@@ -526,6 +538,7 @@ type RegisterInput struct {
 }
 
 type SsoConnectionFilter struct {
+	ID          *IDComparator          `json:"id,omitempty"`
 	WorkspaceID *IDComparator          `json:"workspaceID,omitempty"`
 	Provider    *SsoProviderComparator `json:"provider,omitempty"`
 	Config      *JSONBComparator       `json:"config,omitempty"`
@@ -572,9 +585,12 @@ type StringSliceComparator struct {
 }
 
 type TaskAssigneeFilter struct {
-	AssignedAt *TimeComparator       `json:"assignedAt,omitempty"`
-	And        []*TaskAssigneeFilter `json:"and,omitempty"`
-	Or         []*TaskAssigneeFilter `json:"or,omitempty"`
+	TaskID      *IDComparator         `json:"taskID,omitempty"`
+	UserID      *IDComparator         `json:"userID,omitempty"`
+	AssignedAt  *TimeComparator       `json:"assignedAt,omitempty"`
+	WorkspaceID *IDComparator         `json:"workspaceID,omitempty"`
+	And         []*TaskAssigneeFilter `json:"and,omitempty"`
+	Or          []*TaskAssigneeFilter `json:"or,omitempty"`
 }
 
 type TaskAssigneeSort struct {
@@ -583,10 +599,12 @@ type TaskAssigneeSort struct {
 }
 
 type TaskDependencyFilter struct {
-	Type      *DependencyTypeComparator `json:"type,omitempty"`
-	CreatedAt *TimeComparator           `json:"createdAt,omitempty"`
-	And       []*TaskDependencyFilter   `json:"and,omitempty"`
-	Or        []*TaskDependencyFilter   `json:"or,omitempty"`
+	TaskID          *IDComparator             `json:"taskID,omitempty"`
+	DependsOnTaskID *IDComparator             `json:"dependsOnTaskID,omitempty"`
+	Type            *DependencyTypeComparator `json:"type,omitempty"`
+	CreatedAt       *TimeComparator           `json:"createdAt,omitempty"`
+	And             []*TaskDependencyFilter   `json:"and,omitempty"`
+	Or              []*TaskDependencyFilter   `json:"or,omitempty"`
 }
 
 type TaskDependencySort struct {
@@ -595,6 +613,7 @@ type TaskDependencySort struct {
 }
 
 type TaskFilter struct {
+	ID             *IDComparator             `json:"id,omitempty"`
 	WorkspaceID    *IDComparator             `json:"workspaceID,omitempty"`
 	ProjectID      *IDComparator             `json:"projectID,omitempty"`
 	ParentTaskID   *NullableIDComparator     `json:"parentTaskID,omitempty"`
@@ -623,8 +642,10 @@ type TaskFilter struct {
 }
 
 type TaskLabelFilter struct {
-	And []*TaskLabelFilter `json:"and,omitempty"`
-	Or  []*TaskLabelFilter `json:"or,omitempty"`
+	TaskID  *IDComparator      `json:"taskID,omitempty"`
+	LabelID *IDComparator      `json:"labelID,omitempty"`
+	And     []*TaskLabelFilter `json:"and,omitempty"`
+	Or      []*TaskLabelFilter `json:"or,omitempty"`
 }
 
 type TaskLabelSort struct {
@@ -659,9 +680,12 @@ type TaskStatusComparator struct {
 }
 
 type TaskWatcherFilter struct {
-	CreatedAt *TimeComparator      `json:"createdAt,omitempty"`
-	And       []*TaskWatcherFilter `json:"and,omitempty"`
-	Or        []*TaskWatcherFilter `json:"or,omitempty"`
+	TaskID      *IDComparator        `json:"taskID,omitempty"`
+	UserID      *IDComparator        `json:"userID,omitempty"`
+	CreatedAt   *TimeComparator      `json:"createdAt,omitempty"`
+	WorkspaceID *IDComparator        `json:"workspaceID,omitempty"`
+	And         []*TaskWatcherFilter `json:"and,omitempty"`
+	Or          []*TaskWatcherFilter `json:"or,omitempty"`
 }
 
 type TaskWatcherSort struct {
@@ -670,6 +694,7 @@ type TaskWatcherSort struct {
 }
 
 type TeamFilter struct {
+	ID          *IDComparator             `json:"id,omitempty"`
 	WorkspaceID *IDComparator             `json:"workspaceID,omitempty"`
 	Name        *StringComparator         `json:"name,omitempty"`
 	Slug        *StringComparator         `json:"slug,omitempty"`
@@ -684,9 +709,12 @@ type TeamFilter struct {
 }
 
 type TeamMemberFilter struct {
-	AddedAt *TimeComparator     `json:"addedAt,omitempty"`
-	And     []*TeamMemberFilter `json:"and,omitempty"`
-	Or      []*TeamMemberFilter `json:"or,omitempty"`
+	TeamID      *IDComparator       `json:"teamID,omitempty"`
+	UserID      *IDComparator       `json:"userID,omitempty"`
+	AddedAt     *TimeComparator     `json:"addedAt,omitempty"`
+	WorkspaceID *IDComparator       `json:"workspaceID,omitempty"`
+	And         []*TeamMemberFilter `json:"and,omitempty"`
+	Or          []*TeamMemberFilter `json:"or,omitempty"`
 }
 
 type TeamMemberSort struct {
@@ -695,11 +723,10 @@ type TeamMemberSort struct {
 }
 
 type TeamProjectsCreateInput struct {
-	WorkspaceID uuid.UUID  `json:"workspaceID"`
 	Name        string     `json:"name"`
 	Description *string    `json:"description,omitempty"`
-	CreatedAt   time.Time  `json:"createdAt"`
-	UpdatedAt   time.Time  `json:"updatedAt"`
+	CreatedAt   *time.Time `json:"createdAt,omitempty"`
+	UpdatedAt   *time.Time `json:"updatedAt,omitempty"`
 	DeletedAt   *time.Time `json:"deletedAt,omitempty"`
 }
 
@@ -729,6 +756,7 @@ type TimeComparator struct {
 }
 
 type TimeEntryFilter struct {
+	ID          *IDComparator             `json:"id,omitempty"`
 	WorkspaceID *IDComparator             `json:"workspaceID,omitempty"`
 	TaskID      *IDComparator             `json:"taskID,omitempty"`
 	UserID      *IDComparator             `json:"userID,omitempty"`
@@ -752,12 +780,12 @@ type TimeRange struct {
 }
 
 type UpdateActivityInput struct {
-	ActorID     *uuid.UUID `json:"actorID,omitempty"`
-	EntityTable *string    `json:"entityTable,omitempty"`
-	EntityID    *uuid.UUID `json:"entityID,omitempty"`
-	Action      *string    `json:"action,omitempty"`
-	Payload     types.JSON `json:"payload,omitempty"`
-	CreatedAt   *time.Time `json:"createdAt,omitempty"`
+	ActorID     graphql.Omittable[*uuid.UUID] `json:"actorID,omitempty"`
+	EntityTable *string                       `json:"entityTable,omitempty"`
+	EntityID    *uuid.UUID                    `json:"entityID,omitempty"`
+	Action      *string                       `json:"action,omitempty"`
+	Payload     types.JSON                    `json:"payload,omitempty"`
+	CreatedAt   *time.Time                    `json:"createdAt,omitempty"`
 }
 
 type UpdateAttachmentInput struct {
@@ -782,13 +810,13 @@ type UpdateCommentInput struct {
 }
 
 type UpdateCycleInput struct {
-	TeamID    *uuid.UUID            `json:"teamID,omitempty"`
-	Name      *string               `json:"name,omitempty"`
-	Status    *database.CycleStatus `json:"status,omitempty"`
-	StartsOn  *time.Time            `json:"startsOn,omitempty"`
-	EndsOn    *time.Time            `json:"endsOn,omitempty"`
-	CreatedAt *time.Time            `json:"createdAt,omitempty"`
-	UpdatedAt *time.Time            `json:"updatedAt,omitempty"`
+	TeamID    graphql.Omittable[*uuid.UUID] `json:"teamID,omitempty"`
+	Name      *string                       `json:"name,omitempty"`
+	Status    *database.CycleStatus         `json:"status,omitempty"`
+	StartsOn  *time.Time                    `json:"startsOn,omitempty"`
+	EndsOn    *time.Time                    `json:"endsOn,omitempty"`
+	CreatedAt *time.Time                    `json:"createdAt,omitempty"`
+	UpdatedAt *time.Time                    `json:"updatedAt,omitempty"`
 }
 
 type UpdateCycleWithRelatedInput struct {
@@ -809,12 +837,12 @@ type UpdateMembershipInput struct {
 }
 
 type UpdateProjectInput struct {
-	Name        *string    `json:"name,omitempty"`
-	Description *string    `json:"description,omitempty"`
-	CreatedAt   *time.Time `json:"createdAt,omitempty"`
-	UpdatedAt   *time.Time `json:"updatedAt,omitempty"`
-	DeletedAt   *time.Time `json:"deletedAt,omitempty"`
-	TeamID      *uuid.UUID `json:"teamID,omitempty"`
+	Name        *string                       `json:"name,omitempty"`
+	Description graphql.Omittable[*string]    `json:"description,omitempty"`
+	CreatedAt   *time.Time                    `json:"createdAt,omitempty"`
+	UpdatedAt   *time.Time                    `json:"updatedAt,omitempty"`
+	DeletedAt   graphql.Omittable[*time.Time] `json:"deletedAt,omitempty"`
+	TeamID      graphql.Omittable[*uuid.UUID] `json:"teamID,omitempty"`
 }
 
 type UpdateTaskAssigneeInput struct {
@@ -827,19 +855,19 @@ type UpdateTaskDependencyInput struct {
 }
 
 type UpdateTaskInput struct {
-	ProjectID    *uuid.UUID             `json:"projectID,omitempty"`
-	ParentTaskID *uuid.UUID             `json:"parentTaskID,omitempty"`
-	ReporterID   *uuid.UUID             `json:"reporterID,omitempty"`
-	Title        *string                `json:"title,omitempty"`
-	Description  *string                `json:"description,omitempty"`
-	Status       *database.TaskStatus   `json:"status,omitempty"`
-	Priority     *database.TaskPriority `json:"priority,omitempty"`
-	CustomFields types.JSON             `json:"customFields,omitempty"`
-	DueAt        *time.Time             `json:"dueAt,omitempty"`
-	CreatedAt    *time.Time             `json:"createdAt,omitempty"`
-	UpdatedAt    *time.Time             `json:"updatedAt,omitempty"`
-	DeletedAt    *time.Time             `json:"deletedAt,omitempty"`
-	CycleID      *uuid.UUID             `json:"cycleID,omitempty"`
+	ProjectID    *uuid.UUID                    `json:"projectID,omitempty"`
+	ParentTaskID graphql.Omittable[*uuid.UUID] `json:"parentTaskID,omitempty"`
+	ReporterID   *uuid.UUID                    `json:"reporterID,omitempty"`
+	Title        *string                       `json:"title,omitempty"`
+	Description  graphql.Omittable[*string]    `json:"description,omitempty"`
+	Status       *database.TaskStatus          `json:"status,omitempty"`
+	Priority     *database.TaskPriority        `json:"priority,omitempty"`
+	CustomFields types.JSON                    `json:"customFields,omitempty"`
+	DueAt        graphql.Omittable[*time.Time] `json:"dueAt,omitempty"`
+	CreatedAt    *time.Time                    `json:"createdAt,omitempty"`
+	UpdatedAt    *time.Time                    `json:"updatedAt,omitempty"`
+	DeletedAt    graphql.Omittable[*time.Time] `json:"deletedAt,omitempty"`
+	CycleID      graphql.Omittable[*uuid.UUID] `json:"cycleID,omitempty"`
 }
 
 type UpdateTaskWatcherInput struct {
@@ -852,11 +880,11 @@ type UpdateTaskWithRelatedInput struct {
 }
 
 type UpdateTeamInput struct {
-	Name        *string    `json:"name,omitempty"`
-	Slug        *string    `json:"slug,omitempty"`
-	Description *string    `json:"description,omitempty"`
-	CreatedAt   *time.Time `json:"createdAt,omitempty"`
-	UpdatedAt   *time.Time `json:"updatedAt,omitempty"`
+	Name        *string                    `json:"name,omitempty"`
+	Slug        *string                    `json:"slug,omitempty"`
+	Description graphql.Omittable[*string] `json:"description,omitempty"`
+	CreatedAt   *time.Time                 `json:"createdAt,omitempty"`
+	UpdatedAt   *time.Time                 `json:"updatedAt,omitempty"`
 }
 
 type UpdateTeamWithRelatedInput struct {
@@ -865,15 +893,15 @@ type UpdateTeamWithRelatedInput struct {
 }
 
 type UpdateTimeEntryInput struct {
-	TaskID    *uuid.UUID       `json:"taskID,omitempty"`
-	UserID    *uuid.UUID       `json:"userID,omitempty"`
-	Hours     *decimal.Decimal `json:"hours,omitempty"`
-	HoursInc  *int             `json:"hours_inc,omitempty"`
-	HoursDec  *int             `json:"hours_dec,omitempty"`
-	Billable  *bool            `json:"billable,omitempty"`
-	Notes     *string          `json:"notes,omitempty"`
-	SpentOn   *time.Time       `json:"spentOn,omitempty"`
-	CreatedAt *time.Time       `json:"createdAt,omitempty"`
+	TaskID    *uuid.UUID                 `json:"taskID,omitempty"`
+	UserID    *uuid.UUID                 `json:"userID,omitempty"`
+	Hours     *decimal.Decimal           `json:"hours,omitempty"`
+	HoursInc  *int                       `json:"hours_inc,omitempty"`
+	HoursDec  *int                       `json:"hours_dec,omitempty"`
+	Billable  *bool                      `json:"billable,omitempty"`
+	Notes     graphql.Omittable[*string] `json:"notes,omitempty"`
+	SpentOn   *time.Time                 `json:"spentOn,omitempty"`
+	CreatedAt *time.Time                 `json:"createdAt,omitempty"`
 }
 
 type UpdateUserInput struct {
@@ -898,6 +926,7 @@ type UpdateWorkspaceSettingInput struct {
 }
 
 type UserFilter struct {
+	ID            *IDComparator     `json:"id,omitempty"`
 	Email         *StringComparator `json:"email,omitempty"`
 	DisplayName   *StringComparator `json:"displayName,omitempty"`
 	CreatedAt     *TimeComparator   `json:"createdAt,omitempty"`
@@ -923,6 +952,7 @@ type UserSort struct {
 }
 
 type WorkspaceFilter struct {
+	ID             *IDComparator        `json:"id,omitempty"`
 	Name           *StringComparator    `json:"name,omitempty"`
 	Slug           *StringComparator    `json:"slug,omitempty"`
 	CreatedAt      *TimeComparator      `json:"createdAt,omitempty"`
@@ -945,6 +975,7 @@ type WorkspaceFilter struct {
 }
 
 type WorkspaceSettingFilter struct {
+	ID          *IDComparator             `json:"id,omitempty"`
 	WorkspaceID *IDComparator             `json:"workspaceID,omitempty"`
 	Settings    *JSONBComparator          `json:"settings,omitempty"`
 	CreatedAt   *TimeComparator           `json:"createdAt,omitempty"`
@@ -1746,20 +1777,22 @@ func (e SsoConnectionSortField) MarshalJSON() ([]byte, error) {
 type TaskAssigneeSortField string
 
 const (
-	TaskAssigneeSortFieldTaskID     TaskAssigneeSortField = "TASK_ID"
-	TaskAssigneeSortFieldUserID     TaskAssigneeSortField = "USER_ID"
-	TaskAssigneeSortFieldAssignedAt TaskAssigneeSortField = "ASSIGNED_AT"
+	TaskAssigneeSortFieldTaskID      TaskAssigneeSortField = "TASK_ID"
+	TaskAssigneeSortFieldUserID      TaskAssigneeSortField = "USER_ID"
+	TaskAssigneeSortFieldAssignedAt  TaskAssigneeSortField = "ASSIGNED_AT"
+	TaskAssigneeSortFieldWorkspaceID TaskAssigneeSortField = "WORKSPACE_ID"
 )
 
 var AllTaskAssigneeSortField = []TaskAssigneeSortField{
 	TaskAssigneeSortFieldTaskID,
 	TaskAssigneeSortFieldUserID,
 	TaskAssigneeSortFieldAssignedAt,
+	TaskAssigneeSortFieldWorkspaceID,
 }
 
 func (e TaskAssigneeSortField) IsValid() bool {
 	switch e {
-	case TaskAssigneeSortFieldTaskID, TaskAssigneeSortFieldUserID, TaskAssigneeSortFieldAssignedAt:
+	case TaskAssigneeSortFieldTaskID, TaskAssigneeSortFieldUserID, TaskAssigneeSortFieldAssignedAt, TaskAssigneeSortFieldWorkspaceID:
 		return true
 	}
 	return false
@@ -1998,20 +2031,22 @@ func (e TaskSortField) MarshalJSON() ([]byte, error) {
 type TaskWatcherSortField string
 
 const (
-	TaskWatcherSortFieldTaskID    TaskWatcherSortField = "TASK_ID"
-	TaskWatcherSortFieldUserID    TaskWatcherSortField = "USER_ID"
-	TaskWatcherSortFieldCreatedAt TaskWatcherSortField = "CREATED_AT"
+	TaskWatcherSortFieldTaskID      TaskWatcherSortField = "TASK_ID"
+	TaskWatcherSortFieldUserID      TaskWatcherSortField = "USER_ID"
+	TaskWatcherSortFieldCreatedAt   TaskWatcherSortField = "CREATED_AT"
+	TaskWatcherSortFieldWorkspaceID TaskWatcherSortField = "WORKSPACE_ID"
 )
 
 var AllTaskWatcherSortField = []TaskWatcherSortField{
 	TaskWatcherSortFieldTaskID,
 	TaskWatcherSortFieldUserID,
 	TaskWatcherSortFieldCreatedAt,
+	TaskWatcherSortFieldWorkspaceID,
 }
 
 func (e TaskWatcherSortField) IsValid() bool {
 	switch e {
-	case TaskWatcherSortFieldTaskID, TaskWatcherSortFieldUserID, TaskWatcherSortFieldCreatedAt:
+	case TaskWatcherSortFieldTaskID, TaskWatcherSortFieldUserID, TaskWatcherSortFieldCreatedAt, TaskWatcherSortFieldWorkspaceID:
 		return true
 	}
 	return false
@@ -2055,20 +2090,22 @@ func (e TaskWatcherSortField) MarshalJSON() ([]byte, error) {
 type TeamMemberSortField string
 
 const (
-	TeamMemberSortFieldTeamID  TeamMemberSortField = "TEAM_ID"
-	TeamMemberSortFieldUserID  TeamMemberSortField = "USER_ID"
-	TeamMemberSortFieldAddedAt TeamMemberSortField = "ADDED_AT"
+	TeamMemberSortFieldTeamID      TeamMemberSortField = "TEAM_ID"
+	TeamMemberSortFieldUserID      TeamMemberSortField = "USER_ID"
+	TeamMemberSortFieldAddedAt     TeamMemberSortField = "ADDED_AT"
+	TeamMemberSortFieldWorkspaceID TeamMemberSortField = "WORKSPACE_ID"
 )
 
 var AllTeamMemberSortField = []TeamMemberSortField{
 	TeamMemberSortFieldTeamID,
 	TeamMemberSortFieldUserID,
 	TeamMemberSortFieldAddedAt,
+	TeamMemberSortFieldWorkspaceID,
 }
 
 func (e TeamMemberSortField) IsValid() bool {
 	switch e {
-	case TeamMemberSortFieldTeamID, TeamMemberSortFieldUserID, TeamMemberSortFieldAddedAt:
+	case TeamMemberSortFieldTeamID, TeamMemberSortFieldUserID, TeamMemberSortFieldAddedAt, TeamMemberSortFieldWorkspaceID:
 		return true
 	}
 	return false

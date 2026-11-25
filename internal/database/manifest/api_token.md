@@ -36,6 +36,13 @@ API access tokens, personal or service-account scoped
 | `api_tokens_token_hash_key` | token_hash | yes | btree |  |
 | `idx_api_tokens_workspace` | workspace_id |  | btree |  |
 
+## Relationships
+
+| Name | Kind | Target | FK | Filter |
+| --- | --- | --- | --- | --- |
+| user | o2o | User | public.api_tokens.user_id |  |
+| workspace | o2o | Workspace | public.api_tokens.workspace_id |  |
+
 ## Query methods
 
 ### Get
@@ -67,20 +74,6 @@ postgres:
 SELECT "created_at", "expires_at", "id", "last_used_at", "name", "scopes", "token_hash", "user_id", "workspace_id" FROM "public"."api_tokens" WHERE <filter> ORDER BY <sort> LIMIT <limit>
 ```
 
-### Count
-
-- Params: `filter *APITokenFilter`
-- Returns: `int64`, `error`
-- Errors: `tenancy.ErrMissing`
-
-Generated SQL:
-
-postgres:
-
-```sql
-SELECT COUNT(*) FROM "public"."api_tokens" WHERE <filter>
-```
-
 ### Exists
 
 - Params: `id uuid.UUID`
@@ -107,6 +100,20 @@ postgres:
 
 ```sql
 SELECT EXISTS(SELECT 1 FROM "public"."api_tokens" WHERE <filter>)
+```
+
+### Count
+
+- Params: `filter *APITokenFilter`
+- Returns: `int64`, `error`
+- Errors: `tenancy.ErrMissing`
+
+Generated SQL:
+
+postgres:
+
+```sql
+SELECT COUNT(*) FROM "public"."api_tokens" WHERE <filter>
 ```
 
 ### Paginate
@@ -169,36 +176,6 @@ postgres:
 INSERT INTO "public"."api_tokens" (<columns>) VALUES <values> RETURNING "id"
 ```
 
-### Upsert
-
-- Params: `input *CreateAPITokenInput`, `target APITokenConflictTarget`
-- Returns: `*APIToken`, `error`
-- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
-- Notes: One method over the generated APITokenConflictTarget enum — the target argument selects the conflict columns at call time.
-
-Generated SQL:
-
-postgres:
-
-```sql
-INSERT INTO "public"."api_tokens" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING "id"
-```
-
-### UpsertMany
-
-- Params: `inputs []*CreateAPITokenInput`, `target APITokenConflictTarget`
-- Returns: `[]*APIToken`, `error`
-- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
-- Notes: Batched in generation.batch_size chunks over the same APITokenConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.
-
-Generated SQL:
-
-postgres:
-
-```sql
-INSERT INTO "public"."api_tokens" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>
-```
-
 ### Update
 
 - Params: `id uuid.UUID`, `input *UpdateAPITokenInput`
@@ -242,6 +219,36 @@ postgres:
 
 ```sql
 UPDATE "public"."api_tokens" SET <set> WHERE <filter> RETURNING "id"
+```
+
+### Upsert
+
+- Params: `input *CreateAPITokenInput`, `target APITokenConflictTarget`
+- Returns: `*APIToken`, `error`
+- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
+- Notes: One method over the generated APITokenConflictTarget enum — the target argument selects the conflict columns at call time.
+
+Generated SQL:
+
+postgres:
+
+```sql
+INSERT INTO "public"."api_tokens" (<columns>) VALUES (<values>) ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded> RETURNING "id"
+```
+
+### UpsertMany
+
+- Params: `inputs []*CreateAPITokenInput`, `target APITokenConflictTarget`
+- Returns: `[]*APIToken`, `error`
+- Errors: `ErrNilInput`, `ErrConstraintViolation`, `tenancy.ErrMissing`, `tenancy.ErrMismatch`
+- Notes: Batched in generation.batch_size chunks over the same APITokenConflictTarget enum Upsert takes. Inputs resolving to one target are deduped before the statement is built, last occurrence wins. Earlier chunks are not rolled back on a later failure — wrap in a transaction for atomicity.
+
+Generated SQL:
+
+postgres:
+
+```sql
+INSERT INTO "public"."api_tokens" (<columns>) VALUES <values> ON CONFLICT (<conflict_target>) DO UPDATE SET <excluded>
 ```
 
 ### HardDelete
@@ -312,3 +319,17 @@ Type `APITokenFilter`.
 Type `APITokenSort`.
 
 Fields: CreatedAt, ExpiresAt, ID, LastUsedAt, Name, Scopes, TokenHash, UserID, WorkspaceID
+
+## Read examples
+
+```go
+row, err := client.APITokens().Get(ctx, uuid.NewV4())
+rows, err := client.APITokens().GetMany(ctx, &database.GetAPITokensInput{Filter: &database.APITokenFilter{Name: &comparator.String{Eq: new("example")}}})
+```
+
+## Write examples
+
+```go
+created, err := client.APITokens().Create(ctx, &database.CreateAPITokenInput{Name: "example", TokenHash: "example"})
+updated, err := client.APITokens().Update(ctx, uuid.NewV4(), &database.UpdateAPITokenInput{WorkspaceID: omittable.Set(uuid.NewV4())})
+```
